@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import NotificationAlert from "react-notification-alert";
+// import NotificationAlert from "react-notification-alert";
 import {
     Button,
     Card,
@@ -18,50 +18,50 @@ function Checkout() {
     const [itemPrice, setItemPrice] = useState(0);
     const [discount, setDiscount] = useState(0);
     const [showModal, setShowModal] = React.useState(false);
-    const notificationAlertRef = React.useRef(null);
+    // const notificationAlertRef = React.useRef(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-    const notify = (place, text) => {
-        var color = Math.floor(Math.random() * 5 + 1);
-        var type;
-        switch (color) {
-            case 1:
-                type = "primary";
-                break;
-            case 2:
-                type = "success";
-                break;
-            case 3:
-                type = "danger";
-                break;
-            case 4:
-                type = "warning";
-                break;
-            case 5:
-                type = "info";
-                break;
-            default:
-                break;
-        }
-        var options = {};
-        options = {
-            place: place,
-            message: (
-                <div>
-                    <div>
-                        {text}
-                    </div>
-                </div>
-            ),
-            type: type,
-            icon: "nc-icon nc-bell-55",
-            autoDismiss: 7,
-        };
-        notificationAlertRef.current.notificationAlert(options);
-    };
+    // const notify = (place, text) => {
+    //     var color = Math.floor(Math.random() * 5 + 1);
+    //     var type;
+    //     switch (color) {
+    //         case 1:
+    //             type = "primary";
+    //             break;
+    //         case 2:
+    //             type = "success";
+    //             break;
+    //         case 3:
+    //             type = "danger";
+    //             break;
+    //         case 4:
+    //             type = "warning";
+    //             break;
+    //         case 5:
+    //             type = "info";
+    //             break;
+    //         default:
+    //             break;
+    //     }
+    //     var options = {};
+    //     options = {
+    //         place: place,
+    //         message: (
+    //             <div>
+    //                 <div>
+    //                     {text}
+    //                 </div>
+    //             </div>
+    //         ),
+    //         type: type,
+    //         icon: "nc-icon nc-bell-55",
+    //         autoDismiss: 7,
+    //     };
+    //     notificationAlertRef.current.notificationAlert(options);
+    // };
     const setPaymentMethod = (method) => {
         setSelectedPaymentMethod(method)
         setShowModal(false)
-        notify('bc', 'Venda realizada com sucesso!')
+        // notify('bc', 'Venda realizada com sucesso!')
     }
     const handleAddItem = () => {
         const newItem = { name: itemName, price: parseFloat(itemPrice), discount: parseFloat(discount) };
@@ -87,9 +87,9 @@ function Checkout() {
 
     return (
         <>
-            <div className="rna-container">
+            {/* <div className="rna-container">
                 <NotificationAlert ref={notificationAlertRef} />
-            </div>
+            </div> */}
             <Container fluid>
 
                 <Row>
