@@ -21,7 +21,6 @@ import TableList from "views/TableList.js";
 import Typography from "views/Typography.js";
 import Icons from "views/Icons.js";
 import Maps from "views/Maps.js";
-import Notifications from "views/Notifications.js";
 import Upgrade from "views/Upgrade.js";
 import Checkout from "views/Checkout";
 import Vendas from "views/Vendas";
