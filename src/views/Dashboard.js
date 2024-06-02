@@ -1,5 +1,5 @@
 import React from "react";
-// import ChartistGraph from "react-chartist";
+import ChartistGraph from "react-chartist";
 // react-bootstrap components
 import {
   Badge,
@@ -105,7 +105,7 @@ function Dashboard() {
                 <Row>
                   <Col xs="5">
                     <div className="icon-big text-center icon-warning">
-                      <i className="nc-icon nc-money-coins  text-danger"></i>
+                      <i className="nc-icon nc-chart-pie-36  text-danger"></i>
                     </div>
                   </Col>
                   <Col xs="7">
@@ -135,7 +135,7 @@ function Dashboard() {
                 <p className="card-category">Performance dos ùltimos 20 dias</p>
               </Card.Header>
               <Card.Body>
-                {/* <div className="ct-chart" id="chartHours">
+                <div className="ct-chart" id="chartHours">
                   <ChartistGraph
                     data={{
                       labels: [
@@ -195,7 +195,7 @@ function Dashboard() {
                       ],
                     ]}
                   />
-                </div> */}
+                </div>
               </Card.Body>
               <Card.Footer>
                 <div className="legend">
@@ -219,7 +219,7 @@ function Dashboard() {
                 <p className="card-category">Como se divide a receita atual</p>
               </Card.Header>
               <Card.Body>
-                {/* <div
+                <div
                   className="ct-chart ct-perfect-fourth"
                   id="chartPreferences"
                 >
@@ -230,7 +230,7 @@ function Dashboard() {
                     }}
                     type="Pie"
                   />
-                </div> */}
+                </div>
                 <div className="legend">
                   <i className="fas fa-circle text-info"></i>
                   Serviços <i className="fas fa-circle text-danger"></i>
@@ -253,7 +253,7 @@ function Dashboard() {
                 <p className="card-category">Incluso Serviços e Produtos de todo o ano</p>
               </Card.Header>
               <Card.Body>
-                {/* <div className="ct-chart" id="chartActivity">
+                <div className="ct-chart" id="chartActivity">
                   <ChartistGraph
                     data={{
                       labels: [
@@ -323,7 +323,7 @@ function Dashboard() {
                       ],
                     ]}
                   />
-                </div> */}
+                </div>
               </Card.Body>
               <Card.Footer>
                 <div className="legend">

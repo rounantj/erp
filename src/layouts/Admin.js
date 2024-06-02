@@ -15,7 +15,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React, { Component } from "react";
+import React, { Component, useContext } from "react";
 import { useLocation, Route, Switch } from "react-router-dom";
 
 import AdminNavbar from "components/Navbars/AdminNavbar";
@@ -26,6 +26,7 @@ import FixedPlugin from "components/FixedPlugin/FixedPlugin.js";
 import routes from "routes.js";
 
 import sidebarImage from "assets/img/sidebar-3.jpg";
+import { UserContext } from "context/UserContext";
 
 function Admin() {
   const [image, setImage] = React.useState(sidebarImage);
@@ -33,6 +34,7 @@ function Admin() {
   const [hasImage, setHasImage] = React.useState(true);
   const location = useLocation();
   const mainPanel = React.useRef(null);
+  const { user } = useContext(UserContext);
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
       if (prop.layout === "/admin") {
@@ -61,26 +63,46 @@ function Admin() {
       element.parentNode.removeChild(element);
     }
   }, [location]);
+
+
   return (
     <>
-      <div className="wrapper">
-        <Sidebar color={color} image={hasImage ? image : ""} routes={routes} />
-        <div className="main-panel" ref={mainPanel}>
-          <AdminNavbar />
-          <div className="content">
-            <Switch>{getRoutes(routes)}</Switch>
+      {
+        user &&
+        <>
+          <div className="wrapper">
+            <Sidebar color={color} image={hasImage ? image : ""} routes={routes} />
+            <div className="main-panel" ref={mainPanel}>
+              <AdminNavbar />
+              <div className="content">
+                <Switch>{getRoutes(routes)}</Switch>
+              </div>
+              <Footer />
+            </div>
           </div>
-          <Footer />
-        </div>
-      </div>
-      <FixedPlugin
-        hasImage={hasImage}
-        setHasImage={() => setHasImage(!hasImage)}
-        color={color}
-        setColor={(color) => setColor(color)}
-        image={image}
-        setImage={(image) => setImage(image)}
-      />
+          <FixedPlugin
+            hasImage={hasImage}
+            setHasImage={() => setHasImage(!hasImage)}
+            color={color}
+            setColor={(color) => setColor(color)}
+            image={image}
+            setImage={(image) => setImage(image)}
+          />
+        </>
+      }
+      {
+        !user &&
+        <>
+          <div ref={mainPanel}>
+            <div >
+              <Switch>{getRoutes(routes)}</Switch>
+            </div>
+
+          </div>
+        </>
+      }
+
+
     </>
   );
 }

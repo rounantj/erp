@@ -1,7 +1,7 @@
 import SearchInput from "components/inputs/search-input";
 import React, { useState } from "react";
 import { Button, Card, Container, Row, Col, Table, Modal, Form, OverlayTrigger, Tooltip } from "react-bootstrap";
-
+import { toMoneyFormat } from "../helpers/formatters"
 function ProductAndServiceTable() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -82,7 +82,7 @@ function ProductAndServiceTable() {
                       (
                         <tr>
                           <td>{item.categoria}</td>
-                          <td>{item.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                          <td>{toMoneyFormat(item.preco)}</td>
                           <td>{item.descricao}</td>
                           <td>{item.ncm}</td>
                           <td>{item.ean}</td>

@@ -1,5 +1,6 @@
+import { toMoneyFormat } from "helpers/formatters";
 import React, { useState } from "react";
-// import NotificationAlert from "react-notification-alert";
+import NotificationAlert from "react-notification-alert";
 import {
     Button,
     Card,
@@ -18,50 +19,50 @@ function Checkout() {
     const [itemPrice, setItemPrice] = useState(0);
     const [discount, setDiscount] = useState(0);
     const [showModal, setShowModal] = React.useState(false);
-    // const notificationAlertRef = React.useRef(null);
+    const notificationAlertRef = React.useRef(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-    // const notify = (place, text) => {
-    //     var color = Math.floor(Math.random() * 5 + 1);
-    //     var type;
-    //     switch (color) {
-    //         case 1:
-    //             type = "primary";
-    //             break;
-    //         case 2:
-    //             type = "success";
-    //             break;
-    //         case 3:
-    //             type = "danger";
-    //             break;
-    //         case 4:
-    //             type = "warning";
-    //             break;
-    //         case 5:
-    //             type = "info";
-    //             break;
-    //         default:
-    //             break;
-    //     }
-    //     var options = {};
-    //     options = {
-    //         place: place,
-    //         message: (
-    //             <div>
-    //                 <div>
-    //                     {text}
-    //                 </div>
-    //             </div>
-    //         ),
-    //         type: type,
-    //         icon: "nc-icon nc-bell-55",
-    //         autoDismiss: 7,
-    //     };
-    //     notificationAlertRef.current.notificationAlert(options);
-    // };
+    const notify = (place, text) => {
+        var color = Math.floor(Math.random() * 5 + 1);
+        var type;
+        switch (color) {
+            case 1:
+                type = "primary";
+                break;
+            case 2:
+                type = "success";
+                break;
+            case 3:
+                type = "danger";
+                break;
+            case 4:
+                type = "warning";
+                break;
+            case 5:
+                type = "info";
+                break;
+            default:
+                break;
+        }
+        var options = {};
+        options = {
+            place: place,
+            message: (
+                <div>
+                    <div>
+                        {text}
+                    </div>
+                </div>
+            ),
+            type: type,
+            icon: "nc-icon nc-bell-55",
+            autoDismiss: 7,
+        };
+        notificationAlertRef.current.notificationAlert(options);
+    };
     const setPaymentMethod = (method) => {
         setSelectedPaymentMethod(method)
         setShowModal(false)
-        // notify('bc', 'Venda realizada com sucesso!')
+        notify('bc', 'Venda realizada com sucesso!')
     }
     const handleAddItem = () => {
         const newItem = { name: itemName, price: parseFloat(itemPrice), discount: parseFloat(discount) };
@@ -72,7 +73,7 @@ function Checkout() {
     };
 
     const calculateTotal = () => {
-        return items.reduce((total, item) => total + item.price - item.discount, 0).toFixed(2);
+        return toMoneyFormat(items.reduce((total, item) => total + item.price - item.discount, 0));
     };
 
     const handlePayment = () => {
@@ -87,9 +88,9 @@ function Checkout() {
 
     return (
         <>
-            {/* <div className="rna-container">
+            <div className="rna-container">
                 <NotificationAlert ref={notificationAlertRef} />
-            </div> */}
+            </div>
             <Container fluid>
 
                 <Row>
@@ -159,9 +160,9 @@ function Checkout() {
                                         {items.map((item, index) => (
                                             <tr key={index}>
                                                 <td>{item.name}</td>
-                                                <td>{item.price.toFixed(2)}</td>
-                                                <td>{item.discount.toFixed(2)}</td>
-                                                <td>{(item.price - item.discount).toFixed(2)}</td>
+                                                <td>{toMoneyFormat(item.price)}</td>
+                                                <td>{toMoneyFormat(item.discount)}</td>
+                                                <td>{toMoneyFormat((item.price - item.discount))}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -172,10 +173,10 @@ function Checkout() {
                     <Col md="4">
                         <Card>
                             <Card.Header>
-                                <Card.Title as="h4">Resumo do Pedido</Card.Title>
+                                <Card.Title as="h4">Resumo da venda</Card.Title>
                             </Card.Header>
                             <Card.Body>
-                                <h5>Total: R$ {calculateTotal()}</h5>
+                                <h5>Total: {calculateTotal()}</h5>
                                 <Button onClick={() => setShowModal(true)} variant="success">Finalizar Compra</Button>
                             </Card.Body>
                         </Card>

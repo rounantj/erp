@@ -1,3 +1,5 @@
+import { toDateFormat } from "helpers/formatters";
+import { toMoneyFormat } from "helpers/formatters";
 import React, { useState } from "react";
 import {
   Card,
@@ -12,11 +14,11 @@ import {
 function Vendas() {
   // Dados de exemplo
   const [vendas, setVendas] = useState([
-    { id: 1, cliente: "João", valor: 100, desconto: 10, data: "2024-06-01" },
-    { id: 2, cliente: "Maria", valor: 150, desconto: 15, data: "2024-06-01" },
-    { id: 3, cliente: "José", valor: 200, desconto: 20, data: "2024-06-02" },
-    { id: 4, cliente: "Ana", valor: 120, desconto: 12, data: "2024-06-02" },
-    { id: 5, cliente: "Carlos", valor: 180, desconto: 18, data: "2024-06-03" },
+    { id: 1, cliente: "João", preco: 100, desconto: 10, data: "2024-06-01 14:00:23" },
+    { id: 2, cliente: "Maria", preco: 150, desconto: 15, data: "2024-06-01 11:23:00" },
+    { id: 3, cliente: "José", preco: 200, desconto: 20, data: "2024-06-02 10:45:00" },
+    { id: 4, cliente: "Ana", preco: 120, desconto: 12, data: "2024-06-02 12:23:45" },
+    { id: 5, cliente: "Carlos", preco: 180, desconto: 18, data: "2024-06-03 18:00:00" },
   ]);
 
   // Estado para o período de busca
@@ -25,7 +27,8 @@ function Vendas() {
 
   // Função para calcular o total da venda com desconto
   const calcularTotal = (valor, desconto) => {
-    return valor - desconto;
+    console.log({ valor, desconto })
+    return +valor - +desconto;
   };
 
   // Filtrar vendas por período
@@ -42,7 +45,7 @@ function Vendas() {
   // Calcular totais por dia
   const calcularTotaisPorDia = () => {
     const totaisPorDia = vendas.reduce((acc, venda) => {
-      acc[venda.data] = (acc[venda.data] || 0) + calcularTotal(venda.valor, venda.desconto);
+      acc[venda.data] = (acc[venda.data] || 0) + calcularTotal(venda.preco, venda.desconto);
       return acc;
     }, {});
     return totaisPorDia;
@@ -52,7 +55,7 @@ function Vendas() {
   const calcularTotalPorPeriodo = () => {
     const filteredVendas = filtrarVendas();
     const total = filteredVendas.reduce((acc, venda) => {
-      return acc + calcularTotal(venda.valor, venda.desconto);
+      return acc + calcularTotal(venda.preco, venda.desconto);
     }, 0);
     return total;
   };
@@ -115,11 +118,11 @@ function Vendas() {
                   <tbody>
                     {filtrarVendas().map((venda) => (
                       <tr key={venda.id}>
-                        <td>{venda.data}</td>
+                        <td>{toDateFormat(venda.data, true)}</td>
                         <td>{venda.cliente}</td>
-                        <td>{`R$ ${venda.valor.toFixed(2)}`}</td>
-                        <td>{`R$ ${venda.desconto.toFixed(2)}`}</td>
-                        <td>{`R$ ${calcularTotal(venda.valor, venda.desconto).toFixed(2)}`}</td>
+                        <td>{`${toMoneyFormat(venda.preco)}`}</td>
+                        <td>{`${toMoneyFormat(venda.desconto)}`}</td>
+                        <td>{`${toMoneyFormat(calcularTotal(venda.preco, venda.desconto))}`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -143,8 +146,8 @@ function Vendas() {
                   <tbody>
                     {Object.entries(calcularTotaisPorDia()).map(([data, total]) => (
                       <tr key={data}>
-                        <td>{data}</td>
-                        <td>{`R$ ${total.toFixed(2)}`}</td>
+                        <td>{toDateFormat(data)}</td>
+                        <td>{`${toMoneyFormat(total)}`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -156,7 +159,7 @@ function Vendas() {
             <Card>
               <Card.Body>
                 <h5>Total por Período</h5>
-                <p>{`R$ ${calcularTotalPorPeriodo().toFixed(2)}`}</p>
+                <p>{`${toMoneyFormat(calcularTotalPorPeriodo())}`}</p>
               </Card.Body>
             </Card>
           </Col>

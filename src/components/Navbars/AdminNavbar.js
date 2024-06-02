@@ -15,10 +15,10 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React, { Component } from "react";
+import React, { Component, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import { Navbar, Container, Nav, Dropdown, Button } from "react-bootstrap";
-
+import { UserContext } from "context/UserContext";
 import routes from "routes.js";
 
 function Header() {
@@ -34,6 +34,7 @@ function Header() {
     };
     document.body.appendChild(node);
   };
+  const { user, setUser } = useContext(UserContext);
 
   const getBrandText = () => {
     for (let i = 0; i < routes.length; i++) {
@@ -43,6 +44,12 @@ function Header() {
     }
     return "Brand";
   };
+  const logout = () => {
+    console.log("Saindo...")
+    setUser(null)
+    localStorage.clear()
+    window.location.replace("/admin/login-register")
+  }
   return (
     <Navbar bg="light" expand="lg">
       <Container fluid>
@@ -143,7 +150,7 @@ function Header() {
                 href="#pablo"
                 onClick={(e) => e.preventDefault()}
               >
-                <span className="no-icon">Ronan Rodrigues | Admin</span>
+                <span className="no-icon">{user?.user.email} | <b>{user?.user.role ?? "Admin"}</b></span>
               </Nav.Link>
             </Nav.Item>
             <Dropdown style={{ display: 'none' }} as={Nav.Item}>
@@ -196,7 +203,7 @@ function Header() {
               <Nav.Link
                 className="m-0"
                 href="#pablo"
-                onClick={(e) => e.preventDefault()}
+                onClick={logout}
               >
                 <span className="no-icon">Sair</span>
               </Nav.Link>

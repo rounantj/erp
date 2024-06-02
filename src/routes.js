@@ -27,6 +27,7 @@ import Vendas from "views/Vendas";
 import Despesas from "views/Despesas";
 import SaudeFinanceira from "views/SaudeFinanceira";
 import ProductAndServiceTable from "views/ProdutosServicos";
+import Login from "views/LoginRegister";
 
 const dashboardRoutes = [
 
@@ -79,43 +80,52 @@ const dashboardRoutes = [
   //   component: Notifications,
   //   layout: "/admin"
   // },
-  // My pages
+  // My pages <i className="nc-icon nc-credit-card"></i>
 
   {
     path: "/checkout",
-    name: "Checkout",
-    icon: "nc-icon nc-bell-55",
+    name: "Caixa",
+    icon: "nc-icon nc-credit-card",
     component: Checkout,
     layout: "/admin"
   },
   {
     path: "/vendas",
-    name: "Vendas",
-    icon: "nc-icon nc-bell-55",
+    name: "Faturamento",
+    icon: "nc-icon nc-money-coins",
     component: Vendas,
     layout: "/admin"
   },
   {
     path: "/despesas",
     name: "Despesas",
-    icon: "nc-icon nc-bell-55",
+    icon: "nc-icon nc-chart-pie-36",
     component: Despesas,
     layout: "/admin"
   },
   {
     path: "/financas",
     name: "Saude Financeira",
-    icon: "nc-icon nc-bell-55",
+    icon: "nc-icon nc-bulb-63",
     component: SaudeFinanceira,
     layout: "/admin"
   },
   {
     path: "/recursos",
     name: "Produtos e Serviços",
-    icon: "nc-icon nc-bell-55",
+    icon: "nc-icon nc-bullet-list-67",
     component: ProductAndServiceTable,
     layout: "/admin"
   },
+  {
+    path: "/login-register",
+    name: "Logout or Login",
+    icon: "nc-icon nc-bullet-list-67",
+    component: Login,
+    layout: "/admin"
+  }
+
+
 ];
 
 export default dashboardRoutes;
