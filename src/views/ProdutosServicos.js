@@ -1,13 +1,39 @@
 import SearchInput from "components/inputs/search-input";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Card, Container, Row, Col, Table, Modal, Form, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { toMoneyFormat } from "../helpers/formatters"
+import { getProducts } from "helpers/api-integrator";
+import NotificationAlert from "react-notification-alert";
+
 function ProductAndServiceTable() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteItems, setDeleteItems] = useState([]);
   const [editItem, setEditItem] = useState(null);
+  const [products, setProducts] = useState([])
+  const notificationAlertRef = React.useRef(null);
+  const notify = (place, type, text) => {
+    var color = Math.floor(Math.random() * 5 + 1);
+
+    var options = {};
+    options = {
+      place: place,
+      message: (
+        <div>
+          <div>
+            {text}
+          </div>
+        </div>
+      ),
+      type: type,
+      icon: "nc-icon nc-bell-55",
+      autoDismiss: 7,
+    };
+    if (notificationAlertRef && notificationAlertRef.current && notificationAlertRef.current.notificationAlert)
+      notificationAlertRef?.current?.notificationAlert(options);
+  };
+
 
   const handleAdd = () => {
     // Adicionar lógica para adicionar um novo item
@@ -24,35 +50,24 @@ function ProductAndServiceTable() {
     setShowDeleteModal(false);
   };
 
-  const tableData = [
-    {
-      id: 1,
-      categoria: "Produto",
-      preco: 50.0,
-      descricao: "Produto A",
-      ncm: "12345678",
-      ean: "7890123456789",
-    },
-    {
-      id: 2,
-      categoria: "Serviço",
-      preco: 100.0,
-      descricao: "Serviço B",
-      ncm: "87654321",
-      ean: "9876543210987",
-    },
-    {
-      id: 3,
-      categoria: "Produto",
-      preco: 75.0,
-      descricao: "Produto C",
-      ncm: "23456789",
-      ean: "8765432109876",
-    },
-  ];
+  const getProductsList = async () => {
+    const result = await getProducts()
+    console.log({ result })
+    if (result.success) {
+      setProducts(result.data)
+    } else {
+      notify("bc", "danger", "Problema ao buscar produtos!")
+    }
+  }
+  useEffect(() => {
+    getProductsList()
+  }, [])
 
   return (
     <>
+      <div className="rna-container">
+        <NotificationAlert ref={notificationAlertRef} />
+      </div>
       <Container fluid>
         <Row>
           <Col md="12">
@@ -77,14 +92,14 @@ function ProductAndServiceTable() {
                   </thead>
                   <tbody>
                     {
-                      tableData.map(item =>
+                      products && products.length && products.map(item =>
 
                       (
                         <tr>
                           <td>{item.categoria}</td>
-                          <td>{toMoneyFormat(item.preco)}</td>
+                          <td>{toMoneyFormat(item.valor)}</td>
                           <td>{item.descricao}</td>
-                          <td>{item.ncm}</td>
+                          <td>{item.ncm?.split('"')[0]}</td>
                           <td>{item.ean}</td>
                           <td>
                             <OverlayTrigger
