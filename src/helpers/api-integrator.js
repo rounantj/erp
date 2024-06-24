@@ -85,4 +85,98 @@ export const getProducts = async () => {
     }
 };
 
+export const getSells = async () => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const products = await axios.get(`${urlBase}/vendas`, { headers });
+        return {
+            success: true, data: products.data
+        }
+    } catch (error) {
+        console.error('Error during get products:', error);
+        return {
+            success: null, message: "Erro ao buscar produtos"
+        }
+    }
+};
+
+export const getDashboard = async () => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const products = await axios.post(`${urlBase}/vendas/dashboard`, { headers });
+        return {
+            success: true, data: products.data
+        }
+    } catch (error) {
+        console.error('Error during get products:', error);
+        return {
+            success: null, message: "Erro ao buscar produtos"
+        }
+    }
+};
+
+export const updateProduct = async (item) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const products = await axios.post(`${urlBase}/produtos`, item, { headers });
+        console.log({ products })
+        return {
+            success: true, data: products.data
+        }
+    } catch (error) {
+        console.error('Error during get products:', error);
+        return {
+            success: null, message: "Erro ao buscar produtos"
+        }
+    }
+};
+
+export const deleteProduct = async (itemId) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const products = await axios.delete(`${urlBase}/produtos?produtoId=${itemId}`, { headers });
+        console.log({ products })
+        return {
+            success: true, data: products.data
+        }
+    } catch (error) {
+        console.error('Error during get products:', error);
+        return {
+            success: null, message: "Erro ao buscar produtos"
+        }
+    }
+};
+
+export const finalizaVenda = async (venda) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const vendas = await axios.post(`${urlBase}/vendas`, venda, { headers });
+        console.log({ vendas })
+        return {
+            success: true, data: vendas.data
+        }
+    } catch (error) {
+        console.log({ error })
+        console.error('Error during venda:', error);
+        return {
+            success: null, message: "Erro ao vender"
+        }
+    }
+};
+
 

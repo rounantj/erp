@@ -1,6 +1,8 @@
+import { getSells } from "helpers/api-integrator";
 import { toDateFormat } from "helpers/formatters";
 import { toMoneyFormat } from "helpers/formatters";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import ptBR from 'antd/lib/locale/pt_BR';
 import {
   Card,
   Container,
@@ -10,16 +12,13 @@ import {
   Form,
   Button,
 } from "react-bootstrap";
+import { DatePicker, Space, ConfigProvider } from 'antd';
+
+const { RangePicker } = DatePicker;
 
 function Vendas() {
   // Dados de exemplo
-  const [vendas, setVendas] = useState([
-    { id: 1, cliente: "João", preco: 100, desconto: 10, data: "2024-06-01 14:00:23" },
-    { id: 2, cliente: "Maria", preco: 150, desconto: 15, data: "2024-06-01 11:23:00" },
-    { id: 3, cliente: "José", preco: 200, desconto: 20, data: "2024-06-02 10:45:00" },
-    { id: 4, cliente: "Ana", preco: 120, desconto: 12, data: "2024-06-02 12:23:45" },
-    { id: 5, cliente: "Carlos", preco: 180, desconto: 18, data: "2024-06-03 18:00:00" },
-  ]);
+  const [vendas, setVendas] = useState([]);
 
   // Estado para o período de busca
   const [startDate, setStartDate] = useState("");
@@ -45,7 +44,8 @@ function Vendas() {
   // Calcular totais por dia
   const calcularTotaisPorDia = () => {
     const totaisPorDia = vendas.reduce((acc, venda) => {
-      acc[venda.data] = (acc[venda.data] || 0) + calcularTotal(venda.preco, venda.desconto);
+      console.log(venda.createdAt)
+      acc[venda.createdAt] = (acc[venda.createdAt] || 0) + calcularTotal(venda.total, venda.desconto);
       return acc;
     }, {});
     return totaisPorDia;
@@ -55,10 +55,21 @@ function Vendas() {
   const calcularTotalPorPeriodo = () => {
     const filteredVendas = filtrarVendas();
     const total = filteredVendas.reduce((acc, venda) => {
-      return acc + calcularTotal(venda.preco, venda.desconto);
+      return acc + calcularTotal(venda.total, venda.desconto);
     }, 0);
     return total;
   };
+
+  const getVendas = async () => {
+    const items = await getSells()
+    console.log({ items })
+    if (items.success) {
+      setVendas(items.data)
+    }
+  }
+
+  useEffect(() => { getVendas() }, [])
+  useEffect(() => { console.log({ vendas }) }, [vendas])
 
   return (
     <>
@@ -72,29 +83,20 @@ function Vendas() {
               <Card.Body>
                 <Form>
                   <Row>
-                    <Col md="3">
-                      <Form.Group>
-                        <Form.Label>Data Inicial</Form.Label>
-                        <Form.Control
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                        />
+                    <Col md="9">
+                      <Form.Group style={{ gap: '100px' }}>
+                        <Form.Label>Buscar por período: </Form.Label>
+                        <ConfigProvider locale={ptBR}>
+                          <RangePicker
+                            allowClear={false}
+                            onChange={a => console.log("Timeframe has changed")}
+                            className="datepicker"
+
+                          />
+                        </ConfigProvider >
                       </Form.Group>
                     </Col>
-                    <Col md="3">
-                      <Form.Group>
-                        <Form.Label>Data Final</Form.Label>
-                        <Form.Control
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md="3" style={{ paddingTop: '30px' }}>
-                      <Button variant="primary" onClick={filtrarVendas}>Buscar</Button>
-                    </Col>
+
                   </Row>
                 </Form>
               </Card.Body>
@@ -111,18 +113,16 @@ function Vendas() {
                       <th>Data</th>
                       <th>Cliente</th>
                       <th>Valor</th>
-                      <th>Desconto</th>
-                      <th>Total</th>
+                      <th>Descontos</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtrarVendas().map((venda) => (
+                    {filtrarVendas()?.map((venda) => (
                       <tr key={venda.id}>
                         <td>{toDateFormat(venda.data, true)}</td>
-                        <td>{venda.cliente}</td>
-                        <td>{`${toMoneyFormat(venda.preco)}`}</td>
+                        <td>{venda.nome_cliente}</td>
+                        <td>{`${toMoneyFormat(venda.total)}`}</td>
                         <td>{`${toMoneyFormat(venda.desconto)}`}</td>
-                        <td>{`${toMoneyFormat(calcularTotal(venda.preco, venda.desconto))}`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -144,9 +144,9 @@ function Vendas() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(calcularTotaisPorDia()).map(([data, total]) => (
-                      <tr key={data}>
-                        <td>{toDateFormat(data)}</td>
+                    {Object.entries(calcularTotaisPorDia()).map(([createdAt, total]) => (
+                      <tr key={createdAt}>
+                        <td>{toDateFormat(createdAt)}</td>
                         <td>{`${toMoneyFormat(total)}`}</td>
                       </tr>
                     ))}
