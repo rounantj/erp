@@ -179,4 +179,23 @@ export const finalizaVenda = async (venda) => {
     }
 };
 
+export const updateDespesa = async (item) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const despesas = await axios.post(`${urlBase}/despesas`, item, { headers });
+        console.log({ despesas })
+        return {
+            success: true, data: despesas.data
+        }
+    } catch (error) {
+        console.error('Error during update despesas:', error);
+        return {
+            success: null, message: "Erro ao salvar despesas"
+        }
+    }
+};
+
 

@@ -119,7 +119,7 @@ function Vendas() {
                   <tbody>
                     {filtrarVendas()?.map((venda) => (
                       <tr key={venda.id}>
-                        <td>{toDateFormat(venda.data, true)}</td>
+                        <td>{toDateFormat(venda.createdAt, true)}</td>
                         <td>{venda.nome_cliente}</td>
                         <td>{`${toMoneyFormat(venda.total)}`}</td>
                         <td>{`${toMoneyFormat(venda.desconto)}`}</td>
