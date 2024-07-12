@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   Container,
@@ -9,15 +9,13 @@ import {
   Button,
   Modal,
 } from "react-bootstrap";
+import CurrencyInput from 'react-currency-input-field';
+import { Checkbox } from 'antd';
+import { updateDespesa } from "helpers/api-integrator";
+import { getDespesas } from "helpers/api-integrator";
 
 function Despesas() {
-  const [despesas, setDespesas] = useState([
-    { id: 1, descricao: "Aluguel", valor: 1000, status: "Pago", fixa: true, vencimento: "2024-06-01" },
-    { id: 2, descricao: "Internet", valor: 100, status: "Pago", fixa: false, vencimento: "2024-06-15" },
-    { id: 3, descricao: "Salário", valor: 2000, status: "Em Aberto", fixa: false, vencimento: "2024-06-30" },
-    { id: 4, descricao: "Energia", valor: 200, status: "Pago", fixa: true, vencimento: "2024-06-10" },
-    { id: 5, descricao: "Água", valor: 150, status: "Em Aberto", fixa: false, vencimento: "2024-06-25" },
-  ]);
+  const [despesas, setDespesas] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [descricao, setDescricao] = useState("");
@@ -35,13 +33,33 @@ function Despesas() {
       fixa,
       vencimento,
     };
-    setDespesas([...despesas, novaDespesa]);
+    createDespesa()
+    getFullDespesas()
     setShowModal(false);
   };
 
+  const getFullDespesas = async () => {
+    const request = await getDespesas()
+    console.log({ request })
+    if (request && request.data) {
+      setDespesas(request.data)
+    }
+  }
   const handleVencimentoChange = (e) => {
     setVencimento(e.target.value);
   };
+
+  const createDespesa = async () => {
+    const despesa = {
+      descricao, valor, status, fixa, vencimento, categoria: fixa ? "Recorrente" : "Passageira"
+    }
+    const response = await updateDespesa(despesa)
+    console.log({ response })
+  }
+
+  useEffect(() => {
+    getFullDespesas()
+  }, [])
 
   return (
     <>
@@ -64,24 +82,41 @@ function Despesas() {
                         <Form.Label>Descrição</Form.Label>
                         <Form.Control type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
                       </Form.Group>
-                      <Form.Group controlId="valor">
-                        <Form.Label>Valor</Form.Label>
-                        <Form.Control type="text" value={valor} onChange={(e) => setValor(e.target.value)} />
-                      </Form.Group>
-                      <Form.Group controlId="status">
-                        <Form.Label>Status</Form.Label>
-                        <Form.Control as="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                          <option value="Pago">Pago</option>
-                          <option value="Em Aberto">Em Aberto</option>
-                        </Form.Control>
-                      </Form.Group>
+
                       <Form.Group controlId="fixa">
-                        <Form.Check type="checkbox" label="Despesa Fixa" checked={fixa} onChange={(e) => setFixa(e.target.checked)} />
+                        <Checkbox onChange={(e) => setFixa(e.target.checked)}>Despesa Fixa</Checkbox>
                       </Form.Group>
-                      <Form.Group controlId="vencimento">
-                        <Form.Label>Vencimento</Form.Label>
-                        <Form.Control type="date" value={vencimento} onChange={handleVencimentoChange} />
-                      </Form.Group>
+
+                      <div style={{ display: "inline-flex", gap: "10px" }}>
+                        <Form.Group controlId="valor">
+                          <Form.Label>Valor</Form.Label>
+                          <CurrencyInput
+                            className="form-control"
+                            id="valor"
+                            name="valor"
+                            placeholder="R$ 0,00"
+                            defaultValue={valor}
+                            decimalsLimit={2}
+                            decimalSeparator=","
+                            groupSeparator="."
+                            prefix="R$ "
+                            onValueChange={(value) => setValor(value)}
+                          />
+                        </Form.Group>
+
+                        <Form.Group style={{ minWidth: "150px" }} controlId="status">
+                          <Form.Label>Status</Form.Label>
+                          <Form.Control as="select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                            <option value="Pago">Pago</option>
+                            <option value="Em Aberto">Em Aberto</option>
+                          </Form.Control>
+                        </Form.Group>
+                        <Form.Group controlId="vencimento">
+                          <Form.Label>Vencimento</Form.Label>
+                          <Form.Control type="date" value={vencimento} onChange={handleVencimentoChange} />
+                        </Form.Group>
+                      </div>
+
                     </Form>
                   </Modal.Body>
                   <Modal.Footer>

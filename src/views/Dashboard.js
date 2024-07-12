@@ -57,8 +57,8 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Dias trabalhados em Junho</p>
-                      <Card.Title as="h4">{dataDash.dias.length.toString().padStart(2, "0")}</Card.Title>
+                      <p className="card-category">Dias trabalhados <b>Junho</b></p>
+                      <Card.Title as="h4">{dataDash.dias.length.toString()} dias</Card.Title>
                     </div>
                   </Col>
                 </Row>
@@ -83,7 +83,7 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Vendas em Junho</p>
+                      <p className="card-category">Vendas realizadas  <b>Junho</b></p>
                       <Card.Title as="h4">{toMoneyFormat(dataDash.totalHoje)}</Card.Title>
                     </div>
                   </Col>
@@ -109,7 +109,7 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Vendas Hoje</p>
+                      <p className="card-category">Vendas realizadas  <b>Hoje</b></p>
                       <Card.Title as="h4">{toMoneyFormat(dataDash.totalHoje)}</Card.Title>
                     </div>
                   </Col>
@@ -135,7 +135,7 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Despesas em Junho</p>
+                      <p className="card-category">Despesas do mês <b>Junho</b></p>
                       <Card.Title as="h4">R$ 600,00</Card.Title>
                     </div>
                   </Col>

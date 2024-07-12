@@ -16,6 +16,8 @@ import {
 import { Input } from "reactstrap";
 import { UserContext } from "context/UserContext";
 import { finalizaVenda } from "helpers/api-integrator";
+import CurrencyInput from 'react-currency-input-field';
+import { moneyToDecimal } from "helpers/formatters";
 
 function Checkout() {
     const [items, setItems] = useState([]);
@@ -182,11 +184,16 @@ function Checkout() {
 
     }, [itemName])
 
+    useEffect(() => {
+        console.log({ dinheiro })
+    }, [dinheiro])
+
     const removeItem = (id) => {
         const news = items.filter(a => +a.id != +id)
         console.log({ id, news })
         setItems(news)
     }
+
 
     const styleForSearch = { border: '1px dashed silver', boxShadow: '1px 1px 0px 0px silver', marginTop: '20px', height: '150px', maxWidth: '100%', minWidth: '950px', overflowY: 'auto' }
 
@@ -392,12 +399,18 @@ function Checkout() {
                             <>
                                 <hr />
                                 <p>Insira o valor recebido:</p>
-                                <Form.Control
+                                <CurrencyInput
                                     style={{ textAlign: 'center' }}
-                                    type="text"
-                                    value={dinheiro}
-                                    onChange={(e) => setDinheiro(e.target.value)}
-                                    placeholder="Valor em dinheiro"
+                                    className="form-control"
+                                    id="valor"
+                                    name="valor"
+                                    placeholder="Valor em dinheiro R$"
+                                    defaultValue={dinheiro}
+                                    decimalsLimit={2}
+                                    decimalSeparator=","
+                                    groupSeparator="."
+                                    prefix="R$ "
+                                    onValueChange={(e) => setDinheiro(moneyToDecimal(e))}
                                 />
                                 <label>Troco: <b>{toMoneyFormat(dinheiro - calculateTotal().valor)}</b></label>
                             </>

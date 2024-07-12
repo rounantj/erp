@@ -6,6 +6,11 @@ export const toMoneyFormat = (value) => {
 }
 
 export const toDateFormat = (date, full) => {
-    console.log({ date })
     return full ? moment(date).format("DD/MM/YYYY HH:mm:ss") : moment(date).format("DD/MM/YYYY")
+}
+
+export const moneyToDecimal = (value) => {
+    value = value.replace("R$", "")
+    value = +value
+    return value
 }

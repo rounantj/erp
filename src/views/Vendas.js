@@ -44,12 +44,13 @@ function Vendas() {
   // Calcular totais por dia
   const calcularTotaisPorDia = () => {
     const totaisPorDia = vendas.reduce((acc, venda) => {
-      console.log(venda.createdAt)
-      acc[venda.createdAt] = (acc[venda.createdAt] || 0) + calcularTotal(venda.total, venda.desconto);
+      const data = new Date(venda.createdAt).toISOString().split('T')[0]; // Obtém apenas a data no formato 'YYYY-MM-DD'
+      acc[data] = (acc[data] || 0) + calcularTotal(venda.total, venda.desconto);
       return acc;
     }, {});
     return totaisPorDia;
   };
+
 
   // Calcular total por período
   const calcularTotalPorPeriodo = () => {
@@ -77,14 +78,14 @@ function Vendas() {
         <Row>
           <Col md="12">
             <Card>
-              <Card.Header>
-                <Card.Title as="h4">Gestão de Vendas</Card.Title>
-              </Card.Header>
+
               <Card.Body>
                 <Form>
                   <Row>
-                    <Col md="9">
-                      <Form.Group style={{ gap: '100px' }}>
+
+                    <Col md="12">
+                      <Card.Title as="h4">Gestão de Vendas</Card.Title>
+                      <Form.Group style={{ float: "right" }}>
                         <Form.Label>Buscar por período: </Form.Label>
                         <ConfigProvider locale={ptBR}>
                           <RangePicker
@@ -99,34 +100,6 @@ function Vendas() {
 
                   </Row>
                 </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-        <Row>
-          <Col md="12">
-            <Card className="strpied-tabled-with-hover">
-              <Card.Body className="table-full-width table-responsive px-0">
-                <Table className="table-hover table-striped">
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Cliente</th>
-                      <th>Valor</th>
-                      <th>Descontos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrarVendas()?.map((venda) => (
-                      <tr key={venda.id}>
-                        <td>{toDateFormat(venda.createdAt, true)}</td>
-                        <td>{venda.nome_cliente}</td>
-                        <td>{`${toMoneyFormat(venda.total)}`}</td>
-                        <td>{`${toMoneyFormat(venda.desconto)}`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
               </Card.Body>
             </Card>
           </Col>
@@ -160,6 +133,35 @@ function Vendas() {
               <Card.Body>
                 <h5>Total por Período</h5>
                 <p>{`${toMoneyFormat(calcularTotalPorPeriodo())}`}</p>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row>
+          <Col md="12">
+            <Card className="strpied-tabled-with-hover">
+              <Card.Body className="table-full-width table-responsive px-0">
+                <Table className="table-hover table-striped">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Cliente</th>
+                      <th>Valor</th>
+                      <th>Descontos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtrarVendas()?.map((venda) => (
+                      <tr key={venda.id}>
+                        <td>{toDateFormat(venda.createdAt, true)}</td>
+                        <td>{venda.nome_cliente}</td>
+                        <td>{`${toMoneyFormat(venda.total)}`}</td>
+                        <td>{`${toMoneyFormat(venda.desconto)}`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
               </Card.Body>
             </Card>
           </Col>

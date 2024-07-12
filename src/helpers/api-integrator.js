@@ -198,4 +198,23 @@ export const updateDespesa = async (item) => {
     }
 };
 
+export const getDespesas = async () => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const despesas = await axios.get(`${urlBase}/despesas`, { headers });
+        console.log({ despesas })
+        return {
+            success: true, data: despesas.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar despesas"
+        }
+    }
+};
+
 
