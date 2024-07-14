@@ -13,6 +13,8 @@ import CurrencyInput from 'react-currency-input-field';
 import { Checkbox } from 'antd';
 import { updateDespesa } from "helpers/api-integrator";
 import { getDespesas } from "helpers/api-integrator";
+import moment from "moment"
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 
 function Despesas() {
   const [despesas, setDespesas] = useState([]);
@@ -152,7 +154,40 @@ function Despesas() {
                         <td>{`R$ ${despesa.valor.toFixed(2)}`}</td>
                         <td>{despesa.status}</td>
                         <td>{despesa.fixa ? "Sim" : "Não"}</td>
-                        <td>{despesa.vencimento}</td>
+                        <td>{moment(despesa.vencimento).format("DD/MM/YYYY")}</td>
+                        <td>
+                          <OverlayTrigger
+                            overlay={
+                              <Tooltip id="tooltip-488980961">
+                                Editar despesa
+                              </Tooltip>
+                            }
+                          >
+                            <Button
+                              className="btn-simple btn-link p-1"
+                              type="button"
+                              variant="info"
+                              onClick={() => setItemToChange(item)}
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Button>
+                          </OverlayTrigger>
+                          <OverlayTrigger
+                            overlay={
+                              <Tooltip id="tooltip-506045838">Remover despesa</Tooltip>
+                            }
+                          >
+                            <Button
+                              className="btn-simple btn-link p-1"
+                              type="button"
+                              variant="danger"
+                              onClick={() => setItemToDelete(item)}
+                            >
+                              <i className="fas fa-times"></i>
+                            </Button>
+                          </OverlayTrigger>
+
+                        </td>
                       </tr>
                     ))}
                   </tbody>
