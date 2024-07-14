@@ -15,6 +15,8 @@ import { updateDespesa } from "helpers/api-integrator";
 import { getDespesas } from "helpers/api-integrator";
 import moment from "moment"
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import { delDepesa } from "helpers/api-integrator";
+import { toMoneyFormat } from "helpers/formatters";
 
 function Despesas() {
   const [despesas, setDespesas] = useState([]);
@@ -25,9 +27,10 @@ function Despesas() {
   const [status, setStatus] = useState("");
   const [fixa, setFixa] = useState(false);
   const [vencimento, setVencimento] = useState("");
+  const [id, setId] = useState();
 
-  const handleCadastro = () => {
-    const novaDespesa = {
+  const handleCadastro = (id) => {
+    let novaDespesa = {
       id: despesas.length + 1,
       descricao,
       valor: parseFloat(valor),
@@ -39,6 +42,38 @@ function Despesas() {
     getFullDespesas()
     setShowModal(false);
   };
+
+  const editDespesa = (id) => {
+
+    if (id) {
+      let despesaEditar = despesas.find(a => a.id === id)
+      if (despesaEditar) {
+        let novaDespesa = despesaEditar
+        setDescricao(despesaEditar.descricao)
+        setValor(despesaEditar.valor)
+        setStatus(despesaEditar.status)
+        setFixa(despesaEditar.fixa)
+        setVencimento(despesaEditar.vencimento)
+        setId(despesaEditar.id)
+      }
+    }
+
+    setShowModal(true)
+
+  }
+
+  const deleteDespesa = async (id) => {
+
+    if (id) {
+      let despesaEditar = despesas.find(a => a.id === id)
+      if (despesaEditar) {
+        setId(despesaEditar.id)
+        const delResult = await delDepesa(id)
+        getFullDespesas()
+      }
+    }
+
+  }
 
   const getFullDespesas = async () => {
     const request = await getDespesas()
@@ -53,10 +88,11 @@ function Despesas() {
 
   const createDespesa = async () => {
     const despesa = {
-      descricao, valor, status, fixa, vencimento, categoria: fixa ? "Recorrente" : "Passageira"
+      descricao, valor, status, fixa, vencimento, categoria: fixa ? "Recorrente" : "Passageira", id
     }
     const response = await updateDespesa(despesa)
     console.log({ response })
+    getFullDespesas()
   }
 
   useEffect(() => {
@@ -144,6 +180,7 @@ function Despesas() {
                       <th>Status</th>
                       <th>Fixa</th>
                       <th>Vencimento</th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -151,7 +188,7 @@ function Despesas() {
                       <tr key={despesa.id}>
                         <td>{despesa.id}</td>
                         <td>{despesa.descricao}</td>
-                        <td>{`R$ ${despesa.valor.toFixed(2)}`}</td>
+                        <td>{` ${toMoneyFormat(despesa.valor)}`}</td>
                         <td>{despesa.status}</td>
                         <td>{despesa.fixa ? "Sim" : "Não"}</td>
                         <td>{moment(despesa.vencimento).format("DD/MM/YYYY")}</td>
@@ -167,7 +204,7 @@ function Despesas() {
                               className="btn-simple btn-link p-1"
                               type="button"
                               variant="info"
-                              onClick={() => setItemToChange(item)}
+                              onClick={() => editDespesa(despesa.id)}
                             >
                               <i className="fas fa-edit"></i>
                             </Button>
@@ -181,7 +218,7 @@ function Despesas() {
                               className="btn-simple btn-link p-1"
                               type="button"
                               variant="danger"
-                              onClick={() => setItemToDelete(item)}
+                              onClick={() => deleteDespesa(despesa.id)}
                             >
                               <i className="fas fa-times"></i>
                             </Button>

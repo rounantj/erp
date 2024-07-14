@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import { getCompanySetup } from "helpers/api-integrator";
+import { toMoneyFormat } from "helpers/formatters";
+import React, { useEffect, useState } from "react";
 import { Card, Container, Row, Col, Table, Form } from "react-bootstrap";
 
 function SaudeFinanceira() {
+  const [mySetup, setMySetup] = useState()
   const [valorInicial, setValorInicial] = useState(5000);
   const [vendasPorMes, setVendasPorMes] = useState([
     { mes: "Junho", valor: 800 },
@@ -26,8 +29,25 @@ function SaudeFinanceira() {
     despesasPorMes.forEach((despesa) => (saldo -= despesa.valor));
     return saldo;
   };
+  const getMySetup = async () => {
+    const companyId = 1
+    const response = await getCompanySetup(companyId)
+    console.log({ response })
+    setMySetup(response.data[0])
+  }
 
   const saldoGeral = calcularSaldoGeral();
+
+  useEffect(() => {
+    getMySetup()
+  }, [])
+
+  useEffect(() => {
+    console.log({ mySetup })
+    if (mySetup) {
+      setValorInicial(mySetup?.companyIntegration?.startValue)
+    }
+  }, [mySetup])
 
   return (
     <>
@@ -46,7 +66,7 @@ function SaudeFinanceira() {
                         <Form.Label>Valor Inicial</Form.Label>
                         <Form.Control
                           type="text"
-                          value={valorInicial}
+                          value={toMoneyFormat(valorInicial)}
                           onChange={(e) => setValorInicial(parseFloat(e.target.value))}
                         />
                       </Form.Group>
@@ -56,7 +76,7 @@ function SaudeFinanceira() {
                         <Form.Label>Saldo Geral</Form.Label>
                         <Form.Control
                           type="text"
-                          value={saldoGeral.toFixed(2)}
+                          value={toMoneyFormat(saldoGeral)}
                           readOnly
                           style={{
                             color: saldoGeral < 0 ? "red" : "blue",

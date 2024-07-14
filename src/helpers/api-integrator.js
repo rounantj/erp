@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const urlBase = 'http://localhost:3009';
+const urlBase = 'https://erp-api-c835bdf9c030.herokuapp.com';
 
 axios.interceptors.request.use(
     (config) => {
@@ -21,7 +21,7 @@ export const makeRegister = async (email, password) => {
         companyId: 1,
         username: email,
         password,
-        role: "admin",
+        role: "visitante",
         email,
         name: ""
     };
@@ -85,13 +85,13 @@ export const getProducts = async () => {
     }
 };
 
-export const getSells = async () => {
+export const getSells = async (startDate, endDate) => {
     const headers = {
         "Content-Type": "application/json"
     };
 
     try {
-        const products = await axios.get(`${urlBase}/vendas`, { headers });
+        const products = await axios.get(`${urlBase}/vendas?startDate=${startDate}&endDate=${endDate}`, { headers });
         return {
             success: true, data: products.data
         }
@@ -213,6 +213,103 @@ export const getDespesas = async () => {
         console.error('Error during get despesas:', error);
         return {
             success: null, message: "Erro ao buscar despesas"
+        }
+    }
+};
+
+export const delDepesa = async (id) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const despesas = await axios.delete(`${urlBase}/despesas?id=` + id, { headers });
+        console.log({ despesas })
+        return {
+            success: true, data: despesas.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar despesas"
+        }
+    }
+};
+
+export const getCompanySetup = async (companyId) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const setup = await axios.get(`${urlBase}/companies/setup?id=` + companyId, { headers });
+        console.log({ setup })
+        return {
+            success: true, data: setup.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar setup"
+        }
+    }
+};
+
+export const updateSetup = async (payload) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const setup = await axios.post(`${urlBase}/companies/setup`, payload, { headers });
+        console.log({ setup })
+        return {
+            success: true, data: setup.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar setup"
+        }
+    }
+};
+
+
+export const getUsers = async (companyId) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const setup = await axios.get(`${urlBase}/user/list?companyId=` + companyId, { headers });
+        console.log({ setup })
+        return {
+            success: true, data: setup.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar setup"
+        }
+    }
+};
+
+
+export const updateUserRole = async (companyId, userName, userRule) => {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    try {
+        const setup = await axios.post(`${urlBase}/user/update-role`, { companyId, userName, userRule }, { headers });
+        console.log({ setup })
+        return {
+            success: true, data: setup.data
+        }
+    } catch (error) {
+        console.error('Error during get despesas:', error);
+        return {
+            success: null, message: "Erro ao buscar setup"
         }
     }
 };

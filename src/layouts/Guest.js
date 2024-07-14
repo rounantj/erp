@@ -10,6 +10,12 @@ import FixedPlugin from "components/FixedPlugin/FixedPlugin.js";
 import sidebarImage from "assets/img/sidebar-3.jpg";
 
 function Guest() {
+
+  const { user } = useContext(UserContext);
+  useEffect(() => {
+    console.log({ user })
+  }, [user])
+
   const getRoutes = (routes) => {
     const routes = [
       {
@@ -21,7 +27,7 @@ function Guest() {
       },
     ]
 
-    return routes.map((prop, key) => {
+    return routes.filter(a => a?.rule.includes(user?.user?.role)).map((prop, key) => {
       if (prop.layout === "/admin") {
         return (
           <Route

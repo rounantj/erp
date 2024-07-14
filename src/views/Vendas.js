@@ -3,6 +3,7 @@ import { toDateFormat } from "helpers/formatters";
 import { toMoneyFormat } from "helpers/formatters";
 import React, { useEffect, useState } from "react";
 import ptBR from 'antd/lib/locale/pt_BR';
+import moment from "moment"
 import {
   Card,
   Container,
@@ -32,12 +33,6 @@ function Vendas() {
 
   // Filtrar vendas por período
   const filtrarVendas = () => {
-    if (startDate && endDate) {
-      const filteredVendas = vendas.filter((venda) => {
-        return venda.data >= startDate && venda.data <= endDate;
-      });
-      return filteredVendas;
-    }
     return vendas;
   };
 
@@ -51,6 +46,12 @@ function Vendas() {
     return totaisPorDia;
   };
 
+  const setDates = (e) => {
+    console.log({ e })
+    setEndDate(moment(e[1].$d).format("YYYY-MM-DD"))
+    setStartDate(moment(e[0].$d).format("YYYY-MM-DD"))
+  }
+
 
   // Calcular total por período
   const calcularTotalPorPeriodo = () => {
@@ -61,16 +62,21 @@ function Vendas() {
     return total;
   };
 
-  const getVendas = async () => {
-    const items = await getSells()
+  const getVendas = async (startDate, endDate) => {
+    const items = await getSells(startDate, endDate)
     console.log({ items })
     if (items.success) {
       setVendas(items.data)
     }
   }
 
-  useEffect(() => { getVendas() }, [])
+  useEffect(() => { getVendas(moment().add(-1, "month").format("YYYY-MM-DD"), moment().format("YYYY-MM-DD")) }, [])
   useEffect(() => { console.log({ vendas }) }, [vendas])
+  useEffect(() => {
+    if (endDate && startDate) {
+      getVendas(startDate, endDate)
+    }
+  }, [endDate, startDate])
 
   return (
     <>
@@ -90,7 +96,7 @@ function Vendas() {
                         <ConfigProvider locale={ptBR}>
                           <RangePicker
                             allowClear={false}
-                            onChange={a => console.log("Timeframe has changed")}
+                            onChange={setDates}
                             className="datepicker"
 
                           />

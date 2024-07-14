@@ -1,5 +1,5 @@
 import SearchInput from "components/inputs/search-input";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { Button, Card, Container, Row, Col, Table, Modal, Form, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { toMoneyFormat } from "../helpers/formatters"
 import { getProducts } from "helpers/api-integrator";
@@ -7,6 +7,7 @@ import NotificationAlert from "react-notification-alert";
 import { Input } from "reactstrap";
 import { updateProduct } from "helpers/api-integrator";
 import { deleteProduct } from "helpers/api-integrator";
+import { UserContext } from "context/UserContext";
 
 function ProductAndServiceTable() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -17,6 +18,7 @@ function ProductAndServiceTable() {
   const [products, setProducts] = useState([])
   const [productsToShow, setProductsToShow] = useState([])
   const notificationAlertRef = React.useRef(null);
+  const { user } = useContext(UserContext);
   const notify = (place, type, text) => {
     var color = Math.floor(Math.random() * 5 + 1);
 
@@ -145,7 +147,7 @@ function ProductAndServiceTable() {
               </Card.Header>
               <Card.Body>
                 <SearchInput onInput={filterResults} placeholder={"Busque por produtos ou serviços"} />
-                <Button style={{ float: 'right', marginBottom: '15px' }} variant="primary" onClick={() => setShowAddModal(true)}>Adicionar novo</Button>
+                {user.user.role === "admin" && <Button style={{ float: 'right', marginBottom: '15px' }} variant="primary" onClick={() => setShowAddModal(true)}>Adicionar novo</Button>}
 
                 <Table striped bordered hover>
                   <thead>
@@ -155,7 +157,7 @@ function ProductAndServiceTable() {
                       <th>Descrição</th>
                       <th>NCM</th>
                       <th>EAN</th>
-                      <th>Ações</th>
+                      {user.user.role === "admin" && <th>Ações</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -169,7 +171,7 @@ function ProductAndServiceTable() {
                           <td>{item.descricao}</td>
                           <td>{item.ncm?.split('"')[0]}</td>
                           <td>{item.ean ?? "Não cadastrado"}</td>
-                          <td>
+                          {user.user.role === "admin" && <td>
                             <OverlayTrigger
                               overlay={
                                 <Tooltip id="tooltip-488980961">
@@ -202,6 +204,7 @@ function ProductAndServiceTable() {
                             </OverlayTrigger>
 
                           </td>
+                          }
                         </tr>
                       )
                       )

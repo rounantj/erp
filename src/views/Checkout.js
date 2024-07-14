@@ -85,7 +85,7 @@ function Checkout() {
                 }
             }),
             nome_cliente: "Cliente padrão",
-            user_id: user.id || 1,
+            user_id: user?.user?.id || 1,
             createdAt: new Date(),
             updatedAt: new Date()
         }
@@ -195,7 +195,15 @@ function Checkout() {
     }
 
 
-    const styleForSearch = { border: '1px dashed silver', boxShadow: '1px 1px 0px 0px silver', marginTop: '20px', height: '150px', maxWidth: '100%', minWidth: '950px', overflowY: 'auto' }
+    const styleForSearch = {
+        border: '1px dashed silver',
+        boxShadow: '1px 1px 0px 0px silver',
+        marginTop: '20px',
+        height: '150px',
+        maxWidth: '100%',
+        minWidth: '650px',
+        overflowY: 'auto'
+    }
 
     return (
         <>
@@ -276,6 +284,7 @@ function Checkout() {
                                             <Form.Group>
                                                 <label>Desconto</label>
                                                 <Form.Control
+                                                    disabled={user?.user?.role != "admin"}
                                                     type="number"
                                                     value={discount}
                                                     onChange={(e) => setDiscount(e.target.value)}
@@ -346,7 +355,7 @@ function Checkout() {
                                 <hr />
                                 <h5 style={{ fontSize: '16px' }}>Total Líquido: {"  "}<span style={{ fontWeight: 'bold', fontSize: '1.5rem' }}>{calculateTotal().formated}</span></h5>
                                 <hr />
-                                <Button onClick={() => setShowModal(true)} variant="success">Finalizar Compra</Button>
+                                <Button onClick={() => setShowModal(true)} variant="success">Finalizar Venda</Button>
                             </Card.Body>
                         </Card>
                     </Col>

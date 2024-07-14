@@ -15,7 +15,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React, { Component, useContext } from "react";
+import React, { Component, useContext, useEffect, useState } from "react";
 import { useLocation, Route, Switch } from "react-router-dom";
 
 import AdminNavbar from "components/Navbars/AdminNavbar";
@@ -35,6 +35,18 @@ function Admin() {
   const location = useLocation();
   const mainPanel = React.useRef(null);
   const { user } = useContext(UserContext);
+  const [trustRoutes, setTrustRoutes] = useState([])
+  useEffect(() => {
+    console.log({ user })
+    if (user) {
+      const role = user?.user?.role
+      console.log({ routes, role })
+      let newRoutes = routes.filter(a => a?.rule.includes(role) || a?.rule.includes(undefined) || a?.rule.includes(null))
+      console.log({ newRoutes })
+      setTrustRoutes(newRoutes)
+    }
+  }, [user])
+
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
       if (prop.layout === "/admin") {
@@ -49,7 +61,9 @@ function Admin() {
         return null;
       }
     });
+
   };
+
   React.useEffect(() => {
     document.documentElement.scrollTop = 0;
     document.scrollingElement.scrollTop = 0;
@@ -62,6 +76,7 @@ function Admin() {
       var element = document.getElementById("bodyClick");
       element.parentNode.removeChild(element);
     }
+
   }, [location]);
 
 
@@ -71,11 +86,11 @@ function Admin() {
         user &&
         <>
           <div className="wrapper">
-            <Sidebar color={color} image={hasImage ? image : ""} routes={routes} />
+            <Sidebar color={color} image={hasImage ? image : ""} routes={trustRoutes} />
             <div className="main-panel" ref={mainPanel}>
               <AdminNavbar />
               <div className="content">
-                <Switch>{getRoutes(routes)}</Switch>
+                <Switch>{getRoutes(trustRoutes)}</Switch>
               </div>
               <Footer />
             </div>

@@ -17,10 +17,11 @@ import {
 } from "react-bootstrap";
 import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat } from "helpers/formatters";
+import { monthName } from "helpers/formatters";
 
 function Dashboard() {
   const [dataDash, setDataDash] = useState({
-    totalHoje: 0, totalEsseMes: 0, totalProdutos: 0, totalServicos: 0, dias: [], servicosValues: [], produtosValues: [], fullValues: [], meses: [], mesesSerValues: [], mesesPrdValues: []
+    totalHoje: 0, totalEsseMes: 0, totalProdutos: 0, totalServicos: 0, dias: [], servicosValues: [], produtosValues: [], fullValues: [], meses: [], mesesSerValues: [], mesesPrdValues: [], despesa: []
   })
   const getDataDash = async () => {
     const result = await getDashboard()
@@ -38,10 +39,14 @@ function Dashboard() {
       series: [pP, pS],
     }
   }
+  useEffect(() => {
+    console.log({ dataDash })
+  }, [dataDash])
 
   useEffect(() => {
     getDataDash()
   }, [])
+
   return (
     <>
       <Container fluid>
@@ -57,7 +62,7 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Dias trabalhados <b>Junho</b></p>
+                      <p className="card-category">Dias trabalhados <b>{monthName(new Date().getMonth())}</b></p>
                       <Card.Title as="h4">{dataDash.dias.length.toString()} dias</Card.Title>
                     </div>
                   </Col>
@@ -83,7 +88,7 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Vendas realizadas  <b>Junho</b></p>
+                      <p className="card-category">Vendas realizadas  <b>{monthName(new Date().getMonth())}</b></p>
                       <Card.Title as="h4">{toMoneyFormat(dataDash.totalHoje)}</Card.Title>
                     </div>
                   </Col>
@@ -135,8 +140,10 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category">Despesas do mês <b>Junho</b></p>
-                      <Card.Title as="h4">R$ 600,00</Card.Title>
+                      <p className="card-category">Despesas do mês <b>{monthName(new Date().getMonth())}</b></p>
+                      <Card.Title as="h4">{toMoneyFormat(
+                        dataDash?.despesa[0]?.total
+                      )}</Card.Title>
                     </div>
                   </Col>
                 </Row>
