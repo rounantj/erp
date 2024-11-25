@@ -1,6 +1,6 @@
 // src/Login.js
 import { makeRegister } from 'helpers/api-integrator';
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 
 import 'react-notification-alert/dist/animate.css';
 import { UserContext } from "context/UserContext";
@@ -62,77 +62,102 @@ const Login = () => {
 
     }
 
+    const [logged, setLogged] = useState(false)
+
+
+    useEffect(() => {
+        console.log({ userLogin: user })
+        if (user?.access_token) {
+            setLogged(true)
+        }
+    }, [user])
+
+    useEffect(() => {
+        console.log({ logged })
+    }, [logged])
+
     return (
         <>
-            <div className="rna-container">
-                <NotificationAlert ref={notificationAlertRef} />
-            </div>
-            <div className="container mt-5">
+            {
+                logged ?
+                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }} className="logo-img">
+                        <img style={{ display: 'block', margin: "auto", textAlign: "center", maxWidth: "350px" }} src={require("assets/img/logo.png")} alt="logo" />
+                    </div>
+                    :
+                    <>
+                        <div className="rna-container">
+                            <NotificationAlert ref={notificationAlertRef} />
+                        </div>
+                        <div className="container mt-5">
 
-                <div className="row justify-content-center">
-                    <div className="col-md-6">
-                        <div className="card">
-                            <div className="card-body">
-                                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }} className="logo-img">
-                                    <img style={{ display: 'block', margin: "auto", textAlign: "center", maxWidth: "150px" }} src={require("assets/img/logo.png")} alt="logo" />
-                                </div>
-                                <h3 className="card-title text-center">{register ? 'Registre-se' : 'Faça Login'}</h3>
-                                <div  >
-                                    <div className="form-group">
-                                        <label>E-mail</label>
-                                        <input
-                                            type="email"
-                                            className="form-control"
-                                            placeholder="E-mail"
-                                            value={email}
-                                            onChange={handleEmailChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Senha</label>
-                                        <input
-                                            type="password"
-                                            className="form-control"
-                                            placeholder="Senha"
-                                            value={password}
-                                            onChange={handlePasswordChange}
-                                            required
-                                        />
-                                        <small className="form-text text-muted">
-                                            A senha precisa ter 8 caractéres e conter pelo menos uma letra maiúscula e um número.
-                                        </small>
-                                    </div>
-                                    {register && (
-                                        <div className="form-group">
-                                            <label>Repetir Senha</label>
-                                            <input
-                                                type="password"
-                                                className="form-control"
-                                                placeholder="Repita a senha"
-                                                value={confirmPassword}
-                                                onChange={handleConfirmPasswordChange}
-                                                required
-                                            />
+                            <div className="row justify-content-center">
+                                <div className="col-md-6">
+                                    <div className="card">
+                                        <div className="card-body">
+                                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }} className="logo-img">
+                                                <img style={{ display: 'block', margin: "auto", textAlign: "center", maxWidth: "150px" }} src={require("assets/img/logo.png")} alt="logo" />
+                                            </div>
+                                            <h3 className="card-title text-center">{register ? 'Registre-se' : 'Faça Login'}</h3>
+                                            <div  >
+                                                <div className="form-group">
+                                                    <label>E-mail</label>
+                                                    <input
+                                                        type="email"
+                                                        className="form-control"
+                                                        placeholder="E-mail"
+                                                        value={email}
+                                                        onChange={handleEmailChange}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Senha</label>
+                                                    <input
+                                                        type="password"
+                                                        className="form-control"
+                                                        placeholder="Senha"
+                                                        value={password}
+                                                        onChange={handlePasswordChange}
+                                                        required
+                                                    />
+                                                    <small className="form-text text-muted">
+                                                        A senha precisa ter 8 caractéres e conter pelo menos uma letra maiúscula e um número.
+                                                    </small>
+                                                </div>
+                                                {register && (
+                                                    <div className="form-group">
+                                                        <label>Repetir Senha</label>
+                                                        <input
+                                                            type="password"
+                                                            className="form-control"
+                                                            placeholder="Repita a senha"
+                                                            value={confirmPassword}
+                                                            onChange={handleConfirmPasswordChange}
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
+                                                <button onClick={() => registerOrLogin()} className="btn btn-primary btn-block">
+                                                    {register ? 'Registrar' : 'Fazer Login'}
+                                                </button>
+                                            </div>
+                                            <div className="text-center mt-3">
+                                                <button
+                                                    className="btn btn-link"
+                                                    onClick={() => setRegister(!register)}
+                                                >
+                                                    {register ? 'Já tem uma conta? Faça Login' : "Não tem uma conta? Registre-se"}
+                                                </button>
+                                            </div>
                                         </div>
-                                    )}
-                                    <button onClick={() => registerOrLogin()} className="btn btn-primary btn-block">
-                                        {register ? 'Registrar' : 'Fazer Login'}
-                                    </button>
-                                </div>
-                                <div className="text-center mt-3">
-                                    <button
-                                        className="btn btn-link"
-                                        onClick={() => setRegister(!register)}
-                                    >
-                                        {register ? 'Já tem uma conta? Faça Login' : "Não tem uma conta? Registre-se"}
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </>
+
+            }
+
         </>
 
     );
