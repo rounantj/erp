@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import ChartistGraph from "react-chartist";
 // react-bootstrap components
 import {
   Badge,
@@ -168,7 +167,7 @@ function Dashboard() {
               </Card.Header>
               <Card.Body>
                 <div className="ct-chart" id="chartHours">
-                  <ChartistGraph
+                  {/* <ChartistGraph
                     data={{
                       labels: dataDash.dias,
                       series: [
@@ -206,7 +205,7 @@ function Dashboard() {
                         },
                       ],
                     ]}
-                  />
+                  /> */}
                 </div>
               </Card.Body>
               <Card.Footer>
@@ -235,10 +234,10 @@ function Dashboard() {
                   className="ct-chart ct-perfect-fourth"
                   id="chartPreferences"
                 >
-                  <ChartistGraph
+                  {/* <ChartistGraph
                     data={dataPizza()}
                     type="Pie"
-                  />
+                  /> */}
                 </div>
                 <div className="legend">
                   <i className="fas fa-circle text-info"></i>
@@ -263,7 +262,7 @@ function Dashboard() {
               </Card.Header>
               <Card.Body>
                 <div className="ct-chart" id="chartActivity">
-                  <ChartistGraph
+                  {/* <ChartistGraph
                     data={{
                       labels: dataDash.meses,
                       series: [
@@ -293,7 +292,7 @@ function Dashboard() {
                         },
                       ],
                     ]}
-                  />
+                  /> */}
                 </div>
               </Card.Body>
               <Card.Footer>

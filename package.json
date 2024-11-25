@@ -13,7 +13,6 @@
     "moment": "^2.30.1",
     "react": ">=16.8.0",
     "react-bootstrap": "2.4.0",
-    "react-chartist": "0.14.4",
     "react-currency-input-field": "^3.8.0",
     "react-dom": ">=16.8.0",
     "react-notification-alert": "0.0.13",
