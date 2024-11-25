@@ -36,33 +36,32 @@ function Admin() {
   const mainPanel = React.useRef(null);
   const { user } = useContext(UserContext);
   const [trustRoutes, setTrustRoutes] = useState([])
+
+
   useEffect(() => {
-    console.log({ user })
     if (user) {
-      const role = user?.user?.role
-      console.log({ routes, role })
-      let newRoutes = routes.filter(a => a?.rule.includes(role) || a?.rule.includes(undefined) || a?.rule.includes(null))
-      console.log({ newRoutes })
-      setTrustRoutes(newRoutes)
+      const role = user?.user?.role;
+      let newRoutes = routes.filter(a => a?.rule.includes(role) || a?.rule.includes(undefined) || a?.rule.includes(null));
+      setTrustRoutes(newRoutes);
     }
-  }, [user])
+  }, [user]);
+
 
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
       if (prop.layout === "/admin") {
         return (
           <Route
-            path={prop.layout + prop.path}
-            render={(props) => <prop.component {...props} />}
             key={key}
+            path={prop.layout + prop.path}
+            component={prop.component}
           />
         );
-      } else {
-        return null;
       }
+      return null;
     });
-
   };
+
 
   React.useEffect(() => {
     document.documentElement.scrollTop = 0;
