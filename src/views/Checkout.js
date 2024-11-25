@@ -93,7 +93,7 @@ function Checkout() {
         console.log({ vendeu })
         if (vendeu.success) {
             notify("bc", "success", "Venda realizada!")
-            setTimeout(() => { location.reload() }, 1000)
+            setTimeout(() => { window.location.replace("/") }, 1000)
         } else {
             notify("bc", "danger", "Problema ao realizar venda!")
         }

@@ -57,7 +57,7 @@ const Login = () => {
             notify("bc", "success", "Realizado com sucesso!")
             setUser(user1?.data)
             localStorage.setItem("user", JSON.stringify(user1?.data))
-            location.replace("/admin/dashboard")
+            window.location.replace("/")
         }
 
     }

@@ -48,7 +48,7 @@ function Header() {
     console.log("Saindo...")
     setUser(null)
     localStorage.clear()
-    window.location.replace("/admin/login-register")
+    window.location.replace("/")
   }
   return (
     <Navbar bg="light" expand="lg">
