@@ -35,7 +35,13 @@ root.render(
     <BrowserRouter>
       <Switch>
         <Route path="/admin" render={(props) => <AdminLayout {...props} />} />
-        <Redirect from="/" to="/admin/dashboard" />
+        <Redirect from="/" to="/admin/login-register" />
+        <Redirect from="/produtos" to="/admin/produtos" />
+        <Redirect from="/vendas" to="/admin/vendas" />
+        <Redirect from="/dashboard" to="/admin/dashboard" />
+        <Redirect from="/recursos" to="/admin/recursos" />
+        <Redirect from="/setup" to="/admin/setup" />
+        <Redirect from="/checkout" to="/admin/checkout" />
       </Switch>
     </BrowserRouter>
   </UserProvider>
