@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-//import ChartistGraph from "react-chartist";
+import ChartistGraph from "react-chartist";
 // react-bootstrap components
 import {
   Badge,
@@ -21,7 +21,140 @@ import { monthName } from "helpers/formatters";
 
 function Dashboard() {
   const [dataDash, setDataDash] = useState({
-    totalHoje: 0, totalEsseMes: 0, totalProdutos: 0, totalServicos: 0, dias: [], servicosValues: [], produtosValues: [], fullValues: [], meses: [], mesesSerValues: [], mesesPrdValues: [], despesa: []
+    "produtosVendidos": [
+      {
+        "id": 301,
+        "descricao": "IMPRESSÃO COLORIDO",
+        "valor": 2,
+        "companyId": 1,
+        "categoria": "Serviço",
+        "ean": "",
+        "ncm": "48053000\"Papel sulfito p/embalagem,n/revestido,em rolos/folhas\"",
+        "createdAt": "2024-11-25T21:38:56.949Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": "9",
+        "valorTotal": 18
+      },
+      {
+        "id": 12,
+        "descricao": "KIT ESCOLAR 2 GRAU PLASTICO REGUAS",
+        "valor": 14.99,
+        "companyId": 1,
+        "categoria": "Produto",
+        "ean": "",
+        "ncm": "90172000\"Outs.instrumentos de desenho,de tracado ou de calculo\"",
+        "createdAt": "2024-11-25T21:42:17.171Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": 1,
+        "valorTotal": 14.99
+      },
+      {
+        "id": 12,
+        "descricao": "KIT ESCOLAR 2 GRAU PLASTICO REGUAS",
+        "valor": 14.99,
+        "companyId": 1,
+        "categoria": "Produto",
+        "ean": "",
+        "ncm": "90172000\"Outs.instrumentos de desenho,de tracado ou de calculo\"",
+        "createdAt": "2024-11-25T21:42:17.171Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": 1,
+        "valorTotal": 14.99
+      },
+      {
+        "id": 301,
+        "descricao": "IMPRESSÃO COLORIDO",
+        "valor": 2,
+        "companyId": 1,
+        "categoria": "Serviço",
+        "ean": "",
+        "ncm": "48053000\"Papel sulfito p/embalagem,n/revestido,em rolos/folhas\"",
+        "createdAt": "2024-11-25T21:51:39.401Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": 1,
+        "valorTotal": 2
+      },
+      {
+        "id": 301,
+        "descricao": "IMPRESSÃO COLORIDO",
+        "valor": 2,
+        "companyId": 1,
+        "categoria": "Serviço",
+        "ean": "",
+        "ncm": "48053000\"Papel sulfito p/embalagem,n/revestido,em rolos/folhas\"",
+        "createdAt": "2024-11-25T21:51:39.401Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": 1,
+        "valorTotal": 2
+      },
+      {
+        "id": 301,
+        "descricao": "IMPRESSÃO COLORIDO",
+        "valor": 2,
+        "companyId": 1,
+        "categoria": "Serviço",
+        "ean": "",
+        "ncm": "48053000\"Papel sulfito p/embalagem,n/revestido,em rolos/folhas\"",
+        "createdAt": "2024-11-25T21:51:39.401Z",
+        "updatedAt": "2024-06-13T17:18:03.879Z",
+        "updatedByUser": 1,
+        "createdByUser": 1,
+        "deletedAt": null,
+        "quantidade": 1,
+        "valorTotal": 2
+      }
+    ],
+    "totalProdutos": 29.98,
+    "totalServicos": 24,
+    "totalHoje": 53.980000000000004,
+    "totalEsseMes": 53.980000000000004,
+    "dias": [
+      "25/11"
+    ],
+    "servicosValues": [
+      24
+    ],
+    "fullValues": [
+      53.980000000000004
+    ],
+    "produtosValues": [
+      29.98
+    ],
+    "meses": [
+      "Jun",
+      "Jul",
+      "Nov"
+    ],
+    "mesesSerValues": [
+      28.47,
+      144.73,
+      29.98
+    ],
+    "mesesPrdValues": [
+      6.75,
+      7,
+      24
+    ],
+    "despesa": [
+      {
+        "total": 1350
+      }
+    ]
   })
   const getDataDash = async () => {
     const result = await getDashboard()
@@ -168,7 +301,7 @@ function Dashboard() {
               </Card.Header>
               <Card.Body>
                 <div className="ct-chart" id="chartHours">
-                  {/* <ChartistGraph
+                  <ChartistGraph
                     data={{
                       labels: dataDash.dias,
                       series: [
@@ -206,7 +339,7 @@ function Dashboard() {
                         },
                       ],
                     ]}
-                  /> */}
+                  />
                 </div>
               </Card.Body>
               <Card.Footer>
@@ -235,10 +368,10 @@ function Dashboard() {
                   className="ct-chart ct-perfect-fourth"
                   id="chartPreferences"
                 >
-                  {/* <ChartistGraph
+                  <ChartistGraph
                     data={dataPizza()}
                     type="Pie"
-                  /> */}
+                  />
                 </div>
                 <div className="legend">
                   <i className="fas fa-circle text-info"></i>
@@ -263,7 +396,7 @@ function Dashboard() {
               </Card.Header>
               <Card.Body>
                 <div className="ct-chart" id="chartActivity">
-                  {/* <ChartistGraph
+                  <ChartistGraph
                     data={{
                       labels: dataDash.meses,
                       series: [
@@ -293,7 +426,7 @@ function Dashboard() {
                         },
                       ],
                     ]}
-                  /> */}
+                  />
                 </div>
               </Card.Body>
               <Card.Footer>
