@@ -87,7 +87,6 @@ function SaudeFinanceira() {
                     </Col>
                   </Row>
                 </Form>
-
                 <Table striped bordered hover>
                   <thead>
                     <tr>
