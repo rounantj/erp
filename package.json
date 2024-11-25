@@ -2,6 +2,7 @@
   "name": "light-bootstrap-dashboard-react",
   "version": "2.0.1",
   "dependencies": {
+    "chartist": "0.11.4",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@fortawesome/fontawesome-free": "5.15.2",
     "antd": "^5.19.1",
@@ -51,7 +52,6 @@
     ]
   },
   "devDependencies": {
-    "ajv": "^8.17.1",
-    "autoprefixer": "^10.4.20"
+    "ajv": "^8.17.1"
   }
 }
