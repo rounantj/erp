@@ -22,8 +22,8 @@ function Vendas() {
   const [vendas, setVendas] = useState([]);
 
   // Estado para o período de busca
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(moment().add(-30, "day").format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(moment().add(1, "day").format("YYYY-MM-DD"));
 
   // Função para calcular o total da venda com desconto
   const calcularTotal = (valor, desconto) => {
@@ -137,7 +137,7 @@ function Vendas() {
           <Col md="6">
             <Card>
               <Card.Body>
-                <h5>Total por Período</h5>
+                <h5>Total por Período <b>( de <span>{moment(startDate).format("DD/MM")} a {moment(endDate).format("DD/MM")}</span> )</b></h5>
                 <p>{`${toMoneyFormat(calcularTotalPorPeriodo())}`}</p>
               </Card.Body>
             </Card>

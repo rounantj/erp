@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const urlBase = 'https://erp-api-c835bdf9c030.herokuapp.com';
+const urlBase = 'https://erp-api-a826ac7bcd67.herokuapp.com/';
+//const urlBase = 'http://localhost:3009';
 
 axios.interceptors.request.use(
     (config) => {
