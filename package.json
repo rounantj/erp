@@ -31,7 +31,8 @@
   },
   "scripts": {
     "clean-install": "rm -rf node_modules/ && npm install",
-    "start": "react-scripts start --port $PORT",
+    "start": "serve -s build",
+    "dev": "react-scripts start --port $PORT",
     "build": "npm run clean-install && CI=false react-scripts build --verbose",
     "compile:scss": "sass src/assets/scss/light-bootstrap-dashboard-pro-react.scss src/assets/css/light-bootstrap-dashboard-pro-react.css",
     "minify:scss": "sass src/assets/scss/light-bootstrap-dashboard-pro-react.scss src/assets/css/light-bootstrap-dashboard-pro-react.min.css --style compressed",
