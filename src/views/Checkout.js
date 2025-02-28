@@ -1,455 +1,758 @@
-import { toMoneyFormat } from "helpers/formatters";
-import React, { useContext, useEffect, useState } from "react";
-import NotificationAlert from "react-notification-alert";
 import { getProducts } from "helpers/api-integrator";
+import React, { useState, useEffect, useContext } from "react";
 import {
-    Button,
-    Card,
-    Container,
-    Row,
-    Col,
-    Table,
-    Form,
-    Modal,
-    Dropdown,
-} from "react-bootstrap";
-import { Input } from "reactstrap";
+  Layout,
+  Button,
+  Table,
+  Input,
+  Select,
+  List,
+  notification,
+  Modal,
+  Card,
+  Typography,
+  Statistic,
+  Row,
+  Col,
+  Divider,
+} from "antd";
+import {
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import jsPDF from "jspdf";
+import { openCaixa } from "helpers/caixa.adapter";
 import { UserContext } from "context/UserContext";
-import { finalizaVenda } from "helpers/api-integrator";
-import CurrencyInput from 'react-currency-input-field';
-import { moneyToDecimal } from "helpers/formatters";
+import { getCaixaEmAberto } from "helpers/caixa.adapter";
+import { vendaFinaliza } from "helpers/caixa.adapter";
+import { getResumoVendas } from "helpers/caixa.adapter";
 
-function Checkout() {
-    const [items, setItems] = useState([]);
-    const [itemName, setItemName] = useState("");
-    const [itemPrice, setItemPrice] = useState(0);
-    const [qtd, setQtd] = useState(1);
-    const [discount, setDiscount] = useState(0);
-    const [showModal, setShowModal] = React.useState(false);
-    const notificationAlertRef = React.useRef(null);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-    const [products, setProducts] = useState([])
-    const [productsToShow, setProductsToShow] = useState([])
-    const [editItem, setEditItem] = useState({ categoria: 'produto', valor: 0, descricao: '', ean: '', ncm: '' });
-    const [mostraTroco, setMostraTroco] = useState(false)
-    const [dinheiro, setDinheiro] = useState(0)
-    const { user } = useContext(UserContext);
+const { Header, Content, Sider } = Layout;
+const { Option } = Select;
+const { confirm } = Modal;
+const { Text } = Typography;
 
+const Caixa = () => {
+  const { user } = useContext(UserContext);
+  const [caixaAberto, setCaixaAberto] = useState(false);
+  const [caixa, setCaixa] = useState();
+  const [busca, setBusca] = useState("");
+  const [venda, setVenda] = useState([]);
+  const [pagamento, setPagamento] = useState(null);
+  const [valorAbertura, setValorAbertura] = useState(0);
+  const [horaAbertura, setHoraAbertura] = useState(null);
+  const [modalFechamento, setModalFechamento] = useState(false);
+  const [valorFechamento, setValorFechamento] = useState(0);
+  const [products, setProducts] = useState([]);
+  // Novo state para armazenar o histórico de vendas finalizadas
+  const [historicoVendas, setHistoricoVendas] = useState([]);
+  // State para resumo de vendas por tipo de pagamento
+  const [resumoVendas, setResumoVendas] = useState({
+    dinheiro: 0,
+    pix: 0,
+    credito: 0,
+    debito: 0,
+    total: 0,
+  });
 
-    const notify = (place, type, text) => {
-        var color = Math.floor(Math.random() * 5 + 1);
+  const getResumoCaixa = async (caixaID) => {
+    const result = await getResumoVendas(caixaID);
+    console.log({ result });
+    if (result.data) {
+      setResumoVendas(result.data);
+    } else {
+      notification.error({
+        message: "Erro",
+        description: "Problema ao buscar resumo de vendas!",
+      });
+    }
+  };
 
-        var options = {};
-        options = {
-            place: place,
-            message: (
-                <div>
-                    <div>
-                        {text}
-                    </div>
-                </div>
-            ),
-            type: type,
-            icon: "nc-icon nc-bell-55",
-            autoDismiss: 7,
-        };
-        if (notificationAlertRef && notificationAlertRef.current && notificationAlertRef.current.notificationAlert)
-            notificationAlertRef?.current?.notificationAlert(options);
-    };
+  const money = (valor) =>
+    valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
-    const setPaymentMethod = (method) => {
-        if (method != "Dinheiro") {
-            setSelectedPaymentMethod(method)
-            notify('bc', 'Venda realizada com sucesso!')
-        } else {
-            setSelectedPaymentMethod(method)
-            setMostraTroco(true)
-        }
+  useEffect(() => {
+    console.log({ venda });
+  }, [venda]);
 
+  useEffect(() => {
+    console.log({ historicoVendas });
+  }, [historicoVendas]);
+
+  const removeItem = (item) => {
+    confirm({
+      title: (
+        <div>
+          <p>
+            Deseja realmente remover o item:{" "}
+            <strong>{item.descricao.toUpperCase()}</strong>?
+          </p>
+        </div>
+      ),
+      icon: <ExclamationCircleOutlined />,
+      onOk() {
+        setVenda((prev) => prev.filter((p) => p.id !== item.id));
+      },
+    });
+  };
+
+  const gerarCupom = async () => {
+    // Verificar se foi selecionado um método de pagamento
+    if (!pagamento) {
+      notification.error({
+        message: "Erro",
+        description: "Selecione um método de pagamento!",
+      });
+      return;
     }
 
-    const finalizar = async () => {
-        if (!selectedPaymentMethod) {
-            notify("bc", "danger", "Selecione o metodo de pagamento!")
-            return
-        }
-        const venda = {
-            metodoPagamento: selectedPaymentMethod,
-            desconto: calculateTotalDescontos().valor,
-            total: calculateTotal().valor,
-            produtos: items.map(item => {
-                return {
-                    ...editItem,
-                    quantidade: item.quantidade,
-                    desconto: item.desconto,
-                }
-            }),
-            nome_cliente: "Cliente padrão",
-            user_id: user?.user?.id || 1,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        }
-        const vendeu = await finalizaVenda(venda)
-        console.log({ vendeu })
-        if (vendeu.success) {
-            notify("bc", "success", "Venda realizada!")
-            setTimeout(() => { window.location.replace("/") }, 1000)
-        } else {
-            notify("bc", "danger", "Problema ao realizar venda!")
-        }
-
-
+    // Verificar se há produtos na venda
+    if (venda.length === 0) {
+      notification.error({
+        message: "Erro",
+        description: "Adicione produtos à venda!",
+      });
+      return;
     }
 
-    const handleAddItem = () => {
-        const newItem = { id: editItem.id, name: itemName, price: parseFloat(itemPrice), discount: parseFloat(discount), quantidade: qtd };
-        setItems([...items, newItem]);
-        setItemName("");
-        setItemPrice(0);
-        setQtd(1);
-        setDiscount(0);
+    const doc = new jsPDF({
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Estilos e Fontes
+    const fontePadrao = "courier";
+    const tamanhoFontePadrao = 7;
+
+    // Informações da Empresa (como na imagem)
+    const empresa = {
+      nome: "FOFA PAPELARIA",
+      endereco: "RUA ORLINDO BORGES - BARRA DO SAHY - ARACRUZ - ES",
+      cnpj: "CNPJ:63.358.000/0001-49",
+      ie: "IE:66994360-NO",
+      im: "IM:ISENTO",
+      uf: "UF:ES",
     };
 
-    const calculateTotal = () => {
-        const valor = items.reduce((total, item) => total + (item.price * item.quantidade) - item.discount, 0)
-        const formated = toMoneyFormat(valor);
-        return { valor, formated }
+    // Informações do Cupom (como na imagem)
+    const dataHoraAtual = dayjs().format("DD/MM/YYYY HH:mm:ss");
+    const cupom = {
+      dataHora: dataHoraAtual,
+      ccf: `CCF:${String(historicoVendas.length + 1).padStart(6, "0")}`,
+      coo: `COO:${String(historicoVendas.length + 1).padStart(7, "0")}`,
     };
 
-    const calculateTotalBruto = () => {
-        return toMoneyFormat(items.reduce((total, item) => total + (item.price * item.quantidade), 0));
-    };
-
-    const calculateTotalDescontos = () => {
-        const valor = items.reduce((total, item) => total + item.discount, 0)
-        const formated = toMoneyFormat(valor);
-        return { valor, formated }
-    };
-
-    const handlePayment = () => {
-        if (selectedPaymentMethod) {
-            finalizar()
-            setShowModal(false);
-        } else {
-            alert("Por favor, selecione um método de pagamento!");
-        }
-    };
-    const getProductsList = async () => {
-        const result = await getProducts()
-        console.log({ result })
-        if (result.success) {
-            result.data.forEach(element => {
-                if (!element['categoria']) element['categoria'] = ''
-                if (!element['ean']) element['ean'] = ''
-                if (!element['ncm']) element['ncm'] = ''
-                if (!element['valor']) element['valor'] = 0
-                if (!element['descricao']) element['descricao'] = ''
-            });
-            setProducts(result.data)
-            setProductsToShow(result.data)
-        } else {
-            notify("bc", "danger", "Problema ao buscar produtos!")
-        }
-    }
-
-    const productSelect = (id) => {
-        const item = products.find(a => +a.id == +id)
-        if (item) {
-            setEditItem(item)
-        }
-    }
-
-    useEffect(() => {
-        getProductsList()
-    }, [])
-
-    useEffect(() => {
-        if (editItem) {
-            setItemName(editItem.descricao)
-            setItemPrice(editItem.valor)
-        }
-
-    }, [editItem])
-
-    useEffect(() => {
-        if (products) {
-            const newProducts = products.filter((item) =>
-                item.categoria?.toLowerCase().includes(itemName?.toLowerCase()) ||
-                item.ncm?.toLowerCase().includes(itemName?.toLowerCase()) ||
-                item.ean?.toLowerCase().includes(itemName?.toLowerCase()) ||
-                item.descricao?.toLowerCase().includes(itemName?.toLowerCase()) ||
-                item.valor?.toString().toLowerCase().includes(itemName?.toLowerCase()))
-            setProductsToShow(newProducts)
-        }
-
-    }, [itemName])
-
-    useEffect(() => {
-        console.log({ dinheiro })
-    }, [dinheiro])
-
-    const removeItem = (id) => {
-        const news = items.filter(a => +a.id != +id)
-        console.log({ id, news })
-        setItems(news)
-    }
-
-
-    const styleForSearch = {
-        border: '1px dashed silver',
-        boxShadow: '1px 1px 0px 0px silver',
-        marginTop: '20px',
-        height: '150px',
-        maxWidth: '100%',
-        minWidth: '650px',
-        overflowY: 'auto'
-    }
-
-    return (
-        <>
-            <div className="rna-container">
-                <NotificationAlert ref={notificationAlertRef} />
-            </div>
-            <Container fluid>
-
-                <Row>
-                    <Col md="8">
-                        <Card>
-                            <Card.Header>
-                                <Card.Title as="h4">Checkout</Card.Title>
-                                <p className="card-category">Adicione itens ao carrinho</p>
-                            </Card.Header>
-                            <Card.Body>
-                                <Form>
-                                    <Row>
-                                        <Col md="6" >
-                                            <Form.Group>
-                                                <label>Nome do Item</label>
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <Form.Control
-                                                        style={{ maxWidth: 'calc(100% - 50px)' }}
-                                                        type="text"
-                                                        value={itemName}
-                                                        onChange={(e) => setItemName(e.target.value)}
-                                                        placeholder="Nome do Item"
-                                                    />
-                                                    {itemName && (
-                                                        <Button style={{ maxWidth: '50px ' }} variant="link" onClick={() => setItemName("")}>
-                                                            X
-                                                        </Button>
-                                                    )}
-
-                                                </div>
-
-                                            </Form.Group>
-
-                                            {
-                                                itemName && itemName.length &&
-                                                <Form.Group >
-                                                    <Form.Select multiple onChange={(e) => productSelect(e.target.value)} style={styleForSearch}>
-                                                        {productsToShow.map((item, index) => (
-                                                            <option key={index} value={item.id}>
-                                                                {item.descricao}
-                                                            </option>
-                                                        ))}
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            }
-
-
-                                        </Col>
-                                        <Col md="2">
-                                            <Form.Group>
-                                                <label>Preço</label>
-                                                <Form.Control
-                                                    type="number"
-                                                    value={itemPrice}
-                                                    onChange={(e) => setItemPrice(e.target.value)}
-                                                    placeholder="Preço"
-                                                />
-                                            </Form.Group>
-                                        </Col>
-                                        <Col md="1">
-                                            <Form.Group>
-                                                <label>Qtd.:</label>
-                                                <Form.Control
-                                                    type="number"
-                                                    value={qtd}
-                                                    onChange={(e) => setQtd(e.target.value)}
-                                                    placeholder="Preço"
-                                                />
-                                            </Form.Group>
-                                        </Col>
-                                        <Col md="1">
-                                            <Form.Group>
-                                                <label>Desconto</label>
-                                                <Form.Control
-                                                    disabled={user?.user?.role != "admin"}
-                                                    type="number"
-                                                    value={discount}
-                                                    onChange={(e) => setDiscount(e.target.value)}
-                                                    placeholder="Desconto"
-                                                />
-                                            </Form.Group>
-                                        </Col>
-                                        <Col md="1">
-                                            <Button
-                                                variant="primary"
-                                                onClick={handleAddItem}
-                                                style={{ marginTop: "30px" }}
-                                            >
-                                                Adicionar
-                                            </Button>
-                                        </Col>
-                                    </Row>
-                                </Form>
-                                <Table className="table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Preço</th>
-                                            <th>Quantidade</th>
-                                            <th>Desconto</th>
-                                            <th>Preço Final</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, index) => (
-                                            <tr key={index}>
-                                                <td>{item.name}</td>
-                                                <td>{toMoneyFormat(item.price)}</td>
-                                                <td>{toMoneyFormat(item.quantidade)}</td>
-                                                <td>{toMoneyFormat(item.discount)}</td>
-                                                <td>{(((item.price * item.quantidade) - item.discount))}</td>
-                                                <td><Button
-                                                    className="btn-simple btn-link p-1"
-                                                    type="button"
-                                                    variant="danger"
-                                                    onClick={() => removeItem(item.id)}
-                                                >
-                                                    <i className="fas fa-times"></i>
-                                                </Button></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    <Col md="4">
-                        <Card>
-                            <Card.Header>
-                                <Card.Title as="h4">Resumo da venda</Card.Title>
-                            </Card.Header>
-                            <Card.Body>
-
-                                {
-                                    calculateTotalDescontos().valor != 0 &&
-                                    <>
-                                        <h5 style={{ color: 'rgb(0,87,156)' }}> Bruto: {calculateTotalBruto()}</h5>
-                                        <hr />
-                                        <h5 style={{ color: 'red' }}>Descontos: {calculateTotalDescontos().formated}</h5>
-                                    </>
-                                }
-                                <hr />
-                                <h5 style={{ fontSize: '16px' }}>Total Líquido: {"  "}<span style={{ fontWeight: 'bold', fontSize: '1.5rem' }}>{calculateTotal().formated}</span></h5>
-                                <hr />
-                                <Button onClick={() => setShowModal(true)} variant="success">Finalizar Venda</Button>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-                {/* Mini Modal */}
-                <Modal
-                    className="modal modal-primary"
-                    show={showModal}
-                    onHide={() => setShowModal(false)}
-                >
-                    <Modal.Header className="justify-content-center">
-                        <div className="modal-profile">
-                            <i className="nc-icon nc-bulb-63"></i>
-
-                        </div>
-
-                    </Modal.Header>
-                    <Modal.Body className="text-center">
-                        <br />
-                        <h3 style={{ color: 'green' }}>{calculateTotal().formated}</h3>
-                        <p>Informe o método de pagamento:</p>
-                        <div style={{ gap: '15px', display: 'inlineFlex' }}>
-                            <Button
-                                disabled={(selectedPaymentMethod != "PIX") && selectedPaymentMethod?.length}
-                                style={
-                                    selectedPaymentMethod == "PIX" ? {
-                                        color: 'white', background: 'green'
-                                    } : { background: 'white' }} onClick={() => setPaymentMethod("PIX")} variant="success">PIX</Button>
-                            <Button
-                                disabled={(selectedPaymentMethod != "Cartão") && selectedPaymentMethod?.length}
-                                style={
-                                    selectedPaymentMethod == "Cartão" ? {
-                                        color: 'white', background: 'green'
-                                    } : { background: 'white' }} onClick={() => setPaymentMethod("Cartão")} variant="success">Cartão</Button>
-                            <Button
-                                disabled={(selectedPaymentMethod != "Dinheiro") && selectedPaymentMethod?.length}
-                                style={
-                                    selectedPaymentMethod == "Dinheiro" ? {
-                                        color: 'white', background: 'green'
-                                    } : { background: 'white' }} onClick={() => setPaymentMethod("Dinheiro")} variant="success">Dinheiro</Button>
-                            <Button
-                                disabled={(selectedPaymentMethod != "Crediário") && selectedPaymentMethod?.length}
-                                style={
-                                    selectedPaymentMethod == "Crediário" ? {
-                                        color: 'white', background: 'green'
-                                    } : { background: 'white' }} onClick={() => setPaymentMethod("Crediário")} variant="success">Crediário</Button>
-                        </div>
-                        {
-                            mostraTroco &&
-                            <>
-                                <hr />
-                                <p>Insira o valor recebido:</p>
-                                <CurrencyInput
-                                    style={{ textAlign: 'center' }}
-                                    className="form-control"
-                                    id="valor"
-                                    name="valor"
-                                    placeholder="Valor em dinheiro R$"
-                                    defaultValue={dinheiro}
-                                    decimalsLimit={2}
-                                    decimalSeparator=","
-                                    groupSeparator="."
-                                    prefix="R$ "
-                                    onValueChange={(e) => setDinheiro(moneyToDecimal(e))}
-                                />
-                                <label>Troco: <b>{toMoneyFormat(dinheiro - calculateTotal().valor)}</b></label>
-                            </>
-                        }
-
-                    </Modal.Body>
-
-                    <div className="modal-footer">
-                        <Button
-                            className="btn-simple"
-                            type="button"
-                            variant="link"
-                            onClick={() => setShowModal(false)}
-                        >
-                            Voltar
-                        </Button>
-                        <Button
-                            className="btn-simple"
-                            type="button"
-                            variant="link"
-                            onClick={handlePayment}
-                        >
-                            Finalizar
-                        </Button>
-                    </div>
-                </Modal>
-                {/* End Modal */}
-            </Container>
-        </>
+    // Totais e Pagamento (como na imagem)
+    const totalVendas = venda.reduce(
+      (acc, item) => acc + item.valor * item.qtd,
+      0
     );
-}
+    const totais = {
+      total: `TOTAL R$ ${money(totalVendas)}`,
+      dinheiro: `${pagamento.toUpperCase()} - ${money(totalVendas)}`,
+    };
 
-export default Checkout;
+    // Função para adicionar texto com formatação e quebra de linha
+    const adicionarTexto = (
+      texto,
+      x,
+      y,
+      tamanhoFonte = tamanhoFontePadrao,
+      alinhamento = "left"
+    ) => {
+      doc.setFont(fontePadrao, "normal");
+      doc.setFontSize(tamanhoFonte);
+
+      const larguraMaxima = 95;
+      const linhas = doc.splitTextToSize(texto, larguraMaxima);
+
+      linhas.forEach((linha, index) => {
+        doc.text(linha, x, y + index * tamanhoFonte);
+      });
+
+      return y + linhas.length * tamanhoFonte;
+    };
+
+    let y = 10;
+
+    // Cabeçalho
+    y = adicionarTexto(empresa.nome, 10, y);
+    y = adicionarTexto(empresa.endereco, 10, y);
+    y = adicionarTexto(empresa.cnpj, 10, y);
+    y = adicionarTexto(`${empresa.ie} ${empresa.uf}`, 60, y);
+    y = adicionarTexto(empresa.im, 10, y);
+    y += 8;
+
+    // Informações do Cupom
+    y = adicionarTexto(`${cupom.dataHora} ${cupom.ccf} ${cupom.coo}`, 10, y);
+    y += 8;
+
+    // Título do Cupom
+    y = adicionarTexto("DOCUMENTO NÃO FISCAL", 30, y, 9, "center");
+    y += 8;
+
+    // Itens da Venda
+    y = adicionarTexto(
+      "ITEM CÓDIGO DESCRIÇÃO QTD.UN.VL_UNIT(RS) ST VL_ITEM(RS)",
+      10,
+      y
+    );
+    y += 2;
+
+    venda.forEach((item) => {
+      const itemTexto = `${item.id} ${item.descricao} ${item.qtd} x ${money(
+        item.valor
+      )}`;
+      y = adicionarTexto(itemTexto, 10, y);
+      y += 2;
+    });
+
+    // Totais
+    y = adicionarTexto(totais.total, 60, y);
+    y = adicionarTexto(totais.dinheiro, 60, y);
+    y += 8;
+
+    // Rodapé
+    y = adicionarTexto("Volte Sempre!!", 45, y);
+
+    doc.autoPrint();
+    doc.save("cupom_fiscal_novo.pdf");
+
+    // Adicionar venda ao histórico
+    const novaVenda = {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      caixaId: caixa?.id,
+      desconto: 0,
+      produtos: venda.map((item) => {
+        return {
+          id: item.id,
+          descricao: item.descricao,
+          quantidade: item.qtd,
+          desconto: 0,
+        };
+      }),
+      metodoPagamento: pagamento,
+      nome_cliente: "Cliente padrão",
+      total: totalVendas,
+    };
+    const result = await vendaFinaliza(novaVenda);
+    console.log({ result });
+    setHistoricoVendas((prev) => [...prev, novaVenda]);
+
+    // Limpar a venda atual
+    setVenda([]);
+    setPagamento(null);
+    await getResumoCaixa(caixa?.id);
+    notification.success({
+      message: "Venda finalizada com sucesso!",
+      description: `Total: R$ ${money(totalVendas)}`,
+    });
+  };
+
+  const myColumns = [
+    {
+      title: "Nome",
+      dataIndex: "descricao",
+      render: (text) => <Text strong>{text.toUpperCase()}</Text>,
+    },
+    {
+      title: "Preço",
+      dataIndex: "valor",
+      align: "right",
+      render: (valor) => <Text type="erro">R$ {money(valor)}</Text>,
+    },
+    {
+      title: "Quantidade",
+      dataIndex: "qtd",
+      align: "center",
+      render: (_, record) => (
+        <Input
+          type="number"
+          min={1}
+          defaultValue={1}
+          style={{ width: 70, textAlign: "center" }}
+          onChange={(e) => (record.qtd = parseInt(e.target.value) || 1)}
+        />
+      ),
+    },
+    {
+      title: "Ações",
+      align: "center",
+      render: (_, record) => (
+        <Button
+          onClick={() => adicionarProduto(record, record.qtd || 1)}
+          type="primary"
+        >
+          Adicionar
+        </Button>
+      ),
+    },
+  ];
+  const getProductsList = async () => {
+    const result = await getProducts();
+    console.log({ result });
+    if (result.success) {
+      result.data.forEach((element) => {
+        if (!element["categoria"]) element["categoria"] = "";
+        if (!element["ean"]) element["ean"] = "";
+        if (!element["ncm"]) element["ncm"] = "";
+        if (!element["valor"]) element["valor"] = 0;
+        if (!element["descricao"]) element["descricao"] = "";
+      });
+      setProducts(result.data);
+    } else {
+      notification.error({
+        message: "Erro",
+        description: "Problema ao buscar produtos!",
+      });
+    }
+  };
+
+  const caixaEmAberto = async () => {
+    const resultCx = await getCaixaEmAberto();
+    console.log({ resultCx });
+    if (resultCx.data.length === 0) {
+      notification.warning({
+        message: "Atenção!",
+        description: "Abra um caixa para começar a vender.",
+      });
+      return; // Não há caixa aberto
+    }
+    if (resultCx.data.length > 1) {
+      notification.warning({
+        message: "Atenção!",
+        description: "Existe um caixa aberto de um dia anterior.",
+      });
+    }
+    const cx = resultCx.data.pop();
+    setCaixa(cx);
+    setCaixaAberto(true);
+
+    setHoraAbertura(dayjs(cx.createdAt).format("DD/MM/YYYY HH:mm"));
+    setValorAbertura(cx.saldoInicial);
+    await getResumoCaixa(cx.id);
+  };
+
+  useEffect(() => {
+    getProductsList();
+    caixaEmAberto();
+  }, []);
+
+  useEffect(() => {
+    console.log({ caixa });
+  }, [caixa]);
+
+  const abrirCaixa = async () => {
+    let valorAberturaTemp = 0;
+
+    Modal.confirm({
+      title: "Abrir Caixa",
+      content: (
+        <Input
+          type="number"
+          placeholder="Valor inicial em caixa"
+          onChange={(e) =>
+            (valorAberturaTemp = parseFloat(e.target.value) || 0)
+          }
+        />
+      ),
+      onOk: async () => {
+        try {
+          const userId = user?.user?.id || 1;
+          const resultOpenCaixa = await openCaixa(userId, valorAberturaTemp);
+
+          console.log({ resultOpenCaixa });
+          setCaixa(resultOpenCaixa.data);
+          setCaixaAberto(true);
+          setHoraAbertura(dayjs().format("DD/MM/YYYY HH:mm"));
+
+          // Reiniciar os dados do caixa
+          setHistoricoVendas([]);
+          setResumoVendas({
+            dinheiro: 0,
+            pix: 0,
+            credito: 0,
+            debito: 0,
+            total: 0,
+          });
+
+          notification.success({ message: "Caixa aberto com sucesso!" });
+        } catch (error) {
+          console.error("Erro ao abrir caixa:", error);
+          notification.error({
+            message: "Erro ao abrir caixa",
+            description: error.message || "Tente novamente mais tarde.",
+          });
+        }
+      },
+    });
+  };
+
+  const fecharCaixa = () => {
+    setModalFechamento(true);
+  };
+
+  const confirmarFechamento = () => {
+    // Calcular apenas o valor total em dinheiro para comparar com o valor em caixa
+    // Isso supõe que apenas o dinheiro é guardado na caixa física
+    const totalDinheiro = resumoVendas.dinheiro;
+    const diferenca = valorFechamento - (valorAbertura + totalDinheiro);
+
+    setCaixaAberto(false);
+    setVenda([]);
+    setPagamento(null);
+    setModalFechamento(false);
+
+    notification.success({
+      message: "Caixa fechado com sucesso!",
+      description: `Diferença: R$ ${money(diferenca)}`,
+    });
+  };
+
+  const adicionarProduto = (produto, qtd) => {
+    console.log({ produto });
+    setVenda((prev) => {
+      const index = prev.findIndex((item) => item.id === produto.id);
+      if (index >= 0) {
+        prev[index].qtd += qtd;
+      } else {
+        prev.push({ ...produto, qtd });
+      }
+      return [...prev];
+    });
+  };
+
+  const totalVenda = venda.reduce(
+    (acc, item) => acc + item.valor * item.qtd,
+    0
+  );
+
+  return (
+    <Layout style={{ minHeight: "100vh" }}>
+      <Header style={{ color: "white", textAlign: "center", fontSize: 20 }}>
+        {caixaAberto ? (
+          <>
+            <CheckCircleOutlined style={{ color: "green", marginRight: 10 }} />
+            Caixa {caixa?.id}:{" "}
+            <span style={{ fontWeight: "8px !important" }}>
+              {horaAbertura && ` Aberto em ${horaAbertura}`}
+            </span>
+          </>
+        ) : (
+          <>
+            <ExclamationCircleOutlined
+              style={{ color: "red", marginRight: 10 }}
+            />
+            Abra o caixa!
+          </>
+        )}
+      </Header>
+      <Layout>
+        <Content style={{ padding: 20 }}>
+          {!caixaAberto ? (
+            <Button type="primary" onClick={abrirCaixa}>
+              Abrir Caixa
+            </Button>
+          ) : (
+            <Button type="danger" onClick={fecharCaixa}>
+              Fechar Caixa
+            </Button>
+          )}
+          {caixaAberto && (
+            <>
+              <Input
+                placeholder="Buscar produto..."
+                style={{ margin: "20px 0" }}
+                onChange={(e) => setBusca(e.target?.value?.toLowerCase())}
+              />
+
+              <Table
+                dataSource={products.filter((p) =>
+                  p.descricao?.toLowerCase().includes(busca)
+                )}
+                columns={myColumns}
+              />
+
+              {/* Resumo de vendas realizadas */}
+              {historicoVendas.length > 0 && (
+                <Card title="Resumo de Vendas do Dia" style={{ marginTop: 20 }}>
+                  <Row gutter={16}>
+                    <Col span={6}>
+                      <Statistic
+                        title="Total em Dinheiro"
+                        value={resumoVendas.dinheiro}
+                        precision={2}
+                        valueStyle={{ color: "#3f8600" }}
+                        prefix="R$"
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="Total em PIX"
+                        value={resumoVendas.pix}
+                        precision={2}
+                        valueStyle={{ color: "#1890ff" }}
+                        prefix="R$"
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="Total em Crédito"
+                        value={resumoVendas.credito}
+                        precision={2}
+                        valueStyle={{ color: "#722ed1" }}
+                        prefix="R$"
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="Total em Débito"
+                        value={resumoVendas.debito}
+                        precision={2}
+                        valueStyle={{ color: "#fa8c16" }}
+                        prefix="R$"
+                      />
+                    </Col>
+                  </Row>
+                  <Divider />
+                  <Row>
+                    <Col span={24}>
+                      <Statistic
+                        title="Total Geral"
+                        value={resumoVendas.total}
+                        precision={2}
+                        valueStyle={{ color: "#cf1322", fontSize: "24px" }}
+                        prefix="R$"
+                      />
+                    </Col>
+                  </Row>
+                </Card>
+              )}
+            </>
+          )}
+        </Content>
+
+        <Sider width={450} style={{ background: "#fff", padding: 20 }}>
+          <Card
+            style={{
+              background: "#FFF8DC",
+              padding: "20px",
+              borderRadius: "8px",
+              zoom: "80%",
+            }}
+            title="Cupom Não Fiscal"
+            bordered
+          >
+            <List
+              style={{ marginBottom: "20px" }}
+              dataSource={venda}
+              renderItem={(item) => (
+                <List.Item
+                  style={{
+                    borderBottom: "1px dotted #000",
+                    paddingBottom: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
+                  >
+                    <div>
+                      <CloseCircleOutlined
+                        onClick={() => removeItem(item)}
+                        style={{ color: "red" }}
+                      />{" "}
+                      <strong>{item.descricao.toUpperCase()}</strong>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <strong>Qtd: {item.qtd}</strong> |{" "}
+                      <strong>
+                        R${" "}
+                        {item.valor.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </strong>{" "}
+                      x <strong>{item.qtd}</strong> <br />={" "}
+                      <strong>
+                        R${" "}
+                        {(item.valor * item.qtd).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </strong>
+                    </div>
+                  </div>
+                </List.Item>
+              )}
+            />
+
+            <div
+              style={{ borderTop: "2px solid #000", margin: "10px 0" }}
+            ></div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "15px",
+              }}
+            >
+              <h3>
+                <strong>Total:</strong>{" "}
+                <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                  R${" "}
+                  {totalVenda.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </h3>
+            </div>
+          </Card>
+          <Select
+            style={{ width: "100%", margin: "10px 0" }}
+            showSearch
+            placeholder="Selecione o método de pagamento"
+            onChange={(value) => setPagamento(value)}
+            value={pagamento}
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+            options={[
+              { value: "dinheiro", label: "DINHEIRO" },
+              { value: "pix", label: "PIX" },
+              { value: "credito", label: "CRÉDITO" },
+              { value: "debito", label: "DÉBITO" },
+            ]}
+          />
+
+          <Button
+            onClick={gerarCupom}
+            type="primary"
+            block
+            disabled={!pagamento || venda.length === 0}
+          >
+            Finalizar Venda
+          </Button>
+        </Sider>
+      </Layout>
+
+      <Modal
+        title="Fechar Caixa"
+        visible={modalFechamento}
+        onOk={confirmarFechamento}
+        onCancel={() => setModalFechamento(false)}
+        width={700}
+      >
+        <Row gutter={16}>
+          <Col span={12}>
+            <Card title="Resumo de Vendas">
+              <Statistic
+                title="Total em Dinheiro"
+                value={resumoVendas.dinheiro}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Statistic
+                title="Total em PIX"
+                value={resumoVendas.pix}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Statistic
+                title="Total em Crédito"
+                value={resumoVendas.credito}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Statistic
+                title="Total em Débito"
+                value={resumoVendas.debito}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Divider />
+              <Statistic
+                title="Total Geral"
+                value={resumoVendas.total}
+                precision={2}
+                prefix="R$"
+                valueStyle={{ color: "#cf1322" }}
+              />
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card title="Conferência de Caixa (apenas dinheiro)">
+              <Statistic
+                title="Valor inicial do caixa"
+                value={valorAbertura}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Statistic
+                title="Vendas em dinheiro"
+                value={resumoVendas.dinheiro}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 10 }}
+              />
+              <Statistic
+                title="Total esperado em caixa"
+                value={valorAbertura + resumoVendas.dinheiro}
+                precision={2}
+                prefix="R$"
+                style={{ marginBottom: 20 }}
+              />
+
+              <Input
+                type="number"
+                addonBefore="R$"
+                placeholder="Valor real em caixa"
+                style={{ marginBottom: 20 }}
+                onChange={(e) =>
+                  setValorFechamento(parseFloat(e.target.value) || 0)
+                }
+              />
+
+              <Statistic
+                title="Diferença"
+                value={
+                  valorFechamento - (valorAbertura + resumoVendas.dinheiro)
+                }
+                precision={2}
+                prefix="R$"
+                valueStyle={{
+                  color:
+                    valorFechamento - (valorAbertura + resumoVendas.dinheiro) <
+                    0
+                      ? "#cf1322"
+                      : "#3f8600",
+                }}
+                suffix={
+                  valorFechamento - (valorAbertura + resumoVendas.dinheiro) < 0
+                    ? " (falta)"
+                    : valorFechamento -
+                        (valorAbertura + resumoVendas.dinheiro) >
+                      0
+                    ? " (sobra)"
+                    : " (correto)"
+                }
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Modal>
+    </Layout>
+  );
+};
+
+export default Caixa;
