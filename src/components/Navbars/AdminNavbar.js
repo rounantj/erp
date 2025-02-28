@@ -15,13 +15,21 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React, { Component, useContext } from "react";
+import React, { useContext } from "react";
 import { useLocation } from "react-router-dom";
-import { Navbar, Container, Nav, Dropdown, Button } from "react-bootstrap";
+import { Layout, Button, Menu, Dropdown, Space } from "antd";
+import {
+  MenuOutlined,
+  DownOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 import routes from "routes.js";
 
-function Header() {
+const { Header } = Layout;
+
+function AdminNavbar() {
   const location = useLocation();
   const mobileSidebarToggle = (e) => {
     e.preventDefault();
@@ -44,175 +52,119 @@ function Header() {
     }
     return "Brand";
   };
+
   const logout = () => {
-    console.log("Saindo...")
-    setUser(null)
-    localStorage.clear()
-    window.location.replace("/")
-  }
+    console.log("Saindo...");
+    setUser(null);
+    localStorage.clear();
+    window.location.replace("/");
+  };
+
+  // Dropdown items para notificações
+  const notificationItems = [
+    { key: "1", label: "Notification 1" },
+    { key: "2", label: "Notification 2" },
+    { key: "3", label: "Notification 3" },
+    { key: "4", label: "Notification 4" },
+    { key: "5", label: "Another notification" },
+  ];
+
   return (
-    <Navbar bg="light" expand="lg">
-      <Container fluid>
-        <div className="d-flex justify-content-center align-items-center ml-2 ml-lg-0">
-          <Button
-            variant="dark"
-            className="d-lg-none btn-fill d-flex justify-content-center align-items-center rounded-circle p-2"
-            onClick={mobileSidebarToggle}
-          >
-            <i className="fas fa-ellipsis-v"></i>
-          </Button>
-          <Navbar.Brand
-            href="#home"
-            onClick={(e) => e.preventDefault()}
-            className="mr-2"
-          >
-            {getBrandText()}
-          </Navbar.Brand>
-        </div>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" className="mr-2">
-          <span className="navbar-toggler-bar burger-lines"></span>
-          <span className="navbar-toggler-bar burger-lines"></span>
-          <span className="navbar-toggler-bar burger-lines"></span>
-        </Navbar.Toggle>
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav style={{ display: 'none' }} className="nav mr-auto" navbar>
-            <Nav.Item>
-              <Nav.Link
-                data-toggle="dropdown"
-                href="#pablo"
-                onClick={(e) => e.preventDefault()}
-                className="m-0"
-              >
-                <i className="nc-icon nc-palette"></i>
-                <span className="d-lg-none ml-1">Dashboard</span>
-              </Nav.Link>
-            </Nav.Item>
-            <Dropdown as={Nav.Item}>
-              <Dropdown.Toggle
-                as={Nav.Link}
-                data-toggle="dropdown"
-                id="dropdown-67443507"
-                variant="default"
-                className="m-0"
-              >
+    <Header
+      style={{
+        background: "#fff",
+        padding: "0 20px",
+        boxShadow: "0 1px 4px rgba(0,21,41,.08)",
+      }}
+    >
+      <div className="d-flex justify-content-center align-items-center ml-2 ml-lg-0">
+        <Button
+          type="default"
+          className="d-lg-none btn-fill d-flex justify-content-center align-items-center rounded-circle p-2"
+          onClick={mobileSidebarToggle}
+          icon={<MenuOutlined />}
+          shape="circle"
+          style={{ marginRight: "10px" }}
+        />
+        <a
+          href="#home"
+          onClick={(e) => e.preventDefault()}
+          className="mr-2"
+          style={{
+            fontSize: "18px",
+            fontWeight: "bold",
+            color: "rgba(0, 0, 0, 0.85)",
+            marginLeft: "10px",
+          }}
+        >
+          {getBrandText()}
+        </a>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        {/* Menús ocultos (mantidos como no original) */}
+        <div style={{ display: "none" }}>
+          <Space size="large">
+            <Button type="text" icon={<UserOutlined />}>
+              <span className="d-lg-none ml-1">Dashboard</span>
+            </Button>
+
+            <Dropdown
+              menu={{ items: notificationItems }}
+              placement="bottomRight"
+            >
+              <Button type="text">
                 <i className="nc-icon nc-planet"></i>
                 <span className="notification">5</span>
                 <span className="d-lg-none ml-1">Notification</span>
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Notification 1
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Notification 2
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Notification 3
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Notification 4
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Another notification
-                </Dropdown.Item>
-              </Dropdown.Menu>
+              </Button>
             </Dropdown>
-            <Nav.Item>
-              <Nav.Link
-                className="m-0"
-                href="#pablo"
-                onClick={(e) => e.preventDefault()}
-              >
-                <i className="nc-icon nc-zoom-split"></i>
-                <span className="d-lg-block"> Search</span>
-              </Nav.Link>
-            </Nav.Item>
-          </Nav>
-          <Nav className="ml-auto" navbar>
-            <Nav.Item>
-              <Nav.Link
-                className="m-0"
-                href="#pablo"
-                onClick={(e) => e.preventDefault()}
-              >
-                <span className="no-icon">{user?.user.email} | <b>{user?.user.role ?? "Admin"}</b></span>
-              </Nav.Link>
-            </Nav.Item>
-            <Dropdown style={{ display: 'none' }} as={Nav.Item}>
-              <Dropdown.Toggle
-                aria-expanded={false}
-                aria-haspopup={true}
-                as={Nav.Link}
-                data-toggle="dropdown"
-                id="navbarDropdownMenuLink"
-                variant="default"
-                className="m-0"
-              >
-                <span className="no-icon">Dropdown</span>
-              </Dropdown.Toggle>
-              <Dropdown.Menu aria-labelledby="navbarDropdownMenuLink">
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Action
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Another action
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Something
-                </Dropdown.Item>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Something else here
-                </Dropdown.Item>
-                <div className="divider"></div>
-                <Dropdown.Item
-                  href="#pablo"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  Separated link
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
-            <Nav.Item>
-              <Nav.Link
-                className="m-0"
-                href="#pablo"
-                onClick={logout}
-              >
-                <span className="no-icon">Sair</span>
-              </Nav.Link>
-            </Nav.Item>
-          </Nav>
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
+
+            <Button type="text">
+              <i className="nc-icon nc-zoom-split"></i>
+              <span className="d-lg-block"> Search</span>
+            </Button>
+          </Space>
+        </div>
+
+        {/* User info e logout */}
+        <div
+          style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}
+        >
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: "1",
+                  label: "Sair",
+                  icon: <LogoutOutlined />,
+                  onClick: logout,
+                },
+              ],
+            }}
+            onClick={logout}
+            placement="bottomRight"
+            style={{ display: "none" }}
+          >
+            <a onClick={(e) => e.preventDefault()}>
+              <Space>
+                <span style={{ marginRight: "15px" }}>
+                  {user?.user.email} | <b>{user?.user.role ?? "Admin"}</b>
+                </span>
+                <DownOutlined />
+              </Space>
+            </a>
+          </Dropdown>
+        </div>
+      </div>
+    </Header>
   );
 }
 
-export default Header;
+export default AdminNavbar;

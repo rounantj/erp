@@ -1,279 +1,522 @@
-import SearchInput from "components/inputs/search-input";
-import React, { useEffect, useState, useContext } from "react";
-import { Button, Card, Container, Row, Col, Table, Modal, Form, OverlayTrigger, Tooltip } from "react-bootstrap";
-import { toMoneyFormat } from "../helpers/formatters"
-import { getProducts } from "helpers/api-integrator";
-import NotificationAlert from "react-notification-alert";
-import { Input } from "reactstrap";
-import { updateProduct } from "helpers/api-integrator";
-import { deleteProduct } from "helpers/api-integrator";
+import React, { useEffect, useState, useContext, useRef } from "react";
+import {
+  Layout,
+  Card,
+  Table,
+  Button,
+  Input,
+  Modal,
+  Form,
+  Select,
+  InputNumber,
+  Typography,
+  Space,
+  Tag,
+  Divider,
+  Breadcrumb,
+  Statistic,
+  Row,
+  Col,
+  Empty,
+  Tooltip,
+} from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
+  ShoppingOutlined,
+  TagOutlined,
+  BarcodeOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 
-function ProductAndServiceTable() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteItems, setDeleteItems] = useState([]);
-  const [editItem, setEditItem] = useState({ categoria: 'produto', valor: 0, descricao: '', ean: '', ncm: '' });
-  const [products, setProducts] = useState([])
-  const [productsToShow, setProductsToShow] = useState([])
-  const notificationAlertRef = React.useRef(null);
-  const { user } = useContext(UserContext);
-  const notify = (place, type, text) => {
-    var color = Math.floor(Math.random() * 5 + 1);
+// Import API helpers
+import {
+  getProducts,
+  updateProduct,
+  deleteProduct,
+} from "helpers/api-integrator";
 
-    var options = {};
-    options = {
-      place: place,
-      message: (
+const { Header, Content } = Layout;
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { confirm } = Modal;
+
+const ProductAndServiceTable = () => {
+  // State management
+  const [form] = Form.useForm();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [productStats, setProductStats] = useState({
+    total: 0,
+    categories: 0,
+    avgPrice: 0,
+  });
+
+  // References and context
+  const { user } = useContext(UserContext);
+  const searchInput = useRef(null);
+
+  // Format money values
+  const formatCurrency = (value) => {
+    return `R$ ${parseFloat(value).toFixed(2).replace(".", ",")}`;
+  };
+
+  // Calculate product statistics
+  const calculateStats = (productsList) => {
+    if (!productsList.length) return;
+
+    const total = productsList.length;
+    const uniqueCategories = new Set(productsList.map((p) => p.categoria)).size;
+    const totalPrice = productsList.reduce(
+      (sum, product) => sum + (parseFloat(product.valor) || 0),
+      0
+    );
+    const avgPrice = totalPrice / total;
+
+    setProductStats({
+      total,
+      categories: uniqueCategories,
+      avgPrice,
+    });
+  };
+
+  // Fetch products from API
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const result = await getProducts();
+      if (result.success) {
+        // Normalize data
+        const normalizedData = result.data.map((item, index) => ({
+          key: item.id || index.toString(),
+          id: item.id,
+          categoria: item.categoria || "",
+          ean: item.ean || "",
+          ncm: item.ncm || "",
+          valor: parseFloat(item.valor) || 0,
+          descricao: item.descricao || "",
+        }));
+
+        setProducts(normalizedData);
+        calculateStats(normalizedData);
+      } else {
+        Modal.error({
+          title: "Erro ao carregar produtos",
+          content: "Não foi possível buscar os produtos. Tente novamente.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      Modal.error({
+        title: "Erro ao carregar produtos",
+        content: "Ocorreu um erro ao buscar os produtos.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter products based on search
+  const getFilteredProducts = () => {
+    if (!searchText) return products;
+
+    const searchTerm = searchText.toLowerCase();
+    return products.filter(
+      (item) =>
+        (item.categoria?.toLowerCase() || "").includes(searchTerm) ||
+        (item.ncm?.toLowerCase() || "").includes(searchTerm) ||
+        (item.ean?.toLowerCase() || "").includes(searchTerm) ||
+        (item.descricao?.toLowerCase() || "").includes(searchTerm) ||
+        formatCurrency(item.valor).toLowerCase().includes(searchTerm)
+    );
+  };
+
+  // Handle form submission
+  const handleFormSubmit = async (values) => {
+    try {
+      const productData = {
+        ...values,
+        id: editingProduct?.id,
+      };
+
+      const result = await updateProduct(productData);
+
+      if (result.success) {
+        Modal.success({
+          title: editingProduct ? "Produto atualizado" : "Produto adicionado",
+          content: `${values.descricao} foi ${
+            editingProduct ? "atualizado" : "adicionado"
+          } com sucesso.`,
+        });
+
+        setModalVisible(false);
+        fetchProducts();
+      } else {
+        Modal.error({
+          title: "Operação falhou",
+          content: result.message || "Tente novamente.",
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      Modal.error({
+        title: "Erro ao salvar produto",
+        content: "Ocorreu um erro ao processar sua solicitação.",
+      });
+    }
+  };
+
+  // Show delete confirmation
+  const showDeleteConfirm = (product) => {
+    confirm({
+      title: "Confirmar exclusão",
+      icon: <ExclamationCircleOutlined />,
+      content: (
         <div>
-          <div>
-            {text}
-          </div>
+          <p>Tem certeza que deseja excluir este produto?</p>
+          <Text strong>{product.descricao}</Text>
+          <br />
+          <Text type="secondary">{formatCurrency(product.valor)}</Text>
         </div>
       ),
-      type: type,
-      icon: "nc-icon nc-bell-55",
-      autoDismiss: 7,
-    };
-    if (notificationAlertRef && notificationAlertRef.current && notificationAlertRef.current.notificationAlert)
-      notificationAlertRef?.current?.notificationAlert(options);
+      okText: "Sim, excluir",
+      okType: "danger",
+      cancelText: "Cancelar",
+      onOk: () => handleDelete(product),
+    });
   };
 
+  // Handle product deletion
+  const handleDelete = async (product) => {
+    try {
+      const result = await deleteProduct(product.id);
 
-  const handleAdd = () => {
-    updateItem()
-    setShowAddModal(false);
-  };
-
-  const handleEdit = () => {
-    // Adicionar lógica para editar um item
-    setShowEditModal(false);
-  };
-
-  const updateItem = async () => {
-    const result = await updateProduct(editItem)
-    console.log({ result })
-    getProductsList()
-  }
-
-  const handleDelete = () => {
-    // Adicionar lógica para excluir os itens selecionados
-    deleteItem()
-    setShowDeleteModal(false);
-  };
-
-  const setItemToChange = (item) => {
-    setShowAddModal(true)
-    setEditItem(item)
-  }
-
-  const setItemToDelete = (item) => {
-    setShowDeleteModal(true)
-    setEditItem(item)
-  }
-
-  const getProductsList = async () => {
-    const result = await getProducts()
-    console.log({ result })
-    if (result.success) {
-      result.data.forEach(element => {
-        if (!element['categoria']) element['categoria'] = ''
-        if (!element['ean']) element['ean'] = ''
-        if (!element['ncm']) element['ncm'] = ''
-        if (!element['valor']) element['valor'] = 0
-        if (!element['descricao']) element['descricao'] = ''
+      if (result.success) {
+        Modal.success({
+          title: "Produto excluído",
+          content: `${product.descricao} foi excluído com sucesso.`,
+        });
+        fetchProducts();
+      } else {
+        Modal.error({
+          title: "Falha ao excluir",
+          content: result.message || "Tente novamente.",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      Modal.error({
+        title: "Erro ao excluir produto",
+        content: "Ocorreu um erro ao processar sua solicitação.",
       });
-      setProducts(result.data)
-      setProductsToShow(result.data)
-    } else {
-      notify("bc", "danger", "Problema ao buscar produtos!")
     }
-  }
-
-  const itemEditar = (value, field) => {
-    setEditItem(prevState => ({
-      ...prevState,
-      [field]: value
-    }));
   };
 
-  const filterResults = (value) => {
-    console
-      .log("Filtrando por " + value)
-    const itemsFiltereds = products.filter((item) =>
-      item.categoria?.toLowerCase().includes(value?.toLowerCase()) ||
-      item.ncm?.toLowerCase().includes(value?.toLowerCase()) ||
-      item.ean?.toLowerCase().includes(value?.toLowerCase()) ||
-      item.descricao?.toLowerCase().includes(value?.toLowerCase()) ||
-      item.valor?.toString().toLowerCase().includes(value?.toLowerCase())
-    )
-    setProductsToShow(itemsFiltereds)
+  // Handle edit button click
+  const handleEdit = (record) => {
+    setEditingProduct(record);
+    form.setFieldsValue(record);
+    setModalVisible(true);
+  };
+
+  // Handle add button click
+  const handleAdd = () => {
+    setEditingProduct(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  // Define table columns
+  const columns = [
+    {
+      title: "Categoria",
+      dataIndex: "categoria",
+      key: "categoria",
+      render: (text) => (
+        <Tag color="blue" icon={<TagOutlined />}>
+          {text || "Não categorizado"}
+        </Tag>
+      ),
+      sorter: (a, b) => a.categoria.localeCompare(b.categoria),
+    },
+    {
+      title: "Preço",
+      dataIndex: "valor",
+      key: "valor",
+      render: (text) => <Text strong>{formatCurrency(text)}</Text>,
+      sorter: (a, b) => a.valor - b.valor,
+    },
+    {
+      title: "Descrição",
+      dataIndex: "descricao",
+      key: "descricao",
+      render: (text) => (
+        <Tooltip title={text}>
+          <Text ellipsis={{ tooltip: text }} style={{ maxWidth: 250 }}>
+            {text}
+          </Text>
+        </Tooltip>
+      ),
+      sorter: (a, b) => a.descricao.localeCompare(b.descricao),
+    },
+    {
+      title: "NCM",
+      dataIndex: "ncm",
+      key: "ncm",
+      render: (text) => (
+        <Text type="secondary">
+          <FileTextOutlined style={{ marginRight: 5 }} />
+          {text ? text.split('"')[0] : "N/A"}
+        </Text>
+      ),
+    },
+    {
+      title: "EAN",
+      dataIndex: "ean",
+      key: "ean",
+      render: (text) => (
+        <Text type="secondary">
+          <BarcodeOutlined style={{ marginRight: 5 }} />
+          {text || "Não cadastrado"}
+        </Text>
+      ),
+    },
+  ];
+
+  // Add actions column if user is admin
+  if (user?.user?.role === "admin") {
+    columns.push({
+      title: "Ações",
+      key: "actions",
+      width: 120,
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            size="small"
+            onClick={() => handleEdit(record)}
+          />
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            size="small"
+            onClick={() => showDeleteConfirm(record)}
+          />
+        </Space>
+      ),
+    });
   }
 
-  const deleteItem = async () => {
-    if (editItem?.id) {
-      const result = await deleteProduct(editItem?.id)
-      console.log({ a: result })
-      notify("bc", "success", "Produto deletado!")
-    } else {
-      notify("bc", "danger", "Selecione ao menos um item para deletar!")
-    }
-
-    getProductsList()
-
-  }
-
-
+  // Load products on component mount
   useEffect(() => {
-    getProductsList()
-  }, [])
+    fetchProducts();
+  }, []);
 
-  useEffect(() => {
-    console.log({ editItem })
-  }, [editItem])
+  const filteredProducts = getFilteredProducts();
 
   return (
-    <>
-      <div className="rna-container">
-        <NotificationAlert ref={notificationAlertRef} />
-      </div>
-      <Container fluid>
-        <Row>
-          <Col md="12">
-            <Card>
-              <Card.Header>
-                <Card.Title as="h4">Produtos e Serviços</Card.Title>
-              </Card.Header>
-              <Card.Body>
-                <SearchInput onInput={filterResults} placeholder={"Busque por produtos ou serviços"} />
-                {user.user.role === "admin" && <Button style={{ float: 'right', marginBottom: '15px' }} variant="primary" onClick={() => setShowAddModal(true)}>Adicionar novo</Button>}
+    <Layout style={{ minHeight: "100vh" }}>
+      <Content style={{ padding: "0 24px", marginTop: 16 }}>
+        <Breadcrumb style={{ margin: "16px 0" }}>
+          <Breadcrumb.Item>Início</Breadcrumb.Item>
+          <Breadcrumb.Item>Cadastros</Breadcrumb.Item>
+          <Breadcrumb.Item>Produtos e Serviços</Breadcrumb.Item>
+        </Breadcrumb>
 
-                <Table striped bordered hover>
-                  <thead>
-                    <tr>
-                      <th>Categoria</th>
-                      <th>Preço</th>
-                      <th>Descrição</th>
-                      <th>NCM</th>
-                      <th>EAN</th>
-                      {user.user.role === "admin" && <th>Ações</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
+        {/* Page Header - Using Card instead of PageHeader */}
+        <Card
+          title={<Title level={4}>Produtos e Serviços</Title>}
+          extra={
+            user?.user?.role === "admin" && [
+              <Button
+                key="add"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+              >
+                Adicionar Produto
+              </Button>,
+            ]
+          }
+          style={{ marginBottom: 24 }}
+        >
+          <Row gutter={16}>
+            <Col span={8}>
+              <Statistic
+                title="Total de Produtos"
+                value={productStats.total}
+                prefix={<ShoppingOutlined />}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Categorias"
+                value={productStats.categories}
+                prefix={<TagOutlined />}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Preço Médio"
+                value={productStats.avgPrice}
+                precision={2}
+                prefix="R$"
+                formatter={(value) => value.toFixed(2).replace(".", ",")}
+              />
+            </Col>
+          </Row>
+        </Card>
+
+        <Card bordered={false} className="shadow-sm">
+          <div style={{ marginBottom: 16 }}>
+            <Input
+              placeholder="Buscar produtos..."
+              prefix={<SearchOutlined />}
+              allowClear
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+              ref={searchInput}
+            />
+          </div>
+
+          <Table
+            columns={columns}
+            dataSource={filteredProducts}
+            loading={loading}
+            rowKey="key"
+            pagination={{
+              defaultPageSize: 10,
+              showSizeChanger: true,
+              pageSizeOptions: ["10", "20", "50"],
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} de ${total} itens`,
+            }}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Nenhum produto encontrado"
+                />
+              ),
+            }}
+          />
+        </Card>
+
+        <Modal
+          title={editingProduct ? "Editar Produto" : "Adicionar Produto"}
+          open={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          footer={null}
+          destroyOnClose
+          width={600}
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleFormSubmit}
+            initialValues={{
+              categoria: "produto",
+              valor: 0,
+              descricao: "",
+              ean: "",
+              ncm: "",
+            }}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="categoria"
+                  label="Categoria"
+                  rules={[
                     {
-                      productsToShow && productsToShow.length && productsToShow.map((item, index) =>
+                      required: true,
+                      message: "Por favor selecione uma categoria!",
+                    },
+                  ]}
+                >
+                  <Select placeholder="Selecione uma categoria">
+                    <Option value="produto">Produto</Option>
+                    <Option value="serviço">Serviço</Option>
+                    <Option value="papelaria">Papelaria</Option>
+                    <Option value="escritório">Material de Escritório</Option>
+                    <Option value="informática">Informática</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="valor"
+                  label="Preço (R$)"
+                  rules={[
+                    { required: true, message: "Por favor informe o preço!" },
+                  ]}
+                >
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    precision={2}
+                    min={0}
+                    step={0.01}
+                    prefix="R$"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-                      (
-                        <tr key={index}>
-                          <td>{item.categoria}</td>
-                          <td>{toMoneyFormat(item.valor)}</td>
-                          <td>{item.descricao}</td>
-                          <td>{item.ncm?.split('"')[0]}</td>
-                          <td>{item.ean ?? "Não cadastrado"}</td>
-                          {user.user.role === "admin" && <td>
-                            <OverlayTrigger
-                              overlay={
-                                <Tooltip id="tooltip-488980961">
-                                  Edit Task..
-                                </Tooltip>
-                              }
-                            >
-                              <Button
-                                className="btn-simple btn-link p-1"
-                                type="button"
-                                variant="info"
-                                onClick={() => setItemToChange(item)}
-                              >
-                                <i className="fas fa-edit"></i>
-                              </Button>
-                            </OverlayTrigger>
-                            <OverlayTrigger
-                              overlay={
-                                <Tooltip id="tooltip-506045838">Remove..</Tooltip>
-                              }
-                            >
-                              <Button
-                                className="btn-simple btn-link p-1"
-                                type="button"
-                                variant="danger"
-                                onClick={() => setItemToDelete(item)}
-                              >
-                                <i className="fas fa-times"></i>
-                              </Button>
-                            </OverlayTrigger>
+            <Form.Item
+              name="descricao"
+              label="Descrição"
+              rules={[
+                { required: true, message: "Por favor informe a descrição!" },
+              ]}
+            >
+              <Input placeholder="Nome/descrição do produto" />
+            </Form.Item>
 
-                          </td>
-                          }
-                        </tr>
-                      )
-                      )
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="ncm"
+                  label="NCM"
+                  tooltip="Nomenclatura Comum do Mercosul"
+                >
+                  <Input placeholder="Código NCM" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="ean"
+                  label="EAN"
+                  tooltip="Código de barras do produto"
+                >
+                  <Input placeholder="Código de barras" />
+                </Form.Item>
+              </Col>
+            </Row>
 
-                    }
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+            <Divider />
 
-      {/* Modal de adição */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Editar Produto ou Serviço</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group controlId="formCategory">
-              <Form.Label>Categoria</Form.Label>
-              <Form.Control onChange={(e) => itemEditar(e.target.value, 'categoria')} type="text" placeholder="Categoria" value={editItem ? editItem.categoria : ""} />
-            </Form.Group>
-            <Form.Group controlId="formPrice">
-              <Form.Label>Preço</Form.Label>
-              <Form.Control onChange={(e) => itemEditar(e.target.value, 'valor')} type="text" placeholder="Preço" value={editItem ? editItem.valor : ""} />
-            </Form.Group>
-            <Form.Group controlId="formDescription">
-              <Form.Label>Descrição</Form.Label>
-              <Form.Control onChange={(e) => itemEditar(e.target.value, 'descricao')} type="text" placeholder="Descrição" value={editItem ? editItem.descricao : ""} />
-            </Form.Group>
-            <Form.Group controlId="formNCM">
-              <Form.Label>NCM</Form.Label>
-              <Form.Control onChange={(e) => itemEditar(e.target.value, 'ncm')} type="text" placeholder="NCM" value={editItem ? editItem.ncm : ""} />
-            </Form.Group>
-            <Form.Group controlId="formEAN">
-              <Form.Label>EAN</Form.Label>
-              <Form.Control onChange={(e) => itemEditar(e.target.value, 'ean')} type="text" placeholder="EAN" value={editItem ? editItem.ean : ""} />
-            </Form.Group>
+            <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+              <Space>
+                <Button onClick={() => setModalVisible(false)}>Cancelar</Button>
+                <Button type="primary" htmlType="submit">
+                  {editingProduct ? "Atualizar" : "Adicionar"}
+                </Button>
+              </Space>
+            </Form.Item>
           </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleAdd}>Salvar</Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal de edição */}
-
-      {/* Modal de exclusão */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirmar Exclusão</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Tem certeza que deseja excluir os itens selecionados?</p>
-          <b>
-            {editItem.categoria}: {editItem.descricao} - {editItem.valor}, {editItem.ncm}
-          </b>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
-          <Button variant="danger" onClick={handleDelete}>Excluir</Button>
-        </Modal.Footer>
-      </Modal>
-    </>
-
+        </Modal>
+      </Content>
+    </Layout>
   );
-}
+};
 
 export default ProductAndServiceTable;

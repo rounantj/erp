@@ -1,10 +1,24 @@
 import { getCompanySetup } from "helpers/api-integrator";
 import { toMoneyFormat } from "helpers/formatters";
 import React, { useEffect, useState } from "react";
-import { Card, Container, Row, Col, Table, Form } from "react-bootstrap";
+import {
+  Card,
+  Row,
+  Col,
+  Table,
+  Form,
+  Input,
+  Typography,
+  Statistic,
+  Divider,
+  Space,
+} from "antd";
+import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+
+const { Title } = Typography;
 
 function SaudeFinanceira() {
-  const [mySetup, setMySetup] = useState()
+  const [mySetup, setMySetup] = useState();
   const [valorInicial, setValorInicial] = useState(5000);
   const [vendasPorMes, setVendasPorMes] = useState([
     { mes: "Junho", valor: 800 },
@@ -19,7 +33,8 @@ function SaudeFinanceira() {
 
   const calcularSaldoPorMes = (mes) => {
     let vendas = vendasPorMes.find((venda) => venda.mes === mes)?.valor || 0;
-    let despesas = despesasPorMes.find((despesa) => despesa.mes === mes)?.valor || 0;
+    let despesas =
+      despesasPorMes.find((despesa) => despesa.mes === mes)?.valor || 0;
     return vendas - despesas;
   };
 
@@ -29,90 +44,159 @@ function SaudeFinanceira() {
     despesasPorMes.forEach((despesa) => (saldo -= despesa.valor));
     return saldo;
   };
+
   const getMySetup = async () => {
-    const companyId = 1
-    const response = await getCompanySetup(companyId)
-    console.log({ response })
-    setMySetup(response.data[0])
-  }
+    const companyId = 1;
+    const response = await getCompanySetup(companyId);
+    console.log({ response });
+    setMySetup(response.data[0]);
+  };
 
   const saldoGeral = calcularSaldoGeral();
 
   useEffect(() => {
-    getMySetup()
-  }, [])
+    getMySetup();
+  }, []);
 
   useEffect(() => {
-    console.log({ mySetup })
+    console.log({ mySetup });
     if (mySetup) {
-      setValorInicial(mySetup?.companyIntegration?.startValue)
+      setValorInicial(mySetup?.companyIntegration?.startValue);
     }
-  }, [mySetup])
+  }, [mySetup]);
+
+  // Prepare data for Ant Design table
+  const tableData = vendasPorMes.map((venda, index) => {
+    const saldo = calcularSaldoPorMes(venda.mes);
+    return {
+      key: index,
+      mes: venda.mes,
+      vendas: venda.valor,
+      despesas: despesasPorMes[index]?.valor || 0,
+      saldo: saldo,
+    };
+  });
+
+  // Define columns for Ant Design table
+  const columns = [
+    {
+      title: "Mês",
+      dataIndex: "mes",
+      key: "mes",
+    },
+    {
+      title: "Vendas",
+      dataIndex: "vendas",
+      key: "vendas",
+      render: (value) => toMoneyFormat(value),
+    },
+    {
+      title: "Despesas",
+      dataIndex: "despesas",
+      key: "despesas",
+      render: (value) => toMoneyFormat(value),
+    },
+    {
+      title: "Saldo",
+      dataIndex: "saldo",
+      key: "saldo",
+      render: (value) => (
+        <span
+          style={{ color: value < 0 ? "red" : "green", fontWeight: "bold" }}
+        >
+          {toMoneyFormat(value)}
+        </span>
+      ),
+    },
+  ];
 
   return (
-    <>
-      <Container fluid>
-        <Row>
-          <Col md="12">
-            <Card>
-              <Card.Header>
-                <Card.Title as="h4">Saúde Financeira</Card.Title>
-              </Card.Header>
-              <Card.Body>
-                <Form>
-                  <Row>
-                    <Col>
-                      <Form.Group controlId="valorInicial">
-                        <Form.Label>Valor Inicial</Form.Label>
-                        <Form.Control
-                          type="text"
-                          value={toMoneyFormat(valorInicial)}
-                          onChange={(e) => setValorInicial(parseFloat(e.target.value))}
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col>
-                      <Form.Group controlId="saldo">
-                        <Form.Label>Saldo Geral</Form.Label>
-                        <Form.Control
-                          type="text"
-                          value={toMoneyFormat(saldoGeral)}
-                          readOnly
-                          style={{
-                            color: saldoGeral < 0 ? "red" : "blue",
-                            fontWeight: "bold",
-                          }}
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                </Form>
-                <Table striped bordered hover>
-                  <thead>
-                    <tr>
-                      <th>Mês</th>
-                      <th>Vendas</th>
-                      <th>Despesas</th>
-                      <th>Saldo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vendasPorMes.map((venda, index) => (
-                      <tr key={index}>
-                        <td>{venda.mes}</td>
-                        <td>{venda.valor.toFixed(2)}</td>
-                        <td>{despesasPorMes[index]?.valor.toFixed(2)}</td>
-                        <td>{calcularSaldoPorMes(venda.mes).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
+    <div style={{ padding: "24px" }}>
+      <Card
+        title={<Title level={4}>Saúde Financeira</Title>}
+        bordered={false}
+        style={{ width: "100%" }}
+      >
+        <Row gutter={24} style={{ marginBottom: 24 }}>
+          <Col span={12}>
+            <Form layout="vertical">
+              <Form.Item label="Valor Inicial">
+                <Input
+                  value={toMoneyFormat(valorInicial)}
+                  onChange={(e) => {
+                    // Remove currency format and parse to float
+                    const value = parseFloat(
+                      e.target.value.replace(/[^\d,-]/g, "").replace(",", ".")
+                    );
+                    if (!isNaN(value)) {
+                      setValorInicial(value);
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Form>
+          </Col>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <div>Saldo Geral</div>
+              <Statistic
+                value={saldoGeral}
+                precision={2}
+                valueStyle={{
+                  color: saldoGeral < 0 ? "#cf1322" : "#3f8600",
+                  fontWeight: "bold",
+                }}
+                prefix={
+                  saldoGeral < 0 ? <ArrowDownOutlined /> : <ArrowUpOutlined />
+                }
+                suffix="R$"
+              />
+            </Space>
           </Col>
         </Row>
-      </Container>
-    </>
+
+        <Divider />
+
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          pagination={false}
+          bordered
+          summary={() => (
+            <Table.Summary>
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0}>
+                  <strong>Total</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={1}>
+                  <strong>
+                    {toMoneyFormat(
+                      vendasPorMes.reduce((sum, item) => sum + item.valor, 0)
+                    )}
+                  </strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={2}>
+                  <strong>
+                    {toMoneyFormat(
+                      despesasPorMes.reduce((sum, item) => sum + item.valor, 0)
+                    )}
+                  </strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={3}>
+                  <strong
+                    style={{
+                      color: saldoGeral < 0 ? "red" : "green",
+                    }}
+                  >
+                    {toMoneyFormat(saldoGeral - valorInicial)}
+                  </strong>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            </Table.Summary>
+          )}
+        />
+      </Card>
+    </div>
   );
 }
 

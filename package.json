@@ -2,6 +2,7 @@
   "name": "light-bootstrap-dashboard-react",
   "version": "2.0.1",
   "dependencies": {
+    "@ant-design/charts": "^2.2.6",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@fortawesome/fontawesome-free": "5.15.2",
     "antd": "^5.22.2",
@@ -15,6 +16,7 @@
     "react": ">=16.8.0",
     "react-bootstrap": "2.4.0",
     "react-chartist": "^0.14.4",
+    "react-csv": "^2.2.2",
     "react-currency-input-field": "^3.8.0",
     "react-dom": ">=16.8.0",
     "react-notification-alert": "0.0.13",

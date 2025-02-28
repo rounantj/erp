@@ -1,33 +1,46 @@
 import { getSells } from "helpers/api-integrator";
-import { toDateFormat } from "helpers/formatters";
-import { toMoneyFormat } from "helpers/formatters";
+import { toDateFormat, toMoneyFormat } from "helpers/formatters";
 import React, { useEffect, useState } from "react";
-import ptBR from 'antd/lib/locale/pt_BR';
-import moment from "moment"
+import ptBR from "antd/lib/locale/pt_BR";
+import moment from "moment";
+import "moment/locale/pt-br";
 import {
+  Table,
+  DatePicker,
   Card,
-  Container,
+  Typography,
   Row,
   Col,
-  Table,
-  Form,
-  Button,
-} from "react-bootstrap";
-import { DatePicker, Space, ConfigProvider } from 'antd';
+  Statistic,
+  ConfigProvider,
+  Layout,
+  Divider,
+  Space,
+  Tag,
+  Empty,
+  Spin,
+} from "antd";
+import {
+  BarChartOutlined,
+  CalendarOutlined,
+  DollarOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 
 const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
+const { Content } = Layout;
 
 function Vendas() {
-  // Dados de exemplo
+  // Estados
   const [vendas, setVendas] = useState([]);
-
-  // Estado para o período de busca
-  const [startDate, setStartDate] = useState(moment().add(-30, "day").format("YYYY-MM-DD"));
-  const [endDate, setEndDate] = useState(moment().add(1, "day").format("YYYY-MM-DD"));
+  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState(moment().subtract(30, "days"));
+  const [endDate, setEndDate] = useState(moment());
 
   // Função para calcular o total da venda com desconto
   const calcularTotal = (valor, desconto) => {
-    console.log({ valor, desconto })
     return +valor - +desconto;
   };
 
@@ -39,19 +52,20 @@ function Vendas() {
   // Calcular totais por dia
   const calcularTotaisPorDia = () => {
     const totaisPorDia = vendas.reduce((acc, venda) => {
-      const data = new Date(venda.createdAt).toISOString().split('T')[0]; // Obtém apenas a data no formato 'YYYY-MM-DD'
+      const data = moment(venda.createdAt).format("YYYY-MM-DD");
       acc[data] = (acc[data] || 0) + calcularTotal(venda.total, venda.desconto);
       return acc;
     }, {});
     return totaisPorDia;
   };
 
-  const setDates = (e) => {
-    console.log({ e })
-    setEndDate(moment(e[1].$d).format("YYYY-MM-DD"))
-    setStartDate(moment(e[0].$d).format("YYYY-MM-DD"))
-  }
-
+  // Função para alterar as datas
+  const handleDateChange = (dates) => {
+    if (dates && dates.length === 2) {
+      setStartDate(dates[0]);
+      setEndDate(dates[1]);
+    }
+  };
 
   // Calcular total por período
   const calcularTotalPorPeriodo = () => {
@@ -62,118 +76,292 @@ function Vendas() {
     return total;
   };
 
-  const getVendas = async (startDate, endDate) => {
-    const items = await getSells(startDate, endDate)
-    console.log({ items })
-    if (items.success) {
-      setVendas(items.data)
-    }
-  }
+  // Número de clientes únicos
+  const calcularClientesUnicos = () => {
+    const clientesUnicos = new Set(vendas.map((venda) => venda.nome_cliente));
+    return clientesUnicos.size;
+  };
 
-  useEffect(() => { getVendas(moment().add(-1, "month").format("YYYY-MM-DD"), moment().format("YYYY-MM-DD")) }, [])
-  useEffect(() => { console.log({ vendas }) }, [vendas])
-  useEffect(() => {
-    if (endDate && startDate) {
-      getVendas(startDate, endDate)
+  // Valor médio por venda
+  const calcularValorMedioPorVenda = () => {
+    if (vendas.length === 0) return 0;
+    return calcularTotalPorPeriodo() / vendas.length;
+  };
+
+  const getVendas = async (start, end) => {
+    try {
+      setLoading(true);
+      const formattedStart = start.format("YYYY-MM-DD");
+      const formattedEnd = end.format("YYYY-MM-DD");
+      const items = await getSells(formattedStart, formattedEnd);
+
+      if (items.success) {
+        setVendas(items.data);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar vendas:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [endDate, startDate])
+  };
+
+  useEffect(() => {
+    getVendas(startDate, endDate);
+  }, [startDate, endDate]);
+
+  // Colunas para a tabela de vendas
+  const columns = [
+    {
+      title: "Data",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (text) => toDateFormat(text, true),
+      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
+    },
+    {
+      title: "Cliente",
+      dataIndex: "nome_cliente",
+      key: "nome_cliente",
+      render: (text) => (
+        <Space>
+          <UserOutlined />
+          {text}
+        </Space>
+      ),
+    },
+    {
+      title: "Valor",
+      dataIndex: "total",
+      key: "total",
+      render: (text) => toMoneyFormat(text),
+      sorter: (a, b) => a.total - b.total,
+    },
+    {
+      title: "Desconto",
+      dataIndex: "desconto",
+      key: "desconto",
+      render: (text) => toMoneyFormat(text),
+      sorter: (a, b) => a.desconto - b.desconto,
+    },
+    {
+      title: "Total",
+      key: "totalComDesconto",
+      render: (_, record) => {
+        const total = calcularTotal(record.total, record.desconto);
+        return <Text strong>{toMoneyFormat(total)}</Text>;
+      },
+      sorter: (a, b) =>
+        calcularTotal(a.total, a.desconto) - calcularTotal(b.total, b.desconto),
+    },
+  ];
+
+  // Colunas para a tabela de totais por dia
+  const dailyColumns = [
+    {
+      title: "Data",
+      dataIndex: "data",
+      key: "data",
+      render: (text) => toDateFormat(text),
+    },
+    {
+      title: "Total",
+      dataIndex: "total",
+      key: "total",
+      render: (text) => toMoneyFormat(text),
+    },
+  ];
+
+  // Preparar dados para a tabela diária
+  const dailyData = Object.entries(calcularTotaisPorDia()).map(
+    ([data, total], index) => ({
+      key: index,
+      data,
+      total,
+    })
+  );
+
+  // Customizando o formatter para Statistic
+  const moneyFormatter = (value) => {
+    const formatted = toMoneyFormat(value);
+    // Se for uma string, tenta remover o "R$ ", caso contrário retorna o valor original
+    return typeof formatted === "string"
+      ? formatted.replace("R$ ", "")
+      : formatted;
+  };
 
   return (
-    <>
-      <Container fluid>
-        <Row>
-          <Col md="12">
-            <Card>
+    <ConfigProvider locale={ptBR}>
+      <Layout
+        style={{ background: "#f0f2f5", minHeight: "100vh", padding: "16px" }}
+      >
+        <Content>
+          <Card>
+            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+              <Row justify="space-between" align="middle">
+                <Col>
+                  <Title level={4} style={{ margin: 0 }}>
+                    <ShoppingCartOutlined /> Gestão de Vendas
+                  </Title>
+                </Col>
+                <Col>
+                  <Space align="center">
+                    <CalendarOutlined />
+                    <Text>Período: </Text>
+                    <RangePicker
+                      allowClear={false}
+                      value={[startDate, endDate]}
+                      onChange={handleDateChange}
+                      format="DD/MM/YYYY"
+                    />
+                  </Space>
+                </Col>
+              </Row>
 
-              <Card.Body>
-                <Form>
-                  <Row>
+              <Divider />
 
-                    <Col md="12">
-                      <Card.Title as="h4">Gestão de Vendas</Card.Title>
-                      <Form.Group style={{ float: "right" }}>
-                        <Form.Label>Buscar por período: </Form.Label>
-                        <ConfigProvider locale={ptBR}>
-                          <RangePicker
-                            allowClear={false}
-                            onChange={setDates}
-                            className="datepicker"
-
-                          />
-                        </ConfigProvider >
-                      </Form.Group>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "50px" }}>
+                  <Spin size="large" />
+                </div>
+              ) : (
+                <>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card>
+                        <Statistic
+                          title="Total do Período"
+                          value={calcularTotalPorPeriodo()}
+                          prefix={<DollarOutlined />}
+                          formatter={moneyFormatter}
+                        />
+                        <Text type="secondary">
+                          {startDate.format("DD/MM")} a{" "}
+                          {endDate.format("DD/MM")}
+                        </Text>
+                      </Card>
                     </Col>
-
+                    <Col xs={24} sm={12} md={6}>
+                      <Card>
+                        <Statistic
+                          title="Número de Vendas"
+                          value={vendas.length}
+                          prefix={<ShoppingCartOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card>
+                        <Statistic
+                          title="Clientes Únicos"
+                          value={calcularClientesUnicos()}
+                          prefix={<UserOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card>
+                        <Statistic
+                          title="Valor Médio"
+                          value={calcularValorMedioPorVenda()}
+                          prefix={<BarChartOutlined />}
+                          formatter={moneyFormatter}
+                        />
+                      </Card>
+                    </Col>
                   </Row>
-                </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-        <Row>
-          <Col md="6">
-            <Card>
-              <Card.Body>
-                <h5>Totais por Dia</h5>
-                <Table>
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(calcularTotaisPorDia()).map(([createdAt, total]) => (
-                      <tr key={createdAt}>
-                        <td>{toDateFormat(createdAt)}</td>
-                        <td>{`${toMoneyFormat(total)}`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md="6">
-            <Card>
-              <Card.Body>
-                <h5>Total por Período <b>( de <span>{moment(startDate).format("DD/MM")} a {moment(endDate).format("DD/MM")}</span> )</b></h5>
-                <p>{`${toMoneyFormat(calcularTotalPorPeriodo())}`}</p>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
 
-        <Row>
-          <Col md="12">
-            <Card className="strpied-tabled-with-hover">
-              <Card.Body className="table-full-width table-responsive px-0">
-                <Table className="table-hover table-striped">
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Cliente</th>
-                      <th>Valor</th>
-                      <th>Descontos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrarVendas()?.map((venda) => (
-                      <tr key={venda.id}>
-                        <td>{toDateFormat(venda.createdAt, true)}</td>
-                        <td>{venda.nome_cliente}</td>
-                        <td>{`${toMoneyFormat(venda.total)}`}</td>
-                        <td>{`${toMoneyFormat(venda.desconto)}`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-    </>
+                  <Divider orientation="left">Detalhamento</Divider>
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                      <Card
+                        title={
+                          <>
+                            <BarChartOutlined /> Totais por Dia
+                          </>
+                        }
+                        style={{ height: "100%" }}
+                      >
+                        {dailyData.length > 0 ? (
+                          <Table
+                            columns={dailyColumns}
+                            dataSource={dailyData}
+                            size="small"
+                            pagination={{ pageSize: 5 }}
+                          />
+                        ) : (
+                          <Empty description="Sem dados para o período selecionado" />
+                        )}
+                      </Card>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Card
+                        title={
+                          <>
+                            <DollarOutlined /> Resumo por Cliente
+                          </>
+                        }
+                        style={{ height: "100%" }}
+                      >
+                        {vendas.length > 0 ? (
+                          <div style={{ maxHeight: "300px", overflow: "auto" }}>
+                            {Array.from(
+                              new Set(vendas.map((v) => v.nome_cliente))
+                            ).map((cliente) => {
+                              const vendasCliente = vendas.filter(
+                                (v) => v.nome_cliente === cliente
+                              );
+                              const totalCliente = vendasCliente.reduce(
+                                (acc, v) =>
+                                  acc + calcularTotal(v.total, v.desconto),
+                                0
+                              );
+                              return (
+                                <div
+                                  key={cliente}
+                                  style={{ marginBottom: "10px" }}
+                                >
+                                  <Space>
+                                    <UserOutlined />
+                                    <Text strong>{cliente}</Text>
+                                    <Tag color="blue">
+                                      {vendasCliente.length} venda(s)
+                                    </Tag>
+                                    <Text>{toMoneyFormat(totalCliente)}</Text>
+                                  </Space>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <Empty description="Sem dados para o período selecionado" />
+                        )}
+                      </Card>
+                    </Col>
+                  </Row>
+
+                  <Divider orientation="left">Lista de Vendas</Divider>
+
+                  <Table
+                    columns={columns}
+                    dataSource={vendas.map((venda) => ({
+                      ...venda,
+                      key: venda.id,
+                    }))}
+                    pagination={{ pageSize: 10 }}
+                    bordered
+                    size="middle"
+                    locale={{
+                      emptyText: "Sem dados para o período selecionado",
+                    }}
+                  />
+                </>
+              )}
+            </Space>
+          </Card>
+        </Content>
+      </Layout>
+    </ConfigProvider>
   );
 }
 
