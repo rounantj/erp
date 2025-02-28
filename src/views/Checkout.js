@@ -28,6 +28,7 @@ import { UserContext } from "context/UserContext";
 import { getCaixaEmAberto } from "helpers/caixa.adapter";
 import { vendaFinaliza } from "helpers/caixa.adapter";
 import { getResumoVendas } from "helpers/caixa.adapter";
+import { fechaCaixa } from "helpers/caixa.adapter";
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -395,7 +396,7 @@ const Caixa = () => {
     setModalFechamento(true);
   };
 
-  const confirmarFechamento = () => {
+  const confirmarFechamento = async () => {
     // Calcular apenas o valor total em dinheiro para comparar com o valor em caixa
     // Isso supõe que apenas o dinheiro é guardado na caixa física
     const totalDinheiro = resumoVendas.dinheiro;
@@ -405,6 +406,13 @@ const Caixa = () => {
     setVenda([]);
     setPagamento(null);
     setModalFechamento(false);
+    const resultFechaCaixa = await fechaCaixa(
+      caixa.id,
+      user?.user?.id,
+      valorFechamento,
+      diferenca
+    );
+    console.log({ resultFechaCaixa });
 
     notification.success({
       message: "Caixa fechado com sucesso!",

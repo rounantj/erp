@@ -16,8 +16,12 @@ export const openCaixa = (userId, valorAbertura) => {
   );
 };
 
-export const abreCaixa = (userId) => {
-  return axios.post(`${urlBase}/vendas`, venda, { headers });
+export const fechaCaixa = (caixaId, userId, saldoFinal, diferenca) => {
+  return axios.post(
+    `${urlBase}/caixa/close`,
+    { caixaId, userId, saldoFinal, diferenca },
+    { headers }
+  );
 };
 
 export const getCaixaEmAberto = () => {
