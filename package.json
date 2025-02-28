@@ -23,7 +23,8 @@
     "react-router-dom": "5.2.0",
     "react-scripts": "5.0.1",
     "reactstrap": "8.8.1",
-    "sass": "1.53.0"
+    "sass": "1.53.0",
+    "serve": "^14.2.0"
   },
   "optionalDependencies": {
     "jquery": "3.5.1",
@@ -31,7 +32,7 @@
   },
   "scripts": {
     "clean-install": "rm -rf node_modules/ && npm install",
-    "start": "serve -s build",
+    "start": "node node_modules/serve/bin/serve.js -s build -l $PORT",
     "dev": "react-scripts start --port $PORT",
     "build": "npm run clean-install && CI=false react-scripts build --verbose",
     "compile:scss": "sass src/assets/scss/light-bootstrap-dashboard-pro-react.scss src/assets/css/light-bootstrap-dashboard-pro-react.css",
