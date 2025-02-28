@@ -1,1 +1,1 @@
-web: npm install --force && serve -s build -l $PORT
+web: npm install --force && npm start
