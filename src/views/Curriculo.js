@@ -49,6 +49,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import locale from "antd/es/date-picker/locale/pt_BR";
 import Paragraph from "antd/es/typography/Paragraph";
+import CurriculoAICard from "components/currriculo-ai";
+import { SpaceContext } from "antd/es/space";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -381,6 +383,9 @@ const CriadorCurriculo = () => {
   const [cursos, setCursos] = useState([
     { nome: "", instituicao: "", ano: "" },
   ]);
+  const setPersonalData = (field, value) => {
+    setDadosCurriculo({ ...dadosCurriculo, [field]: value });
+  };
   const [habilidades, setHabilidades] = useState([]);
   const [dadosCurriculo, setDadosCurriculo] = useState({});
   const [carregando, setCarregando] = useState(false);
@@ -390,6 +395,13 @@ const CriadorCurriculo = () => {
     setProfissaoSelecionada(value);
     setHabilidades([]);
   };
+
+  useEffect(() => {
+    console.log({
+      dadosCurriculo,
+      txt: JSON.stringify({ ...dadosCurriculo, foto: null }),
+    });
+  }, [dadosCurriculo]);
 
   // Adicionar nova experiência
   const adicionarExperiencia = () => {
@@ -466,6 +478,7 @@ const CriadorCurriculo = () => {
         const values = await form.validateFields();
         setDadosCurriculo({
           ...values,
+          ...dadosCurriculo,
           experiencias,
           cursos,
           habilidades,
@@ -638,6 +651,7 @@ const CriadorCurriculo = () => {
               <Input
                 placeholder="Ex: João da Silva"
                 prefix={<UserOutlined />}
+                onChange={(e) => setPersonalData("nome", e.target.value)}
               />
             </Form.Item>
 
@@ -651,6 +665,9 @@ const CriadorCurriculo = () => {
                   <Input
                     placeholder="Ex: (27) 99999-9999"
                     prefix={<PhoneOutlined />}
+                    onChange={(e) =>
+                      setPersonalData("telefone", e.target.value)
+                    }
                   />
                 </Form.Item>
               </Col>
@@ -659,6 +676,7 @@ const CriadorCurriculo = () => {
                   <Input
                     placeholder="Ex: joao@email.com"
                     prefix={<MailOutlined />}
+                    onChannge={(e) => setPersonalData("email", e.target.value)}
                   />
                 </Form.Item>
               </Col>
@@ -672,6 +690,7 @@ const CriadorCurriculo = () => {
               <Input
                 placeholder="Ex: Rua das Flores, 123, Bairro - Cidade/UF"
                 prefix={<HomeOutlined />}
+                onChange={(e) => setPersonalData("endereco", e.target.value)}
               />
             </Form.Item>
 
@@ -746,6 +765,7 @@ const CriadorCurriculo = () => {
               ]}
             >
               <TextArea
+                onChange={(e) => setPersonalData("objetivo", e.target.value)}
                 rows={3}
                 placeholder="Ex: Procuro oportunidade como Mecânico onde possa aplicar minha experiência em manutenção de veículos..."
               />
@@ -1026,6 +1046,11 @@ const CriadorCurriculo = () => {
       default:
         return null;
     }
+  };
+
+  const makeWithAi = (data) => {
+    setDadosCurriculo(data);
+    setMostrarPreview(true);
   };
 
   // Renderizar preview do currículo
@@ -1639,6 +1664,14 @@ const CriadorCurriculo = () => {
             </div>
           ) : (
             <div>
+              <div style={{ paddingBottom: 20 }}>
+                <CurriculoAICard
+                  setModeloSelecionado={setModeloSelecionado}
+                  modeloSelecionado={modeloSelecionado}
+                  setCurriculoData={makeWithAi}
+                  MODELOS_CURRICULO={MODELOS_CURRICULO}
+                />
+              </div>
               <Card bordered={false} style={{ marginBottom: 20 }}>
                 <Steps current={currentStep} responsive={true}>
                   <Step title="Dados Pessoais" icon={<UserOutlined />} />
@@ -1655,6 +1688,7 @@ const CriadorCurriculo = () => {
                 layout="vertical"
                 initialValues={{
                   modelo: "simples",
+                  ...dadosCurriculo,
                 }}
               >
                 {renderizarEtapa()}
