@@ -32,17 +32,49 @@ const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 const { Content } = Layout;
 
+// Função para calcular o total da venda com desconto
+const calcularTotal = (valor, desconto) => {
+  return +valor - +desconto;
+};
+
+// Colunas para a tabela de vendas
+export const columnsVendas = [
+  {
+    title: "Data",
+    dataIndex: "createdAt",
+    key: "createdAt",
+    render: (text) => toDateFormat(text, true),
+    sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
+  },
+  {
+    title: "Cliente",
+    dataIndex: "nome_cliente",
+    key: "nome_cliente",
+    render: (text) => (
+      <Space>
+        <UserOutlined />
+        {text}
+      </Space>
+    ),
+  },
+  {
+    title: "Total",
+    key: "totalComDesconto",
+    render: (_, record) => {
+      const total = calcularTotal(record.total, record.desconto);
+      return <Text strong>{toMoneyFormat(total)}</Text>;
+    },
+    sorter: (a, b) =>
+      calcularTotal(a.total, a.desconto) - calcularTotal(b.total, b.desconto),
+  },
+];
+
 function Vendas() {
   // Estados
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(moment().subtract(30, "days"));
   const [endDate, setEndDate] = useState(moment());
-
-  // Função para calcular o total da venda com desconto
-  const calcularTotal = (valor, desconto) => {
-    return +valor - +desconto;
-  };
 
   // Filtrar vendas por período
   const filtrarVendas = () => {
@@ -108,52 +140,6 @@ function Vendas() {
   useEffect(() => {
     getVendas(startDate, endDate);
   }, [startDate, endDate]);
-
-  // Colunas para a tabela de vendas
-  const columns = [
-    {
-      title: "Data",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      render: (text) => toDateFormat(text, true),
-      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
-    },
-    {
-      title: "Cliente",
-      dataIndex: "nome_cliente",
-      key: "nome_cliente",
-      render: (text) => (
-        <Space>
-          <UserOutlined />
-          {text}
-        </Space>
-      ),
-    },
-    {
-      title: "Valor",
-      dataIndex: "total",
-      key: "total",
-      render: (text) => toMoneyFormat(text),
-      sorter: (a, b) => a.total - b.total,
-    },
-    {
-      title: "Desconto",
-      dataIndex: "desconto",
-      key: "desconto",
-      render: (text) => toMoneyFormat(text),
-      sorter: (a, b) => a.desconto - b.desconto,
-    },
-    {
-      title: "Total",
-      key: "totalComDesconto",
-      render: (_, record) => {
-        const total = calcularTotal(record.total, record.desconto);
-        return <Text strong>{toMoneyFormat(total)}</Text>;
-      },
-      sorter: (a, b) =>
-        calcularTotal(a.total, a.desconto) - calcularTotal(b.total, b.desconto),
-    },
-  ];
 
   // Colunas para a tabela de totais por dia
   const dailyColumns = [
@@ -343,7 +329,7 @@ function Vendas() {
                   <Divider orientation="left">Lista de Vendas</Divider>
 
                   <Table
-                    columns={columns}
+                    columns={columnsVendas}
                     dataSource={vendas.map((venda) => ({
                       ...venda,
                       key: venda.id,

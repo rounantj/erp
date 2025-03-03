@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Card, Input, Button, Spin, message, Typography } from "antd";
+import { Card, Input, Button, Spin, message, Typography, Alert } from "antd";
 import {
   RobotOutlined,
   SendOutlined,
   FileTextOutlined,
   BulbOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import { makeCurriculum } from "helpers/curriculo.adapter";
 import { Radio, Space } from "antd/lib";
@@ -31,18 +32,28 @@ const CurriculoAICard = ({
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [errorMessage, setErrorMessage] = useState();
 
   const getCurriculoAi = async (input) => {
     try {
       const response = await makeCurriculum(input);
-      console.log({ response });
-      if (response.data) {
+      console.log({ iaQuery: response });
+      if (response.data && response?.data?.success != false) {
         message.success("Currículo gerado com sucesso!");
         setCurriculoData({ ...response.data, modelo: modeloSelecionado });
         setExpanded(false); // Recolhe o card após sucesso
+        setErrorMessage("");
+      } else {
+        setErrorMessage(response.data.message);
+        message.error(
+          "Erro ao gerar o currículo. Tente novamente. " + response.data.message
+        );
       }
     } catch (error) {
-      message.error("Erro ao gerar o currículo. Tente novamente.");
+      console.log({ error });
+      message.error(
+        "Erro ao gerar o currículo. Tente novamente. " + error.message
+      );
     } finally {
       setLoading(false);
     }
@@ -152,7 +163,77 @@ const CurriculoAICard = ({
             <Title level={4} style={{ margin: 0 }}>
               Entreviste o cliente, digite aqui e deixe o resto com Fofa-AI ✨
             </Title>
+            <Button
+              type="default"
+              icon={<CopyOutlined />}
+              size="large"
+              onClick={() => {
+                const textoModelo = `📄 *INFORMAÇÕES PARA SEU CURRÍCULO* 📄
+
+Olá! Para criar seu currículo, preciso que me envie:
+
+*1. DADOS PESSOAIS*
+- Nome completo
+- Telefone
+- Endereço
+
+*2. FORMAÇÃO*
+- Escolaridade (Ensino Médio, Técnico, etc.)
+- Nome da escola/instituição
+- Ano de conclusão
+
+*3. EXPERIÊNCIAS DE TRABALHO*
+- Empresas onde trabalhou
+- Cargos
+- Período
+- O que fazia no trabalho
+
+*4. CURSOS*
+- Cursos que fez
+- Onde fez
+- Ano
+
+*5. HABILIDADES*
+- O que você sabe fazer bem
+
+*6. OBJETIVO*
+- Que tipo de trabalho você busca
+
+Quanto mais informações você enviar, melhor ficará seu currículo!`;
+
+                navigator.clipboard
+                  .writeText(textoModelo)
+                  .then(() => {
+                    message.success(
+                      "Texto copiado para a área de transferência!"
+                    );
+                  })
+                  .catch((err) => {
+                    message.error("Erro ao copiar texto: " + err);
+                  });
+              }}
+              shape="round"
+              style={{
+                minWidth: "50px",
+                marginLeft: "10px",
+                background: "#f0f2f5",
+                border: "1px solid #d9d9d9",
+                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              Copiar Modelo
+            </Button>
           </div>
+          {errorMessage && (
+            <div style={{ marginBottom: 16 }}>
+              <Alert
+                message="Erro na criação do currículo"
+                description={errorMessage}
+                type="error"
+                showIcon
+              />
+            </div>
+          )}
 
           <div style={{ position: "relative" }}>
             <TextArea

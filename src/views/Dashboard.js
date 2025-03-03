@@ -7,17 +7,11 @@ import {
   Table,
   Skeleton,
   Typography,
-  Checkbox,
-  Button,
-  Tooltip,
   Divider,
   Badge,
   Space,
-  Modal,
-  Form,
-  Input,
-  message,
-  Empty,
+  Tag,
+  Tooltip,
   Progress,
 } from "antd";
 import {
@@ -26,11 +20,12 @@ import {
   ShoppingOutlined,
   DollarOutlined,
   PieChartOutlined,
-  EditOutlined,
-  DeleteOutlined,
   LineChartOutlined,
   BarChartOutlined,
-  PlusOutlined,
+  WalletOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
@@ -76,52 +71,35 @@ function Dashboard() {
     ],
   });
 
-  // State for tasks management
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Cliente BELTRANA ficou devendo R$ 2,00",
-      completed: false,
-    },
-    {
-      id: 2,
-      title:
-        "Ligar para fornecedor XXXXX para orçar cartolinas que estão acabando",
-      completed: true,
-    },
-    {
-      id: 3,
-      title: "Cliente BELTRANA ficou devendo R$ 2,00",
-      completed: false,
-    },
-    {
-      id: 4,
-      title:
-        "Ligar para fornecedor XXXXX para orçar cartolinas que estão acabando",
-      completed: true,
-    },
-    {
-      id: 5,
-      title: "Cliente BELTRANA ficou devendo R$ 2,00",
-      completed: false,
-    },
-  ]);
+  // Cash register data (caixa)
+  const [caixaData, setCaixaData] = useState({
+    id: 15,
+    company_id: 1,
+    fechado: true,
+    abertura_data: "2025-03-01T14:41:04.866Z",
+    fechamento_data: "2025-03-03T00:59:51.736Z",
+    aberto_por: 1,
+    fechado_por: 1,
+    updated_at: "2025-03-02T21:59:51.749Z",
+    deleted_at: null,
+    saldoInicial: 147.0,
+    saldoFinal: 143.0,
+    created_at: "2025-03-01T11:41:04.870Z",
+    diferenca: -0.3,
+  });
 
   const [loading, setLoading] = useState(false);
-  const [taskModalVisible, setTaskModalVisible] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  const [form] = Form.useForm();
 
   // Fetch dashboard data
   const getDataDash = async () => {
     setLoading(true);
     try {
-      const result = await getDashboard();
-      if (result.success) {
-        setDataDash(result.data);
+      const resultD = await getDashboard();
+      console.log({ resultD });
+      if (resultD.success) {
+        setDataDash(resultD.data);
       }
     } catch (error) {
-      message.error("Falha ao carregar dados do dashboard");
       console.error("Dashboard error:", error);
     } finally {
       setLoading(false);
@@ -130,77 +108,41 @@ function Dashboard() {
 
   useEffect(() => {
     getDataDash();
+    // In a real app, we would fetch caixa data here as well
   }, []);
 
-  // Task management functions
-  const showTaskModal = (task = null) => {
-    setEditingTask(task);
-    if (task) {
-      form.setFieldsValue({ title: task.title });
-    } else {
-      form.resetFields();
-    }
-    setTaskModalVisible(true);
-  };
-
-  const handleTaskModalOk = () => {
-    form.validateFields().then((values) => {
-      if (editingTask) {
-        // Update existing task
-        setTasks(
-          tasks.map((task) =>
-            task.id === editingTask.id ? { ...task, title: values.title } : task
-          )
-        );
-      } else {
-        // Add new task
-        const newTask = {
-          id: Date.now(),
-          title: values.title,
-          completed: false,
-        };
-        setTasks([...tasks, newTask]);
-      }
-      setTaskModalVisible(false);
-      form.resetFields();
+  // Format date functions
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
-  const handleTaskModalCancel = () => {
-    setTaskModalVisible(false);
-  };
-
-  const toggleTaskComplete = (taskId) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
-
-  const deleteTask = (taskId) => {
-    Modal.confirm({
-      title: "Tem certeza que deseja excluir esta tarefa?",
-      content: "Esta ação não pode ser desfeita.",
-      okText: "Sim",
-      okType: "danger",
-      cancelText: "Não",
-      onOk() {
-        setTasks(tasks.filter((task) => task.id !== taskId));
-      },
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  // Data transformations for charts
-  const dataPizza = () => {
-    const total = dataDash.totalProdutos + dataDash.totalServicos;
-    const pP = +((dataDash.totalProdutos * 100) / total).toFixed(2);
-    const pS = +((dataDash.totalServicos * 100) / total).toFixed(2);
+  // Calculate cash register operation duration
+  const calculateDuration = () => {
+    const start = new Date(caixaData.abertura_data);
+    const end = new Date(caixaData.fechamento_data);
+    const durationMs = end - start;
 
-    return {
-      labels: [`Produtos ${pP}%`, `Serviços ${pS}%`],
-      series: [pP, pS],
-    };
+    // Convert to hours and minutes
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h ${minutes}min`;
   };
 
   // Component for stats cards
@@ -231,30 +173,34 @@ function Dashboard() {
     const pS = +((dataDash.totalServicos * 100) / total).toFixed(2);
 
     return (
-      <div style={{ padding: "20px 0" }}>
-        <Row gutter={[0, 16]} justify="center">
-          <Col span={24} style={{ textAlign: "center" }}>
-            <Progress
-              type="circle"
-              percent={pP}
-              format={() => `${pP}%`}
-              strokeColor="#ff4d4f"
-              width={180}
-            />
-            <div style={{ marginTop: 8 }}>
-              <Badge color="#ff4d4f" text={<Text strong>Produtos</Text>} />
+      <div style={{ padding: "10px 0" }}>
+        <Row gutter={[16, 16]} justify="center">
+          <Col xs={24} md={12}>
+            <div style={{ textAlign: "center" }}>
+              <Progress
+                type="circle"
+                percent={pP}
+                format={() => `${pP}%`}
+                strokeColor="#ff4d4f"
+                width={120}
+              />
+              <div style={{ marginTop: 8 }}>
+                <Badge color="#ff4d4f" text={<Text strong>Produtos</Text>} />
+              </div>
             </div>
           </Col>
-          <Col span={24} style={{ textAlign: "center", marginTop: 16 }}>
-            <Progress
-              type="circle"
-              percent={pS}
-              format={() => `${pS}%`}
-              strokeColor="#1890ff"
-              width={180}
-            />
-            <div style={{ marginTop: 8 }}>
-              <Badge color="#1890ff" text={<Text strong>Serviços</Text>} />
+          <Col xs={24} md={12}>
+            <div style={{ textAlign: "center" }}>
+              <Progress
+                type="circle"
+                percent={pS}
+                format={() => `${pS}%`}
+                strokeColor="#1890ff"
+                width={120}
+              />
+              <div style={{ marginTop: 8 }}>
+                <Badge color="#1890ff" text={<Text strong>Serviços</Text>} />
+              </div>
             </div>
           </Col>
         </Row>
@@ -262,49 +208,7 @@ function Dashboard() {
     );
   };
 
-  // Task table columns
-  const taskColumns = [
-    {
-      title: "Concluído",
-      dataIndex: "completed",
-      key: "completed",
-      width: "80px",
-      render: (_, record) => (
-        <Checkbox
-          checked={record.completed}
-          onChange={() => toggleTaskComplete(record.id)}
-        />
-      ),
-    },
-    {
-      title: "Tarefa",
-      dataIndex: "title",
-      key: "title",
-      render: (text, record) => <Text delete={record.completed}>{text}</Text>,
-    },
-    {
-      title: "Ações",
-      key: "action",
-      width: "100px",
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => showTaskModal(record)}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => deleteTask(record.id)}
-          />
-        </Space>
-      ),
-    },
-  ];
-
-  // Monthly sales summary for bar chart alternative
+  // Monthly sales summary for bar chart
   const MonthlySalesVisual = () => {
     return (
       <div style={{ padding: "10px 0" }}>
@@ -318,7 +222,7 @@ function Dashboard() {
           const prdPercent = total > 0 ? (prdValue / total) * 100 : 0;
 
           return (
-            <div key={month} style={{ marginBottom: 24 }}>
+            <div key={month} style={{ marginBottom: 16 }}>
               <div
                 style={{
                   display: "flex",
@@ -337,24 +241,36 @@ function Dashboard() {
                 }}
               >
                 <div style={{ width: "100%", marginRight: 16 }}>
-                  <div style={{ display: "flex", height: 20 }}>
-                    <div
-                      style={{
-                        width: `${serPercent}%`,
-                        backgroundColor: "#1890ff",
-                        height: "100%",
-                        borderRadius: "4px 0 0 4px",
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: `${prdPercent}%`,
-                        backgroundColor: "#ff4d4f",
-                        height: "100%",
-                        borderRadius: "0 4px 4px 0",
-                      }}
-                    />
-                  </div>
+                  <Tooltip
+                    title={`Serviços: ${serPercent.toFixed(
+                      1
+                    )}%, Produtos: ${prdPercent.toFixed(1)}%`}
+                  >
+                    <div style={{ display: "flex", height: 20 }}>
+                      <div
+                        style={{
+                          width: `${serPercent}%`,
+                          backgroundColor: "#1890ff",
+                          height: "100%",
+                          borderRadius:
+                            serPercent > 0 && prdPercent > 0
+                              ? "4px 0 0 4px"
+                              : "4px",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: `${prdPercent}%`,
+                          backgroundColor: "#ff4d4f",
+                          height: "100%",
+                          borderRadius:
+                            serPercent > 0 && prdPercent > 0
+                              ? "0 4px 4px 0"
+                              : "4px",
+                        }}
+                      />
+                    </div>
+                  </Tooltip>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -374,6 +290,123 @@ function Dashboard() {
             </div>
           );
         })}
+      </div>
+    );
+  };
+
+  // Cash Register (Caixa) Summary
+  const CaixaSummary = () => {
+    // Calculate difference percentage
+    const diffPercentage = Math.abs(
+      (caixaData.diferenca / caixaData.saldoInicial) * 100
+    ).toFixed(2);
+
+    return (
+      <div style={{ padding: "10px" }}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Space direction="vertical" size="small" style={{ width: "100%" }}>
+              {/* Status */}
+              <div style={{ marginBottom: 16, textAlign: "center" }}>
+                {caixaData.fechado ? (
+                  <Tag
+                    icon={<CheckCircleOutlined />}
+                    color="success"
+                    style={{ padding: "4px 8px", fontSize: 16 }}
+                  >
+                    Caixa Fechado
+                  </Tag>
+                ) : (
+                  <Tag
+                    icon={<ClockCircleOutlined />}
+                    color="processing"
+                    style={{ padding: "4px 8px", fontSize: 16 }}
+                  >
+                    Caixa Aberto
+                  </Tag>
+                )}
+              </div>
+
+              {/* Main details */}
+              <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12}>
+                  <Card
+                    size="small"
+                    bordered={false}
+                    style={{ background: "#f6ffed" }}
+                  >
+                    <Statistic
+                      title="Saldo Inicial"
+                      value={toMoneyFormat(caixaData.saldoInicial)}
+                      valueStyle={{ color: "#52c41a" }}
+                      prefix={<DollarOutlined />}
+                    />
+                    <Text type="secondary">
+                      {formatDateTime(caixaData.abertura_data)}
+                    </Text>
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card
+                    size="small"
+                    bordered={false}
+                    style={{ background: "#f9f0ff" }}
+                  >
+                    <Statistic
+                      title="Saldo Final"
+                      value={toMoneyFormat(caixaData.saldoFinal)}
+                      valueStyle={{ color: "#722ed1" }}
+                      prefix={<DollarOutlined />}
+                    />
+                    <Text type="secondary">
+                      {formatDateTime(caixaData.fechamento_data)}
+                    </Text>
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* Difference stats */}
+              <Card
+                size="small"
+                bordered={false}
+                style={{
+                  background: caixaData.diferenca < 0 ? "#fff2f0" : "#f6ffed",
+                  marginTop: 16,
+                }}
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Statistic
+                      title="Diferença"
+                      value={caixaData.diferenca}
+                      precision={2}
+                      valueStyle={{
+                        color: caixaData.diferenca < 0 ? "#f5222d" : "#52c41a",
+                        fontSize: "1.5rem",
+                      }}
+                      prefix={
+                        caixaData.diferenca < 0 ? (
+                          <ExclamationCircleOutlined />
+                        ) : (
+                          <CheckCircleOutlined />
+                        )
+                      }
+                      suffix="R$"
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic
+                      title="Tempo de Operação"
+                      value={calculateDuration()}
+                      valueStyle={{ fontSize: "1.5rem" }}
+                      prefix={<ClockCircleOutlined />}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </Space>
+          </Col>
+        </Row>
       </div>
     );
   };
@@ -450,9 +483,11 @@ function Dashboard() {
         </Col>
       </Row>
 
-      {/* Charts Section */}
+      {/* Main Content */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        {/* Left Column */}
         <Col xs={24} lg={16}>
+          {/* Daily Sales Chart */}
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 6 }} />
@@ -460,8 +495,9 @@ function Dashboard() {
           ) : (
             <Card
               title="Vendas por dia"
-              extra={<LineChartOutlined />}
+              extra={<LineChartOutlined style={{ fontSize: 18 }} />}
               bordered={false}
+              style={{ marginBottom: 16 }}
             >
               <div className="ct-chart" id="chartHours">
                 <ChartistGraph
@@ -513,27 +549,8 @@ function Dashboard() {
               </div>
             </Card>
           )}
-        </Col>
 
-        <Col xs={24} lg={8}>
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </Card>
-          ) : (
-            <Card
-              title="Divisão de Receita"
-              extra={<PieChartOutlined />}
-              bordered={false}
-            >
-              <PieChartVisual />
-            </Card>
-          )}
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} lg={12}>
+          {/* Monthly Sales Chart */}
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 6 }} />
@@ -541,7 +558,7 @@ function Dashboard() {
           ) : (
             <Card
               title="Vendas por Mês em 2024"
-              extra={<BarChartOutlined />}
+              extra={<BarChartOutlined style={{ fontSize: 18 }} />}
               bordered={false}
             >
               <MonthlySalesVisual />
@@ -549,64 +566,44 @@ function Dashboard() {
           )}
         </Col>
 
-        <Col xs={24} lg={12}>
+        {/* Right Column */}
+        <Col xs={24} lg={8}>
+          {/* Revenue Division Chart */}
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 6 }} />
             </Card>
           ) : (
             <Card
-              style={{ filter: "blur(5px)" }}
-              title="Recados e Tarefas"
-              extra={
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => showTaskModal()}
-                >
-                  Nova Tarefa
-                </Button>
+              title="Divisão de Receita"
+              extra={<PieChartOutlined style={{ fontSize: 18 }} />}
+              bordered={false}
+              style={{ marginBottom: 16 }}
+            >
+              <PieChartVisual />
+            </Card>
+          )}
+
+          {/* Cash Register Card - Replacing Recados e Tarefas */}
+          {loading ? (
+            <Card>
+              <Skeleton active paragraph={{ rows: 6 }} />
+            </Card>
+          ) : (
+            <Card
+              title={
+                <Space>
+                  <WalletOutlined style={{ fontSize: 18 }} />
+                  <span>Resumo do Caixa</span>
+                </Space>
               }
               bordered={false}
             >
-              {tasks.length > 0 ? (
-                <Table
-                  dataSource={tasks}
-                  columns={taskColumns}
-                  rowKey="id"
-                  pagination={false}
-                  size="middle"
-                  scroll={{ y: 300 }}
-                />
-              ) : (
-                <Empty description="Sem tarefas no momento" />
-              )}
+              <CaixaSummary />
             </Card>
           )}
         </Col>
       </Row>
-
-      {/* Task Modal */}
-      <Modal
-        title={editingTask ? "Editar Tarefa" : "Adicionar Nova Tarefa"}
-        open={taskModalVisible}
-        onOk={handleTaskModalOk}
-        onCancel={handleTaskModalCancel}
-        okText={editingTask ? "Atualizar" : "Adicionar"}
-        cancelText="Cancelar"
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="title"
-            label="Descrição da Tarefa"
-            rules={[
-              { required: true, message: "Por favor, descreva a tarefa" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 }

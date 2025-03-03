@@ -48,6 +48,9 @@ import { getCaixaEmAberto } from "helpers/caixa.adapter";
 import { vendaFinaliza } from "helpers/caixa.adapter";
 import { getResumoVendas } from "helpers/caixa.adapter";
 import { fechaCaixa } from "helpers/caixa.adapter";
+import { columnsVendas } from "./Vendas";
+import { getSells } from "helpers/api-integrator";
+import moment from "moment";
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -56,6 +59,7 @@ const { Text, Title } = Typography;
 const { Search } = Input;
 
 const Caixa = () => {
+  const [vendas, setVendas] = useState([]);
   const { user } = useContext(UserContext);
   const [caixaAberto, setCaixaAberto] = useState(false);
   const [caixa, setCaixa] = useState();
@@ -86,7 +90,28 @@ const Caixa = () => {
   const [troco, setTroco] = useState(0);
   const [valorRecebido, setValorRecebido] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [loadingVendas, setLoadingVendas] = useState(false);
 
+  const getVendas = async () => {
+    try {
+      setLoadingVendas(true);
+      const formattedStart = moment().format("YYYY-MM-DD 00:00:00");
+      const formattedEnd = moment().format("YYYY-MM-DD 23:59:59");
+      const items = await getSells(formattedStart, formattedEnd);
+
+      if (items.success) {
+        setVendas(
+          items.data.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao buscar vendas:", error);
+    } finally {
+      setLoadingVendas(false);
+    }
+  };
   // Refs
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -368,7 +393,7 @@ const Caixa = () => {
 
       setHistoricoVendas((prev) => [...prev, novaVenda]);
       await getResumoCaixa(caixa?.id);
-
+      await getVendas();
       // Show success modal
       setSuccessModal(true);
 
@@ -488,6 +513,7 @@ const Caixa = () => {
       setHoraAbertura(dayjs(cx.createdAt).format("DD/MM/YYYY HH:mm"));
       setValorAbertura(cx.saldoInicial);
       await getResumoCaixa(cx.id);
+      await getVendas();
     } catch (error) {
       notification.error({
         message: "Erro",
@@ -501,6 +527,7 @@ const Caixa = () => {
   useEffect(() => {
     getProductsList();
     caixaEmAberto();
+    getVendas();
   }, []);
 
   const abrirCaixa = async () => {
@@ -837,7 +864,7 @@ const Caixa = () => {
                       }
                     >
                       <Row gutter={16}>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={5}>
                           <Statistic
                             title="Total em Dinheiro"
                             value={resumoVendas.dinheiro}
@@ -846,7 +873,7 @@ const Caixa = () => {
                             prefix="R$"
                           />
                         </Col>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={4}>
                           <Statistic
                             title="Total em PIX"
                             value={resumoVendas.pix}
@@ -855,7 +882,7 @@ const Caixa = () => {
                             prefix="R$"
                           />
                         </Col>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={5}>
                           <Statistic
                             title="Total em Crédito"
                             value={resumoVendas.credito}
@@ -864,7 +891,7 @@ const Caixa = () => {
                             prefix="R$"
                           />
                         </Col>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={5}>
                           <Statistic
                             title="Total em Débito"
                             value={resumoVendas.debito}
@@ -873,10 +900,7 @@ const Caixa = () => {
                             prefix="R$"
                           />
                         </Col>
-                      </Row>
-                      <Divider />
-                      <Row>
-                        <Col span={24}>
+                        <Col xs={24} sm={12} md={5}>
                           <Statistic
                             title="Total Geral"
                             value={resumoVendas.total}
@@ -889,6 +913,35 @@ const Caixa = () => {
                     </Card>
                   </Col>
                 )}
+              </Row>
+              <Row>
+                <Col span={24}>
+                  <Card
+                    title={
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <DollarOutlined
+                          style={{ marginRight: 8, color: "#1890ff" }}
+                        />
+                        <span>Vendas do Dia</span>
+                      </div>
+                    }
+                  >
+                    <Table
+                      columns={columnsVendas}
+                      dataSource={vendas.map((venda) => ({
+                        ...venda,
+                        key: venda.id,
+                      }))}
+                      pagination={{ pageSize: 10 }}
+                      bordered
+                      loading={loadingVendas}
+                      size="middle"
+                      locale={{
+                        emptyText: "Sem dados para o período selecionado",
+                      }}
+                    />
+                  </Card>
+                </Col>
               </Row>
             </Content>
 

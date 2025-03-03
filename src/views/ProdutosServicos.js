@@ -260,7 +260,7 @@ const ProductAndServiceTable = () => {
       render: (text) => (
         <Tooltip title={text}>
           <Text ellipsis={{ tooltip: text }} style={{ maxWidth: 250 }}>
-            {text}
+            {text.toUpperCase()}
           </Text>
         </Tooltip>
       ),
@@ -281,6 +281,7 @@ const ProductAndServiceTable = () => {
       title: "EAN",
       dataIndex: "ean",
       key: "ean",
+      sorter: (a, b) => a.ean - b.ean,
       render: (text) => (
         <Text type="secondary">
           <BarcodeOutlined style={{ marginRight: 5 }} />

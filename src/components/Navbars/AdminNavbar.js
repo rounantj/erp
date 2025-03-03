@@ -1,20 +1,3 @@
-/*!
-
-=========================================================
-* Light Bootstrap Dashboard React - v2.0.1
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/light-bootstrap-dashboard-react
-* Copyright 2022 Reboot Soluções (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/light-bootstrap-dashboard-react/blob/master/LICENSE.md)
-
-* Coded by Reboot Soluções
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
 import React, { useContext } from "react";
 import { useLocation } from "react-router-dom";
 import { Layout, Button, Menu, Dropdown, Space } from "antd";
@@ -61,12 +44,16 @@ function AdminNavbar() {
   };
 
   // Dropdown items para notificações
-  const notificationItems = [
-    { key: "1", label: "Notification 1" },
-    { key: "2", label: "Notification 2" },
-    { key: "3", label: "Notification 3" },
-    { key: "4", label: "Notification 4" },
-    { key: "5", label: "Another notification" },
+  const notificationItems = [];
+
+  // Menu items para o dropdown do usuário
+  const userMenuItems = [
+    {
+      key: "1",
+      label: "Sair",
+      icon: <LogoutOutlined />,
+      onClick: logout,
+    },
   ];
 
   return (
@@ -75,9 +62,12 @@ function AdminNavbar() {
         background: "#fff",
         padding: "0 20px",
         boxShadow: "0 1px 4px rgba(0,21,41,.08)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
       }}
     >
-      <div className="d-flex justify-content-center align-items-center ml-2 ml-lg-0">
+      <div className="d-flex align-items-center">
         <Button
           type="default"
           className="d-lg-none btn-fill d-flex justify-content-center align-items-center rounded-circle p-2"
@@ -89,7 +79,6 @@ function AdminNavbar() {
         <a
           href="#home"
           onClick={(e) => e.preventDefault()}
-          className="mr-2"
           style={{
             fontSize: "18px",
             fontWeight: "bold",
@@ -101,20 +90,10 @@ function AdminNavbar() {
         </a>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        {/* Menús ocultos (mantidos como no original) */}
-        <div style={{ display: "none" }}>
+      {/* Área de notificações (opcional) */}
+      {notificationItems.length > 0 ? (
+        <div className="d-none d-md-flex">
           <Space size="large">
-            <Button type="text" icon={<UserOutlined />}>
-              <span className="d-lg-none ml-1">Dashboard</span>
-            </Button>
-
             <Dropdown
               menu={{ items: notificationItems }}
               placement="bottomRight"
@@ -125,43 +104,30 @@ function AdminNavbar() {
                 <span className="d-lg-none ml-1">Notification</span>
               </Button>
             </Dropdown>
-
-            <Button type="text">
-              <i className="nc-icon nc-zoom-split"></i>
-              <span className="d-lg-block"> Search</span>
-            </Button>
           </Space>
         </div>
+      ) : (
+        <></>
+      )}
 
-        {/* User info e logout */}
-        <div
-          style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}
-        >
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: "1",
-                  label: "Sair",
-                  icon: <LogoutOutlined />,
-                  onClick: logout,
-                },
-              ],
-            }}
-            onClick={logout}
-            placement="bottomRight"
-            style={{ display: "none" }}
-          >
-            <a onClick={(e) => e.preventDefault()}>
+      {/* Área do usuário - agora visível */}
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {user && (
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <a
+              onClick={(e) => e.preventDefault()}
+              style={{ cursor: "pointer" }}
+            >
               <Space>
-                <span style={{ marginRight: "15px" }}>
+                <UserOutlined style={{ fontSize: "16px" }} />
+                <span>
                   {user?.user.email} | <b>{user?.user.role ?? "Admin"}</b>
                 </span>
                 <DownOutlined />
               </Space>
             </a>
           </Dropdown>
-        </div>
+        )}
       </div>
     </Header>
   );
