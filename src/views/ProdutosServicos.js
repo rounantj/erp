@@ -292,7 +292,7 @@ const ProductAndServiceTable = () => {
   ];
 
   // Add actions column if user is admin
-  if (user?.user?.role === "admin") {
+  if (user?.user?.role === "admin" || user?.user?.role === "atendente") {
     columns.push({
       title: "Ações",
       key: "actions",
