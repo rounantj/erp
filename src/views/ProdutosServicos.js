@@ -336,7 +336,8 @@ const ProductAndServiceTable = () => {
         <Card
           title={<Title level={4}>Produtos e Serviços</Title>}
           extra={
-            user?.user?.role === "admin" && [
+            (user?.user?.role === "admin" ||
+              user?.user?.role === "atendente") && [
               <Button
                 key="add"
                 type="primary"
