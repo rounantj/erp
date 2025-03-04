@@ -533,120 +533,114 @@ const Caixa = () => {
   const abrirCaixa = async () => {
     console.log({ abrirCaixa: true });
 
-    // Verificamos se estamos no ambiente do navegador
-    if (typeof window === "undefined") {
-      console.error("Não é possível abrir modal no ambiente do servidor");
-      return;
-    }
+    // Usando uma div raiz para garantir que o modal seja renderizado corretamente
+    const modalRoot = document.createElement("div");
+    modalRoot.id = "modal-root-" + Date.now();
+    document.body.appendChild(modalRoot);
 
-    let valorAberturaTemp = 0;
+    // Criando um componente de modal personalizado
+    const AbrirCaixaModal = ({ onClose, onConfirm }) => {
+      const [valorAbertura, setValorAbertura] = useState(0);
 
-    try {
-      // Importação dinâmica para garantir que seja carregado apenas no cliente
-      const { Modal, InputNumber } = await import("antd");
-      const { DollarOutlined, CheckCircleOutlined } = await import(
-        "@ant-design/icons"
-      );
+      return ReactDOM.createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              minWidth: "300px",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <span
+                style={{
+                  color: "green",
+                  fontSize: "20px",
+                  marginRight: "8px",
+                }}
+              >
+                $
+              </span>
+              <h3 style={{ margin: 0 }}>Abrir Caixa</h3>
+            </div>
 
-      Modal.confirm({
-        title: "Abrir Caixa",
-        icon: <DollarOutlined style={{ color: "green" }} />,
-        centered: true, // Centraliza o modal, melhorando a compatibilidade
-        maskClosable: false, // Impede fechamento acidental
-        content: (
-          <div style={{ padding: "20px 0" }}>
-            <p>Informe o valor inicial em caixa:</p>
-            <InputNumber
-              style={{ width: "100%" }}
-              prefix="R$"
-              placeholder="Valor inicial em caixa"
-              onChange={(value) => (valorAberturaTemp = value || 0)}
-              min={0}
-              precision={2}
-              step={10}
-              autoFocus // Foca automaticamente no input
-            />
+            <div style={{ padding: "20px 0" }}>
+              <p>Informe o valor inicial em caixa:</p>
+              <InputNumber
+                style={{ width: "100%" }}
+                prefix="R$"
+                placeholder="Valor inicial em caixa"
+                onChange={(value) => setValorAbertura(value || 0)}
+                min={0}
+                precision={2}
+                step={10}
+                autoFocus
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: "16px",
+              }}
+            >
+              <Button onClick={onClose} style={{ marginRight: "8px" }}>
+                Cancelar
+              </Button>
+              <Button type="primary" onClick={() => onConfirm(valorAbertura)}>
+                OK
+              </Button>
+            </div>
           </div>
-        ),
-        onOk: async () => {
-          try {
-            setLoading(true);
-            const userId = user?.user?.id || 1;
-
-            console.log(
-              "Iniciando abertura de caixa com valor:",
-              valorAberturaTemp
-            );
-            const resultOpenCaixa = await openCaixa(userId, valorAberturaTemp);
-            console.log("Resultado da abertura:", resultOpenCaixa);
-
-            if (resultOpenCaixa && resultOpenCaixa.data) {
-              setCaixa(resultOpenCaixa.data);
-              setCaixaAberto(true);
-              setHoraAbertura(dayjs().format("DD/MM/YYYY HH:mm"));
-
-              // Reiniciar os dados do caixa
-              setHistoricoVendas([]);
-              setResumoVendas({
-                dinheiro: 0,
-                pix: 0,
-                credito: 0,
-                debito: 0,
-                total: 0,
-              });
-
-              notification.success({
-                message: "Caixa aberto com sucesso!",
-                description: `Valor inicial: R$ ${money(valorAberturaTemp)}`,
-                icon: <CheckCircleOutlined style={{ color: "green" }} />,
-              });
-
-              // Focus on barcode input after opening caixa
-              setTimeout(() => {
-                if (barcodeInputRef.current) {
-                  barcodeInputRef.current.focus();
-                }
-              }, 500);
-            } else {
-              throw new Error("Resposta inválida ao abrir caixa");
-            }
-          } catch (error) {
-            console.error("Erro ao abrir caixa:", error);
-            notification.error({
-              message: "Erro ao abrir caixa",
-              description: error.message || "Tente novamente mais tarde.",
-            });
-          } finally {
-            setLoading(false);
-          }
-        },
-        onCancel: () => {
-          console.log("Operação de abertura de caixa cancelada pelo usuário");
-        },
-      });
-
-      console.log("Modal renderizado com sucesso");
-    } catch (error) {
-      console.error("Erro ao renderizar modal:", error);
-
-      // Fallback em caso de erro com o modal
-      const confirmar = window.confirm(
-        "Informe o valor inicial em caixa (R$):"
+        </div>,
+        modalRoot
       );
-      if (confirmar) {
-        const valorDigitado = prompt("Valor inicial:", "0");
-        const valorAbertura = parseFloat(valorDigitado) || 0;
+    };
 
-        try {
-          setLoading(true);
-          const userId = user?.user?.id || 1;
-          const resultOpenCaixa = await openCaixa(userId, valorAbertura);
+    // Renderizando o modal manualmente
+    const modalContainer = document.createElement("div");
+    document.body.appendChild(modalContainer);
 
+    const handleConfirm = async (valorAberturaTemp) => {
+      try {
+        setLoading(true);
+        const userId = user?.user?.id || 1;
+
+        console.log(
+          "Iniciando abertura de caixa com valor:",
+          valorAberturaTemp
+        );
+        const resultOpenCaixa = await openCaixa(userId, valorAberturaTemp);
+        console.log("Resultado da abertura:", resultOpenCaixa);
+
+        if (resultOpenCaixa && resultOpenCaixa.data) {
           setCaixa(resultOpenCaixa.data);
           setCaixaAberto(true);
           setHoraAbertura(dayjs().format("DD/MM/YYYY HH:mm"));
 
-          // Reiniciar dados
+          // Reiniciar os dados do caixa
           setHistoricoVendas([]);
           setResumoVendas({
             dinheiro: 0,
@@ -656,26 +650,67 @@ const Caixa = () => {
             total: 0,
           });
 
-          alert(
-            `Caixa aberto com sucesso! Valor inicial: R$ ${valorAbertura.toFixed(
-              2
-            )}`
-          );
+          notification.success({
+            message: "Caixa aberto com sucesso!",
+            description: `Valor inicial: R$ ${money(valorAberturaTemp)}`,
+            icon: <CheckCircleOutlined style={{ color: "green" }} />,
+          });
 
+          // Focus on barcode input after opening caixa
           setTimeout(() => {
             if (barcodeInputRef.current) {
               barcodeInputRef.current.focus();
             }
           }, 500);
-        } catch (error) {
-          console.error("Erro ao abrir caixa (fallback):", error);
-          alert(
-            "Erro ao abrir caixa: " +
-              (error.message || "Tente novamente mais tarde.")
-          );
-        } finally {
-          setLoading(false);
+        } else {
+          throw new Error("Resposta inválida ao abrir caixa");
         }
+      } catch (error) {
+        console.error("Erro ao abrir caixa:", error);
+        notification.error({
+          message: "Erro ao abrir caixa",
+          description: error.message || "Tente novamente mais tarde.",
+        });
+      } finally {
+        setLoading(false);
+        // Remover o modal do DOM
+        if (modalContainer && document.body.contains(modalContainer)) {
+          document.body.removeChild(modalContainer);
+        }
+        if (modalRoot && document.body.contains(modalRoot)) {
+          document.body.removeChild(modalRoot);
+        }
+      }
+    };
+
+    const handleClose = () => {
+      console.log("Operação de abertura de caixa cancelada pelo usuário");
+      // Remover o modal do DOM
+      if (modalContainer && document.body.contains(modalContainer)) {
+        document.body.removeChild(modalContainer);
+      }
+      if (modalRoot && document.body.contains(modalRoot)) {
+        document.body.removeChild(modalRoot);
+      }
+    };
+
+    try {
+      ReactDOM.render(
+        <AbrirCaixaModal onClose={handleClose} onConfirm={handleConfirm} />,
+        modalContainer
+      );
+      console.log("Modal renderizado com sucesso (abordagem alternativa)");
+    } catch (error) {
+      console.error("Erro ao renderizar modal (abordagem alternativa):", error);
+
+      // Fallback simples usando prompt nativo
+      const valorDigitado = prompt(
+        "Informe o valor inicial em caixa (R$):",
+        "0"
+      );
+      if (valorDigitado !== null) {
+        const valorAbertura = parseFloat(valorDigitado) || 0;
+        handleConfirm(valorAbertura);
       }
     }
   };
