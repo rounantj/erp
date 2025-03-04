@@ -383,7 +383,11 @@ const ProductAndServiceTable = () => {
               prefix={<SearchOutlined />}
               allowClear
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                // Selecionar todo o texto após cada alteração
+                e.target.select();
+              }}
               style={{ width: 300 }}
               ref={searchInput}
             />

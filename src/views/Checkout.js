@@ -531,6 +531,7 @@ const Caixa = () => {
   }, []);
 
   const abrirCaixa = async () => {
+    console.log({ abrirCaixa: true });
     let valorAberturaTemp = 0;
 
     Modal.confirm({
