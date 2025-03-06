@@ -156,20 +156,7 @@ const Caixa = () => {
   }, [venda]);
 
   const removeItem = (item) => {
-    confirm({
-      title: (
-        <div>
-          <p>
-            Deseja realmente remover o item:{" "}
-            <strong>{item.descricao.toUpperCase()}</strong>?
-          </p>
-        </div>
-      ),
-      icon: <ExclamationCircleOutlined />,
-      onOk() {
-        setVenda((prev) => prev.filter((p) => p.id !== item.id));
-      },
-    });
+    setVenda((prev) => prev.filter((p) => p.id !== item.id));
   };
 
   const gerarCupom = async () => {
