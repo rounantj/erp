@@ -377,6 +377,34 @@ const CriadorCurriculo = () => {
   const [mostrarPreview, setMostrarPreview] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("simples");
   const [profissaoSelecionada, setProfissaoSelecionada] = useState(null);
+
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Substitua a função reiniciarCriacao pelo código abaixo
+  const reiniciarCriacao = () => {
+    setModalVisible(true);
+  };
+
+  // Adicione estas funções para manipular o modal
+  const handleConfirmReset = () => {
+    // Resetar todos os dados
+    form.resetFields();
+    setExperiencias([{ empresa: "", cargo: "", periodo: "", descricao: "" }]);
+    setCursos([{ nome: "", instituicao: "", ano: "" }]);
+    setHabilidades([]);
+    setFotoCandidata(null);
+    setProfissaoSelecionada(null);
+    setCurrentStep(0);
+    setMostrarPreview(false);
+
+    // Fechar o modal
+    setModalVisible(false);
+  };
+
+  const handleCancelReset = () => {
+    setModalVisible(false);
+  };
+
   const [experiencias, setExperiencias] = useState([
     { empresa: "", cargo: "", periodo: "", descricao: "" },
   ]);
@@ -611,30 +639,6 @@ const CriadorCurriculo = () => {
           message.error("Erro ao gerar o PDF. Tente novamente.");
         });
     }, 500);
-  };
-
-  // Reiniciar criação de currículo
-  const reiniciarCriacao = () => {
-    Modal.confirm({
-      title: "Reiniciar Criação",
-      icon: <WarningOutlined style={{ color: "#faad14" }} />,
-      content:
-        "Tem certeza que deseja reiniciar a criação do currículo? Todos os dados serão perdidos.",
-      okText: "Sim",
-      cancelText: "Não",
-      onOk() {
-        form.resetFields();
-        setExperiencias([
-          { empresa: "", cargo: "", periodo: "", descricao: "" },
-        ]);
-        setCursos([{ nome: "", instituicao: "", ano: "" }]);
-        setHabilidades([]);
-        setFotoCandidata(null);
-        setProfissaoSelecionada(null);
-        setCurrentStep(0);
-        setMostrarPreview(false);
-      },
-    });
   };
 
   // Renderizar o conteúdo de cada etapa
@@ -1751,6 +1755,30 @@ const CriadorCurriculo = () => {
           <Spin size="large" tip="Gerando PDF..." />
         </div>
       )}
+      <Modal
+        open={modalVisible}
+        title="Reiniciar Criação"
+        footer={null}
+        onCancel={handleCancelReset}
+        centered
+      >
+        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+          <WarningOutlined
+            style={{ color: "#faad14", fontSize: "24px", marginBottom: "12px" }}
+          />
+          <p>
+            Tem certeza que deseja reiniciar a criação do currículo? Todos os
+            dados serão perdidos.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+          <Button onClick={handleCancelReset}>Não</Button>
+          <Button type="primary" danger onClick={handleConfirmReset}>
+            Sim
+          </Button>
+        </div>
+      </Modal>
     </Layout>
   );
 };
