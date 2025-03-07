@@ -393,6 +393,7 @@ const Caixa = () => {
           return {
             id: item.id,
             descricao: item.descricao,
+            categoria: item.categoria,
             quantidade: item.qtd,
             desconto: 0,
           };
