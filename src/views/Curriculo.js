@@ -468,27 +468,27 @@ const CriadorCurriculo = () => {
   // Avançar para próxima etapa
   const avancarEtapa = async () => {
     try {
-      // Validar formulário atual
-      await form.validateFields();
+      const values = await form.validateFields();
+      setDadosCurriculo({
+        ...dadosCurriculo,
+        ...values,
+      });
 
       if (currentStep < 3) {
         setCurrentStep(currentStep + 1);
       } else {
-        // Gerar preview
-        const values = await form.validateFields();
-        setDadosCurriculo({
-          ...values,
-          ...dadosCurriculo,
+        // Adicionar outros dados e mostrar preview
+        setDadosCurriculo((prevState) => ({
+          ...prevState,
           experiencias,
           cursos,
           habilidades,
           foto: fotoCandidata,
-        });
+        }));
         setMostrarPreview(true);
       }
     } catch (error) {
-      console.log("Erro de validação:", error);
-      message.error("Por favor, preencha todos os campos obrigatórios.");
+      // tratamento de erro
     }
   };
 
@@ -870,7 +870,10 @@ const CriadorCurriculo = () => {
               label="Escolaridade"
               rules={[{ required: true, message: "Selecione a escolaridade" }]}
             >
-              <Select placeholder="Selecione sua escolaridade">
+              <Select
+                placeholder="Selecione sua escolaridade"
+                onChange={(value) => setPersonalData("escolaridade", value)}
+              >
                 {ESCOLARIDADE.map((nivel) => (
                   <Option key={nivel} value={nivel}>
                     {nivel}

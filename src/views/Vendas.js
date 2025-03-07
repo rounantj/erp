@@ -73,8 +73,8 @@ function Vendas() {
   // Estados
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [startDate, setStartDate] = useState(moment().subtract(30, "days"));
-  const [endDate, setEndDate] = useState(moment());
+  const [startDate, setStartDate] = useState(moment().subtract(1, "month"));
+  const [endDate, setEndDate] = useState(moment().add(10, "day"));
 
   // Filtrar vendas por período
   const filtrarVendas = () => {
@@ -123,8 +123,11 @@ function Vendas() {
   const getVendas = async (start, end) => {
     try {
       setLoading(true);
-      const formattedStart = start.format("YYYY-MM-DD");
-      const formattedEnd = end.format("YYYY-MM-DD");
+      // Garante que estamos usando o início do dia para a data de início
+      // e o final do dia para a data de fim
+      const formattedStart = start.startOf("day").format("YYYY-MM-DD");
+      const formattedEnd = end.endOf("day").format("YYYY-MM-DD");
+
       const items = await getSells(formattedStart, formattedEnd);
 
       if (items.success) {
@@ -198,6 +201,26 @@ function Vendas() {
                       value={[startDate, endDate]}
                       onChange={handleDateChange}
                       format="DD/MM/YYYY"
+                      ranges={{
+                        Hoje: [moment().startOf("day"), moment().endOf("day")],
+                        "Últimos 7 dias": [
+                          moment().subtract(6, "days").startOf("day"),
+                          moment().endOf("day"),
+                        ],
+                        "Últimos 30 dias": [
+                          moment().subtract(29, "days").startOf("day"),
+                          moment().endOf("day"),
+                        ],
+                        "Este mês": [
+                          moment().startOf("month"),
+                          moment().endOf("month"),
+                        ],
+                        "Mês passado": [
+                          moment().subtract(1, "month").startOf("month"),
+                          moment().subtract(1, "month").endOf("month"),
+                        ],
+                      }}
+                      style={{ width: 300 }}
                     />
                   </Space>
                 </Col>
