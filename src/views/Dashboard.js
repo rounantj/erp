@@ -455,7 +455,7 @@ function Dashboard() {
           )}
         </Col>
       </Row>
-
+      {/* 
       {loading ? (
         <Card>
           <Skeleton active paragraph={{ rows: 6 }} />
@@ -467,7 +467,7 @@ function Dashboard() {
             moment().endOf("month"),
           ]}
         />
-      )}
+      )} */}
     </div>
   );
 }
