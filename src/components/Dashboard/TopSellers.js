@@ -61,6 +61,30 @@ const safeMoneyFormat = (value) => {
 };
 
 const TopSellingItemsDashboard = ({ defaultDateRange = null }) => {
+  // Calculando o período padrão (mês atual) com segurança
+  const startOfMonth = moment().startOf("month");
+  const endOfMonth = moment().endOf("month");
+
+  // Estado para o filtro de datas com verificação de segurança
+  const [dateRange, setDateRange] = useState(() => {
+    try {
+      // Verificar se defaultDateRange é válido
+      if (
+        Array.isArray(defaultDateRange) &&
+        defaultDateRange.length === 2 &&
+        moment.isMoment(defaultDateRange[0]) &&
+        moment.isMoment(defaultDateRange[1])
+      ) {
+        return defaultDateRange;
+      }
+      // Caso contrário, usar o mês atual
+      return [startOfMonth, endOfMonth];
+    } catch (e) {
+      console.warn("Erro ao processar dateRange:", e);
+      return [startOfMonth, endOfMonth];
+    }
+  });
+
   // Estados
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,15 +92,6 @@ const TopSellingItemsDashboard = ({ defaultDateRange = null }) => {
   const [selectedTab, setSelectedTab] = useState("produtos");
   const [selectedRanking, setSelectedRanking] = useState("quantidade");
   const [viewMode, setViewMode] = useState("chart"); // 'chart' ou 'table'
-
-  // Calculando o período padrão (mês atual)
-  const startOfMonth = moment().startOf("month");
-  const endOfMonth = moment().endOf("month");
-
-  // Estado para o filtro de datas
-  const [dateRange, setDateRange] = useState(
-    defaultDateRange || [startOfMonth, endOfMonth]
-  );
 
   // Detecta se é dispositivo móvel ou tela pequena (4:3)
   const [screenSize, setScreenSize] = useState({
