@@ -5,7 +5,6 @@ import {
   Button,
   Table,
   Input,
-  Select,
   List,
   notification,
   Modal,
@@ -25,8 +24,6 @@ import {
   Tooltip,
   Result,
   Alert,
-  Spin,
-  Popconfirm,
   Tabs,
 } from "antd";
 import {
@@ -369,52 +366,6 @@ const Caixa = () => {
     }
   }, [showPaymentModal]);
 
-  // Buscar vendas do dia atual
-  const getVendas = async () => {
-    try {
-      setLoadingVendas(true);
-      const formattedStart = moment().format("YYYY-MM-DD 00:00:00");
-      const formattedEnd = moment().format("YYYY-MM-DD 23:59:59");
-      const items = await getSells(formattedStart, formattedEnd);
-
-      if (items.success) {
-        setVendas(
-          items.data.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Erro ao buscar vendas:", error);
-    } finally {
-      setLoadingVendas(false);
-    }
-  };
-
-  // Buscar resumo do caixa
-  const getResumoCaixa = async (caixaID) => {
-    try {
-      setLoading(true);
-      const result = await getResumoVendas(caixaID);
-      if (result.data) {
-        setResumoVendas(result.data);
-      } else {
-        notification.error({
-          message: "Erro",
-          description: "Problema ao buscar resumo de vendas!",
-        });
-      }
-    } catch (error) {
-      notification.error({
-        message: "Erro",
-        description:
-          "Não foi possível obter o resumo do caixa: " + error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Buscar lista de produtos
   const getProductsList = async () => {
     try {
@@ -473,8 +424,6 @@ const Caixa = () => {
 
       setHoraAbertura(dayjs(cx.createdAt).format("DD/MM/YYYY HH:mm"));
       setValorAbertura(cx.saldoInicial);
-      await getResumoCaixa(cx.id);
-      await getVendas();
     } catch (error) {
       notification.error({
         message: "Erro",
@@ -489,7 +438,6 @@ const Caixa = () => {
   useEffect(() => {
     getProductsList();
     caixaEmAberto();
-    getVendas();
   }, []);
 
   // Adicionar produto à venda
@@ -627,16 +575,6 @@ const Caixa = () => {
     }
 
     setShowPaymentModal(true);
-  };
-
-  // Processar pagamento
-  const handlePayment = (metodoPagamento) => {
-    setPagamento(metodoPagamento);
-    if (metodoPagamento === "dinheiro") {
-      setValorRecebido(totalVendaAtual);
-    } else {
-      gerarCupom();
-    }
   };
 
   // Finalizar a venda atual
@@ -840,8 +778,6 @@ const Caixa = () => {
       const result = await vendaFinaliza(novaVenda);
 
       setHistoricoVendas((prev) => [...prev, novaVenda]);
-      await getResumoCaixa(caixa?.id);
-      await getVendas();
       setSuccessModal(true);
       setVenda([]);
       setFormaPagamento([]);
@@ -1661,111 +1597,6 @@ const Caixa = () => {
                             emptyText: (
                               <Empty description="Nenhum produto encontrado" />
                             ),
-                          }}
-                        />
-                      </Card>
-                    </Col>
-
-                    {resumoVendas.total > 0 && (
-                      <Col span={24}>
-                        <Card
-                          title={
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <DollarOutlined
-                                style={{ marginRight: 8, color: "#1890ff" }}
-                              />
-                              <span>Resumo de Vendas do Dia</span>
-                            </div>
-                          }
-                        >
-                          <Row gutter={16}>
-                            <Col xs={24} sm={12} md={4}>
-                              <Statistic
-                                style={{ zoom: "90%" }}
-                                title="Total em Dinheiro"
-                                value={resumoVendas.dinheiro}
-                                precision={2}
-                                valueStyle={{ color: "#3f8600" }}
-                                prefix="R$"
-                              />
-                            </Col>
-                            <Col xs={24} sm={12} md={4}>
-                              <Statistic
-                                style={{ zoom: "90%" }}
-                                title="Total em PIX"
-                                value={resumoVendas.pix}
-                                precision={2}
-                                valueStyle={{ color: "#1890ff" }}
-                                prefix="R$"
-                              />
-                            </Col>
-                            <Col xs={24} sm={12} md={4}>
-                              <Statistic
-                                style={{ zoom: "90%" }}
-                                title="Total em Crédito"
-                                value={resumoVendas.credito}
-                                precision={2}
-                                valueStyle={{ color: "#722ed1" }}
-                                prefix="R$"
-                              />
-                            </Col>
-                            <Col xs={24} sm={12} md={4}>
-                              <Statistic
-                                style={{ zoom: "90%" }}
-                                title="Total em Débito"
-                                value={resumoVendas.debito}
-                                precision={2}
-                                valueStyle={{ color: "#fa8c16" }}
-                                prefix="R$"
-                              />
-                            </Col>
-                            <Col xs={24} sm={12} md={6}>
-                              <Statistic
-                                style={{ float: "right" }}
-                                title="Total Geral"
-                                value={resumoVendas.total}
-                                precision={2}
-                                valueStyle={{
-                                  color: "black",
-                                  fontWeight: "bold",
-                                  fontSize: "24px",
-                                }}
-                                prefix="R$"
-                              />
-                            </Col>
-                          </Row>
-                        </Card>
-                      </Col>
-                    )}
-                  </Row>
-                  <Row>
-                    <Col span={24}>
-                      <Card
-                        title={
-                          <div
-                            style={{ display: "flex", alignItems: "center" }}
-                          >
-                            <DollarOutlined
-                              style={{ marginRight: 8, color: "#1890ff" }}
-                            />
-                            <span>Vendas do Dia</span>
-                          </div>
-                        }
-                      >
-                        <Table
-                          columns={columnsVendas}
-                          dataSource={vendas.map((venda) => ({
-                            ...venda,
-                            key: venda.id,
-                          }))}
-                          pagination={{ pageSize: 10 }}
-                          bordered
-                          loading={loadingVendas}
-                          size="middle"
-                          locale={{
-                            emptyText: "Sem dados para o período selecionado",
                           }}
                         />
                       </Card>

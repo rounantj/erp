@@ -51,6 +51,7 @@ import locale from "antd/es/date-picker/locale/pt_BR";
 import Paragraph from "antd/es/typography/Paragraph";
 import CurriculoAICard from "components/currriculo-ai";
 import { SpaceContext } from "antd/es/space";
+import { createdCurriculum } from "helpers/curriculo.adapter";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -377,6 +378,25 @@ const CriadorCurriculo = () => {
   const [mostrarPreview, setMostrarPreview] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("simples");
   const [profissaoSelecionada, setProfissaoSelecionada] = useState(null);
+  const [aiData, setAiData] = useState();
+
+  // 2. Add state variables for custom professions
+  const [customProfissao, setCustomProfissao] = useState("");
+  const [customProfissoes, setCustomProfissoes] = useState([]);
+
+  // 3. Add function to handle adding custom professions
+  const addCustomProfissao = () => {
+    if (
+      customProfissao &&
+      !PROFISSOES_COMUNS.includes(customProfissao) &&
+      !customProfissoes.includes(customProfissao)
+    ) {
+      setCustomProfissoes([...customProfissoes, customProfissao]);
+      form.setFieldsValue({ profissao: customProfissao });
+      setProfissaoSelecionada(customProfissao);
+      setCustomProfissao("");
+    }
+  };
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -418,10 +438,12 @@ const CriadorCurriculo = () => {
   const [dadosCurriculo, setDadosCurriculo] = useState({});
   const [carregando, setCarregando] = useState(false);
 
-  // Mudança de profissão selecionada
+  // 4. Update the handleProfissaoChange function
   const handleProfissaoChange = (value) => {
     setProfissaoSelecionada(value);
     setHabilidades([]);
+    // Ensure the form field is updated
+    form.setFieldsValue({ profissao: value });
   };
 
   useEffect(() => {
@@ -513,6 +535,7 @@ const CriadorCurriculo = () => {
           habilidades,
           foto: fotoCandidata,
         }));
+        setAiData({ usingAi: false, prompt: null });
         setMostrarPreview(true);
       }
     } catch (error) {
@@ -606,14 +629,14 @@ const CriadorCurriculo = () => {
     const conteudo = curriculoRef.current;
 
     // Adicionar uma pequena espera para garantir que o conteúdo seja renderizado
-    setTimeout(() => {
+    setTimeout(async () => {
       html2canvas(conteudo, {
         scale: 2, // Melhor resolução
         useCORS: true,
         logging: false,
         allowTaint: true,
       })
-        .then((canvas) => {
+        .then(async (canvas) => {
           const imgData = canvas.toDataURL("image/png");
           const pdf = new jsPDF("p", "mm", "a4");
           const larguraPDF = pdf.internal.pageSize.getWidth();
@@ -624,6 +647,12 @@ const CriadorCurriculo = () => {
             `curriculo_${
               dadosCurriculo.nome?.replace(/\s+/g, "_") || "sem_nome"
             }.pdf`
+          );
+
+          await createdCurriculum(
+            JSON.stringify(dadosCurriculo),
+            aiData?.usingAi,
+            aiData?.prompt
           );
 
           setCarregando(false);
@@ -701,13 +730,19 @@ const CriadorCurriculo = () => {
             <Form.Item
               name="profissao"
               label="Profissão Principal"
-              rules={[{ required: true, message: "Selecione a profissão" }]}
+              rules={[
+                { required: true, message: "Selecione ou digite a profissão" },
+              ]}
             >
               <Select
-                placeholder="Selecione a profissão"
+                placeholder="Selecione ou digite a profissão"
                 onChange={handleProfissaoChange}
                 showSearch
+                allowClear
                 optionFilterProp="children"
+                mode="tags" // This enables custom entries
+                maxTagCount={1} // Only show one tag
+                tokenSeparators={[","]}
               >
                 {PROFISSOES_COMUNS.map((profissao) => (
                   <Option key={profissao} value={profissao}>
@@ -715,6 +750,9 @@ const CriadorCurriculo = () => {
                   </Option>
                 ))}
               </Select>
+              <Text type="secondary">
+                Selecione uma opção da lista ou digite sua própria profissão
+              </Text>
             </Form.Item>
 
             <Form.Item name="foto" label="Foto (Opcional)">
@@ -976,25 +1014,17 @@ const CriadorCurriculo = () => {
           <Card title="Habilidades e Informações Adicionais" bordered={false}>
             <Form.Item name="habilidades" label="Habilidades e Competências">
               <Select
-                mode="multiple"
+                mode="tags"
                 placeholder="Selecione ou digite suas habilidades"
-                onChange={setHabilidades}
+                onChange={(values) => {
+                  setHabilidades(values);
+                  // Ensure form field is updated
+                  form.setFieldsValue({ habilidades: values });
+                }}
                 value={habilidades}
                 style={{ width: "100%" }}
                 allowClear
                 tokenSeparators={[","]}
-                dropdownRender={(menu) => (
-                  <>
-                    {menu}
-                    {profissaoSelecionada === "Outro" && (
-                      <div style={{ padding: "8px", textAlign: "center" }}>
-                        <Text type="secondary">
-                          Digite suas habilidades e pressione Enter ou vírgula
-                        </Text>
-                      </div>
-                    )}
-                  </>
-                )}
               >
                 {profissaoSelecionada &&
                   HABILIDADES_COMUNS[profissaoSelecionada]?.map(
@@ -1007,7 +1037,7 @@ const CriadorCurriculo = () => {
               </Select>
               <Text type="secondary">
                 Selecione habilidades sugeridas ou digite suas próprias
-                habilidades
+                habilidades separadas por vírgula
               </Text>
             </Form.Item>
 
@@ -1676,6 +1706,7 @@ const CriadorCurriculo = () => {
                   setModeloSelecionado={setModeloSelecionado}
                   modeloSelecionado={modeloSelecionado}
                   setCurriculoData={makeWithAi}
+                  setAiData={setAiData}
                   MODELOS_CURRICULO={MODELOS_CURRICULO}
                 />
               </div>

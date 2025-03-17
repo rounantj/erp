@@ -15,6 +15,7 @@ const { Title } = Typography;
 
 const CurriculoAICard = ({
   setCurriculoData,
+  setAiData,
   setModeloSelecionado,
   modeloSelecionado,
   MODELOS_CURRICULO,
@@ -40,6 +41,7 @@ const CurriculoAICard = ({
       console.log({ iaQuery: response });
       if (response.data && response?.data?.success != false) {
         message.success("Currículo gerado com sucesso!");
+        setAiData({ usingAi: true, prompt: input });
         setCurriculoData({ ...response.data, modelo: modeloSelecionado });
         setExpanded(false); // Recolhe o card após sucesso
         setErrorMessage("");

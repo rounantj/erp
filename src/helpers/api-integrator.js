@@ -193,6 +193,127 @@ export const finalizaVenda = async (venda) => {
   }
 };
 
+export const solicitaExclusaoVenda = async (vendaId, motivo) => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  const payload = {
+    vendaId,
+    motivo,
+  };
+
+  try {
+    const resposta = await axios.post(
+      `${urlBase}/vendas/${vendaId}/request-exclusion`,
+      payload,
+      { headers }
+    );
+
+    return {
+      success: true,
+      data: resposta.data,
+      message: "Solicitação de exclusão enviada com sucesso",
+    };
+  } catch (error) {
+    console.error("Erro ao solicitar exclusão da venda:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao solicitar exclusão da venda",
+    };
+  }
+};
+
+export const aprovaExclusaoVenda = async (vendaId, observacoes, adminId) => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  const payload = {
+    observacoes,
+    reviewedById: adminId,
+  };
+
+  try {
+    const resposta = await axios.post(
+      `${urlBase}/vendas/${vendaId}/approve-exclusion`,
+      payload,
+      { headers }
+    );
+
+    return {
+      success: true,
+      data: resposta.data,
+      message: "Exclusão aprovada com sucesso",
+    };
+  } catch (error) {
+    console.error("Erro ao aprovar exclusão da venda:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao aprovar exclusão da venda",
+    };
+  }
+};
+
+export const rejeitaExclusaoVenda = async (vendaId, observacoes, adminId) => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  const payload = {
+    observacoes,
+    reviewedById: adminId,
+  };
+
+  try {
+    const resposta = await axios.post(
+      `${urlBase}/vendas/${vendaId}/reject-exclusion`,
+      payload,
+      { headers }
+    );
+
+    return {
+      success: true,
+      data: resposta.data,
+      message: "Exclusão rejeitada com sucesso",
+    };
+  } catch (error) {
+    console.error("Erro ao rejeitar exclusão da venda:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao rejeitar exclusão da venda",
+    };
+  }
+};
+
+export const getPendingExclusionRequests = async () => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  try {
+    const resposta = await axios.get(`${urlBase}/vendas/pending-exclusions`, {
+      headers,
+    });
+
+    return {
+      success: true,
+      data: resposta.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar solicitações de exclusão pendentes:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message ||
+        "Erro ao buscar solicitações de exclusão pendentes",
+    };
+  }
+};
+
 export const updateDespesa = async (item) => {
   const headers = {
     "Content-Type": "application/json",

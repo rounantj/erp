@@ -12,3 +12,12 @@ export const makeCurriculum = async (personalData) => {
   );
   return response;
 };
+
+export const createdCurriculum = async (content, usingAi, prompt) => {
+  const response = await axios.post(
+    `${urlBase}/fofa-ai/created-curriculo`,
+    { content, usingAi, prompt },
+    { headers }
+  );
+  return response;
+};

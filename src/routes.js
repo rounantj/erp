@@ -14,6 +14,7 @@ import Login from "views/LoginRegister";
 import Configuracoes from "views/Configuracoes";
 import Curriculo from "views/Curriculo";
 import CriadorCurriculo from "views/Curriculo";
+import VendasDoDia from "views/VendasDoDia";
 
 const dashboardRoutes = [
   {
@@ -39,6 +40,14 @@ const dashboardRoutes = [
     component: Vendas,
     layout: "/admin",
     rule: ["admin"],
+  },
+  {
+    path: "/resumo-do-dia",
+    name: "Resumo do dia",
+    icon: "nc-icon nc-money-coins",
+    component: VendasDoDia,
+    layout: "/admin",
+    rule: ["admin", "atendente"],
   },
   {
     path: "/despesas",
@@ -72,6 +81,7 @@ const dashboardRoutes = [
     layout: "/admin",
     rule: ["admin", "atendente"],
   },
+
   {
     path: "/setup",
     name: "Configurações",
