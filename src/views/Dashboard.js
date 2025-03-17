@@ -395,13 +395,23 @@ function Dashboard() {
                     ],
                   }}
                   type="Line"
+                  style={{ zoom: "95%" }}
                   options={{
                     low: 0,
                     high: Math.max(...dataDash.fullValues) + 50,
                     showArea: false,
-                    height: "245px",
+                    height: "200px",
+
                     axisX: {
                       showGrid: false,
+                      labelOffset: {
+                        x: 0,
+                        y: 5,
+                      },
+                      labelInterpolationFnc: function (value) {
+                        // Limita o texto para evitar sobreposição
+                        return value.substring(0, 2); // Mostra apenas os primeiros 2 caracteres
+                      },
                     },
                     lineSmooth: true,
                     showLine: true,
@@ -409,6 +419,9 @@ function Dashboard() {
                     fullWidth: true,
                     chartPadding: {
                       right: 50,
+                      left: 20,
+                      top: 20,
+                      bottom: 30, // Aumente o padding inferior para dar mais espaço aos labels
                     },
                   }}
                   responsiveOptions={[
@@ -417,7 +430,7 @@ function Dashboard() {
                       {
                         axisX: {
                           labelInterpolationFnc: function (value) {
-                            return value[0];
+                            return value[0]; // Mostra apenas o primeiro caractere em telas pequenas
                           },
                         },
                       },
