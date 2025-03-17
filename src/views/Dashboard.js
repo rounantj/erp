@@ -30,6 +30,7 @@ import {
 import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
 import ChartistGraph from "react-chartist"; // Keeping the existing chart library
+import TopSellingItemsDashboard from "components/Dashboard/TopSellers";
 
 const { Title, Text } = Typography;
 
@@ -294,123 +295,6 @@ function Dashboard() {
     );
   };
 
-  // Cash Register (Caixa) Summary
-  const CaixaSummary = () => {
-    // Calculate difference percentage
-    const diffPercentage = Math.abs(
-      (caixaData.diferenca / caixaData.saldoInicial) * 100
-    ).toFixed(2);
-
-    return (
-      <div style={{ padding: "10px" }}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space direction="vertical" size="small" style={{ width: "100%" }}>
-              {/* Status */}
-              <div style={{ marginBottom: 16, textAlign: "center" }}>
-                {caixaData.fechado ? (
-                  <Tag
-                    icon={<CheckCircleOutlined />}
-                    color="success"
-                    style={{ padding: "4px 8px", fontSize: 16 }}
-                  >
-                    Caixa Fechado
-                  </Tag>
-                ) : (
-                  <Tag
-                    icon={<ClockCircleOutlined />}
-                    color="processing"
-                    style={{ padding: "4px 8px", fontSize: 16 }}
-                  >
-                    Caixa Aberto
-                  </Tag>
-                )}
-              </div>
-
-              {/* Main details */}
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12}>
-                  <Card
-                    size="small"
-                    bordered={false}
-                    style={{ background: "#f6ffed" }}
-                  >
-                    <Statistic
-                      title="Saldo Inicial"
-                      value={toMoneyFormat(caixaData.saldoInicial)}
-                      valueStyle={{ color: "#52c41a" }}
-                      prefix={<DollarOutlined />}
-                    />
-                    <Text type="secondary">
-                      {formatDateTime(caixaData.abertura_data)}
-                    </Text>
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card
-                    size="small"
-                    bordered={false}
-                    style={{ background: "#f9f0ff" }}
-                  >
-                    <Statistic
-                      title="Saldo Final"
-                      value={toMoneyFormat(caixaData.saldoFinal)}
-                      valueStyle={{ color: "#722ed1" }}
-                      prefix={<DollarOutlined />}
-                    />
-                    <Text type="secondary">
-                      {formatDateTime(caixaData.fechamento_data)}
-                    </Text>
-                  </Card>
-                </Col>
-              </Row>
-
-              {/* Difference stats */}
-              <Card
-                size="small"
-                bordered={false}
-                style={{
-                  background: caixaData.diferenca < 0 ? "#fff2f0" : "#f6ffed",
-                  marginTop: 16,
-                }}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Statistic
-                      title="Diferença"
-                      value={caixaData.diferenca}
-                      precision={2}
-                      valueStyle={{
-                        color: caixaData.diferenca < 0 ? "#f5222d" : "#52c41a",
-                        fontSize: "1.5rem",
-                      }}
-                      prefix={
-                        caixaData.diferenca < 0 ? (
-                          <ExclamationCircleOutlined />
-                        ) : (
-                          <CheckCircleOutlined />
-                        )
-                      }
-                      suffix="R$"
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="Tempo de Operação"
-                      value={calculateDuration()}
-                      valueStyle={{ fontSize: "1.5rem" }}
-                      prefix={<ClockCircleOutlined />}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            </Space>
-          </Col>
-        </Row>
-      </div>
-    );
-  };
-
   return (
     <div
       className="dashboard-container"
@@ -549,21 +433,6 @@ function Dashboard() {
               </div>
             </Card>
           )}
-
-          {/* Monthly Sales Chart */}
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </Card>
-          ) : (
-            <Card
-              title="Vendas por Mês em 2024"
-              extra={<BarChartOutlined style={{ fontSize: 18 }} />}
-              bordered={false}
-            >
-              <MonthlySalesVisual />
-            </Card>
-          )}
         </Col>
 
         {/* Right Column */}
@@ -583,27 +452,16 @@ function Dashboard() {
               <PieChartVisual />
             </Card>
           )}
-
-          {/* Cash Register Card - Replacing Recados e Tarefas */}
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </Card>
-          ) : (
-            <Card
-              title={
-                <Space>
-                  <WalletOutlined style={{ fontSize: 18 }} />
-                  <span>Resumo do Caixa</span>
-                </Space>
-              }
-              bordered={false}
-            >
-              <CaixaSummary />
-            </Card>
-          )}
         </Col>
       </Row>
+
+      {loading ? (
+        <Card>
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </Card>
+      ) : (
+        <TopSellingItemsDashboard />
+      )}
     </div>
   );
 }

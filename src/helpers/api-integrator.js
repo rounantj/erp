@@ -193,6 +193,28 @@ export const finalizaVenda = async (venda) => {
   }
 };
 
+export const getTopSellers = async (startDate, endDate) => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  try {
+    const vendas = await axios.post(
+      `${urlBase}/vendas/top-selling-products`,
+      { startDate, endDate },
+      { headers }
+    );
+    return vendas;
+  } catch (error) {
+    console.log({ error });
+    console.error("Error during venda:", error);
+    return {
+      success: null,
+      message: "Erro ao vender",
+    };
+  }
+};
+
 export const solicitaExclusaoVenda = async (vendaId, motivo) => {
   const headers = {
     "Content-Type": "application/json",
