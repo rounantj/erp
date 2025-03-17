@@ -88,7 +88,27 @@ const TopSellingItemsDashboard = ({ defaultDateRange = null }) => {
   // Estados
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState({
+    // Dados mockados iniciais
+    rankings: {
+      produtosPorQuantidade: [],
+      produtosPorValor: [],
+      servicosPorQuantidade: [],
+      servicosPorValor: [],
+    },
+    resumo: {
+      totalVendas: 0,
+      totalProdutos: 0,
+      totalServicos: 0,
+      totalQuantidadeProdutos: 0,
+      totalQuantidadeServicos: 0,
+    },
+    periodo: {
+      inicio: startOfMonth.toDate(),
+      fim: endOfMonth.toDate(),
+      diasTotal: 30,
+    },
+  });
   const [selectedTab, setSelectedTab] = useState("produtos");
   const [selectedRanking, setSelectedRanking] = useState("quantidade");
   const [viewMode, setViewMode] = useState("chart"); // 'chart' ou 'table'
