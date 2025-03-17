@@ -460,7 +460,12 @@ function Dashboard() {
           <Skeleton active paragraph={{ rows: 6 }} />
         </Card>
       ) : (
-        <TopSellingItemsDashboard />
+        <TopSellingItemsDashboard
+          defaultDateRange={[
+            moment().startOf("month"),
+            moment().endOf("month"),
+          ]}
+        />
       )}
     </div>
   );

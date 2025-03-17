@@ -123,7 +123,17 @@ const TopSellingItemsDashboard = ({ defaultDateRange = null }) => {
       setLoading(true);
       setError(null);
 
+      // Verificação de segurança para dateRange
+      if (!dateRange || !Array.isArray(dateRange) || dateRange.length !== 2) {
+        throw new Error("Período inválido");
+      }
+
       const [startDate, endDate] = dateRange;
+
+      // Verificação para garantir que são objetos Moment válidos
+      if (!moment.isMoment(startDate) || !moment.isMoment(endDate)) {
+        throw new Error("Datas inválidas");
+      }
 
       const formattedStartDate = startDate.format("YYYY-MM-DD");
       const formattedEndDate = endDate.format("YYYY-MM-DD");
