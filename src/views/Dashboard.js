@@ -31,6 +31,7 @@ import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
 import ChartistGraph from "react-chartist"; // Keeping the existing chart library
 import TopSellingItemsDashboard from "components/Dashboard/TopSellers";
+import moment from "moment";
 
 const { Title, Text } = Typography;
 
