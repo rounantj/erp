@@ -622,8 +622,8 @@ const Caixa = () => {
         nome: "FOFA PAPELARIA",
         endereco: "RUA ORLINDO BORGES - BARRA DO SAHY",
         cidade: "ARACRUZ - ES",
-        cnpj: "CNPJ: 63.358.000/0001-49",
-        ie: "IE: 66994360-NO",
+        cnpj: "CNPJ: 54.007.957/0001-99",
+        ie: "IE: 084231440",
         im: "IM: ISENTO",
         uf: "UF: ES",
       };
