@@ -378,7 +378,7 @@ function TopSellingItemsDashboard() {
 
       {/* Cards de estatísticas */}
       <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={8} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={8}>
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 1 }} />
@@ -393,7 +393,7 @@ function TopSellingItemsDashboard() {
           )}
         </Col>
 
-        <Col xs={24} sm={12} md={8} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={8}>
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 1 }} />
@@ -408,7 +408,7 @@ function TopSellingItemsDashboard() {
           )}
         </Col>
 
-        <Col xs={24} sm={12} md={8} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={8}>
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 1 }} />
