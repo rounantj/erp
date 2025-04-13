@@ -41,6 +41,15 @@ const dashboardRoutes = [
     layout: "/admin",
     rule: ["admin"],
   },
+  // {
+  //   path: "/saude-financeira",
+  //   name: "Saude Financeira",
+  //   icon: "nc-icon nc-money-coins",
+  //   component: SaudeFinanceira,
+  //   layout: "/admin",
+  //   rule: ["admin"],
+  // },
+
   {
     path: "/resumo-do-dia",
     name: "Resumo do dia",

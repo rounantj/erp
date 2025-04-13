@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Card,
   Row,
@@ -13,6 +13,9 @@ import {
   Tag,
   Tooltip,
   Progress,
+  Alert,
+  Result,
+  Button,
 } from "antd";
 import {
   CalendarOutlined,
@@ -26,83 +29,96 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
-import ChartistGraph from "react-chartist"; // Keeping the existing chart library
-import TopSellingItemsDashboard from "components/Dashboard/TopSellers";
 import moment from "moment";
+
+// Lazy load components to reduce initial bundle size
+const TopSellingItemsDashboard = React.lazy(() =>
+  import("components/Dashboard/TopSellers")
+);
+
+// Importação condicional do Chartist para evitar problemas de minificação
+let ChartistGraph = null;
+try {
+  ChartistGraph = require("react-chartist").default;
+} catch (error) {
+  console.error("Não foi possível carregar o react-chartist:", error);
+}
 
 const { Title, Text } = Typography;
 
+// Dados iniciais padrão seguros para evitar problemas com dados nulos
+const defaultDashData = {
+  produtosVendidos: [],
+  totalProdutos: 0,
+  totalServicos: 0,
+  totalHoje: 0,
+  totalEsseMes: 0,
+  dias: [],
+  servicosValues: [],
+  fullValues: [],
+  produtosValues: [],
+  meses: [],
+  mesesSerValues: [],
+  mesesPrdValues: [],
+  despesa: [{ total: 0 }],
+};
+
 function Dashboard() {
-  const [dataDash, setDataDash] = useState({
-    produtosVendidos: [
-      {
-        id: 301,
-        descricao: "IMPRESSÃO COLORIDO",
-        valor: 2,
-        companyId: 1,
-        categoria: "Serviço",
-        ean: "",
-        ncm: '48053000"Papel sulfito p/embalagem,n/revestido,em rolos/folhas"',
-        createdAt: "2024-11-25T21:38:56.949Z",
-        updatedAt: "2024-06-13T17:18:03.879Z",
-        updatedByUser: 1,
-        createdByUser: 1,
-        deletedAt: null,
-        quantidade: "9",
-        valorTotal: 18,
-      },
-    ],
-    totalProdutos: 10,
-    totalServicos: 10,
-    totalHoje: 10,
-    totalEsseMes: 10,
-    dias: ["25/11"],
-    servicosValues: [24],
-    fullValues: [53.980000000000004],
-    produtosValues: [29.98],
-    meses: ["Jun", "Jul", "Nov"],
-    mesesSerValues: [28.47, 144.73, 29.98],
-    mesesPrdValues: [6.75, 7, 24],
-    despesa: [
-      {
-        total: 1350,
-      },
-    ],
-  });
-
-  // Cash register data (caixa)
+  const [dataDash, setDataDash] = useState(defaultDashData);
   const [caixaData, setCaixaData] = useState({
-    id: 15,
-    company_id: 1,
-    fechado: true,
-    abertura_data: "2025-03-01T14:41:04.866Z",
-    fechamento_data: "2025-03-03T00:59:51.736Z",
-    aberto_por: 1,
-    fechado_por: 1,
-    updated_at: "2025-03-02T21:59:51.749Z",
+    id: 0,
+    company_id: 0,
+    fechado: false,
+    abertura_data: new Date().toISOString(),
+    fechamento_data: new Date().toISOString(),
+    aberto_por: 0,
+    fechado_por: 0,
+    updated_at: new Date().toISOString(),
     deleted_at: null,
-    saldoInicial: 147.0,
-    saldoFinal: 143.0,
-    created_at: "2025-03-01T11:41:04.870Z",
-    diferenca: -0.3,
+    saldoInicial: 0,
+    saldoFinal: 0,
+    created_at: new Date().toISOString(),
+    diferenca: 0,
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch dashboard data
+  // Fetch dashboard data with better error handling
   const getDataDash = async () => {
     setLoading(true);
+    setError(null);
     try {
       const resultD = await getDashboard();
-      console.log({ resultD });
       if (resultD.success) {
-        setDataDash(resultD.data);
+        // Validamos os dados recebidos
+        const data = resultD.data || defaultDashData;
+
+        // Garantimos que todos os campos existam
+        setDataDash({
+          ...defaultDashData,
+          ...data,
+          // Garantir que arrays não sejam undefined
+          produtosVendidos: data.produtosVendidos || [],
+          dias: data.dias || [],
+          servicosValues: data.servicosValues || [],
+          fullValues: data.fullValues || [],
+          produtosValues: data.produtosValues || [],
+          meses: data.meses || [],
+          mesesSerValues: data.mesesSerValues || [],
+          mesesPrdValues: data.mesesPrdValues || [],
+          despesa: data.despesa || [{ total: 0 }],
+        });
+      } else {
+        throw new Error("Falha ao obter dados do dashboard");
       }
     } catch (error) {
       console.error("Dashboard error:", error);
+      setError(error.message || "Erro ao carregar o dashboard");
     } finally {
       setLoading(false);
     }
@@ -110,44 +126,74 @@ function Dashboard() {
 
   useEffect(() => {
     getDataDash();
-    // In a real app, we would fetch caixa data here as well
   }, []);
 
-  // Format date functions
+  // Format date functions with safe handling
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    if (!dateString) return "Data indisponível";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Data inválida";
+
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Erro ao formatar data";
+    }
   };
 
   const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    if (!dateString) return "Data/hora indisponível";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Data/hora inválida";
+
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      console.error("Erro ao formatar data/hora:", error);
+      return "Erro ao formatar data/hora";
+    }
   };
 
-  // Calculate cash register operation duration
+  // Calculate cash register operation duration with safe handling
   const calculateDuration = () => {
-    const start = new Date(caixaData.abertura_data);
-    const end = new Date(caixaData.fechamento_data);
-    const durationMs = end - start;
+    try {
+      if (!caixaData.abertura_data || !caixaData.fechamento_data) {
+        return "Dados insuficientes";
+      }
 
-    // Convert to hours and minutes
-    const hours = Math.floor(durationMs / (1000 * 60 * 60));
-    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+      const start = new Date(caixaData.abertura_data);
+      const end = new Date(caixaData.fechamento_data);
 
-    return `${hours}h ${minutes}min`;
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return "Datas inválidas";
+      }
+
+      const durationMs = end - start;
+      if (durationMs < 0) return "Período inválido";
+
+      // Convert to hours and minutes
+      const hours = Math.floor(durationMs / (1000 * 60 * 60));
+      const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h ${minutes}min`;
+    } catch (error) {
+      console.error("Erro ao calcular duração:", error);
+      return "Erro ao calcular duração";
+    }
   };
 
-  // Component for stats cards
+  // Component for stats cards with error handling
   const StatCard = ({ title, value, icon, color }) => (
     <Card className="stat-card" bordered={false} style={{ height: "100%" }}>
       <Statistic
@@ -162,17 +208,41 @@ function Dashboard() {
         <Divider style={{ margin: "12px 0" }} />
         <Space>
           <SyncOutlined spin={loading} />
-          <Text type="secondary">Atualizado agora</Text>
+          <Text type="secondary">
+            {loading ? "Atualizando..." : "Atualizado agora"}
+          </Text>
         </Space>
+      </div>
+    </Card>
+  );
+
+  // Skeleton for StatCard
+  const StatCardSkeleton = () => (
+    <Card bordered={false} style={{ height: "100%" }}>
+      <Skeleton active paragraph={{ rows: 1 }} />
+      <div style={{ marginTop: 30 }}>
+        <Skeleton.Button active size="small" style={{ width: 150 }} />
       </div>
     </Card>
   );
 
   // Pie chart visualization using Progress components
   const PieChartVisual = () => {
-    const total = dataDash.totalProdutos + dataDash.totalServicos;
-    const pP = +((dataDash.totalProdutos * 100) / total).toFixed(2);
-    const pS = +((dataDash.totalServicos * 100) / total).toFixed(2);
+    // Handling for empty or invalid data
+    if (!dataDash.totalProdutos && !dataDash.totalServicos) {
+      return (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <Text type="secondary">Sem dados disponíveis para visualização</Text>
+        </div>
+      );
+    }
+
+    // Safe calculation for percentages
+    const total = (dataDash.totalProdutos || 0) + (dataDash.totalServicos || 0);
+    const pP =
+      total > 0 ? +((dataDash.totalProdutos * 100) / total).toFixed(2) : 0;
+    const pS =
+      total > 0 ? +((dataDash.totalServicos * 100) / total).toFixed(2) : 0;
 
     return (
       <div style={{ padding: "10px 0" }}>
@@ -188,6 +258,9 @@ function Dashboard() {
               />
               <div style={{ marginTop: 8 }}>
                 <Badge color="#ff4d4f" text={<Text strong>Produtos</Text>} />
+                <div>
+                  <Text>{toMoneyFormat(dataDash.totalProdutos || 0)}</Text>
+                </div>
               </div>
             </div>
           </Col>
@@ -202,6 +275,9 @@ function Dashboard() {
               />
               <div style={{ marginTop: 8 }}>
                 <Badge color="#1890ff" text={<Text strong>Serviços</Text>} />
+                <div>
+                  <Text>{toMoneyFormat(dataDash.totalServicos || 0)}</Text>
+                </div>
               </div>
             </div>
           </Col>
@@ -212,19 +288,31 @@ function Dashboard() {
 
   // Monthly sales summary for bar chart
   const MonthlySalesVisual = () => {
+    // Handling for empty data
+    if (!dataDash.meses || dataDash.meses.length === 0) {
+      return (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <Text type="secondary">Sem dados de vendas mensais disponíveis</Text>
+        </div>
+      );
+    }
+
     return (
       <div style={{ padding: "10px 0" }}>
         {dataDash.meses.map((month, index) => {
-          const serValue = dataDash.mesesSerValues[index] || 0;
-          const prdValue = dataDash.mesesPrdValues[index] || 0;
+          // Safe access with fallbacks for all values
+          const serValue =
+            (dataDash.mesesSerValues && dataDash.mesesSerValues[index]) || 0;
+          const prdValue =
+            (dataDash.mesesPrdValues && dataDash.mesesPrdValues[index]) || 0;
           const total = serValue + prdValue;
 
-          // Calculate percentages
+          // Calculate percentages safely
           const serPercent = total > 0 ? (serValue / total) * 100 : 0;
           const prdPercent = total > 0 ? (prdValue / total) * 100 : 0;
 
           return (
-            <div key={month} style={{ marginBottom: 16 }}>
+            <div key={month || `month-${index}`} style={{ marginBottom: 16 }}>
               <div
                 style={{
                   display: "flex",
@@ -232,7 +320,7 @@ function Dashboard() {
                   marginBottom: 4,
                 }}
               >
-                <Text strong>{month}</Text>
+                <Text strong>{month || `Mês ${index + 1}`}</Text>
                 <Text>{toMoneyFormat(total)}</Text>
               </div>
               <div
@@ -296,6 +384,188 @@ function Dashboard() {
     );
   };
 
+  // Alternative line chart implementation using HTML/CSS when Chartist isn't available
+  const SimpleLineChart = ({ data }) => {
+    // Safety check for data
+    if (
+      !data ||
+      !data.labels ||
+      !data.labels.length ||
+      !data.series ||
+      !data.series.length
+    ) {
+      return (
+        <div style={{ textAlign: "center", padding: "30px 0" }}>
+          <Text type="secondary">Dados insuficientes para gerar o gráfico</Text>
+        </div>
+      );
+    }
+
+    const { labels, series } = data;
+    const [totalSeries, servicosSeries, produtosSeries] = series;
+
+    // Find max value for scaling
+    const allValues = [...totalSeries, ...servicosSeries, ...produtosSeries];
+    const maxValue = Math.max(...allValues.filter((val) => !isNaN(val)));
+
+    return (
+      <div style={{ padding: "10px 0" }}>
+        <div
+          style={{
+            display: "flex",
+            height: "200px",
+            marginTop: 20,
+            alignItems: "flex-end",
+          }}
+        >
+          {labels.map((label, index) => {
+            const totalValue = totalSeries[index] || 0;
+            const servicosValue = servicosSeries[index] || 0;
+            const produtosValue = produtosSeries[index] || 0;
+
+            // Calculate heights based on the max value
+            const totalHeight =
+              maxValue > 0 ? (totalValue / maxValue) * 150 : 0;
+            const servicosHeight =
+              maxValue > 0 ? (servicosValue / maxValue) * 150 : 0;
+            const produtosHeight =
+              maxValue > 0 ? (produtosValue / maxValue) * 150 : 0;
+
+            return (
+              <div
+                key={label || `label-${index}`}
+                style={{ flex: 1, textAlign: "center", margin: "0 4px" }}
+              >
+                <Tooltip
+                  title={`Total: ${toMoneyFormat(
+                    totalValue
+                  )}, Serviços: ${toMoneyFormat(
+                    servicosValue
+                  )}, Produtos: ${toMoneyFormat(produtosValue)}`}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: totalHeight,
+                        width: 10,
+                        backgroundColor: "#1890ff",
+                        borderRadius: "2px 2px 0 0",
+                        marginBottom: 5,
+                      }}
+                    />
+                    <Text style={{ fontSize: 10, width: 30 }}>{label}</Text>
+                  </div>
+                </Tooltip>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render chart based on availability of Chartist
+  const renderChart = () => {
+    const chartData = {
+      labels: dataDash.dias || [],
+      series: [
+        dataDash.fullValues || [],
+        dataDash.servicosValues || [],
+        dataDash.produtosValues || [],
+      ],
+    };
+
+    // Render alternative chart if Chartist is not available
+    if (!ChartistGraph) {
+      return <SimpleLineChart data={chartData} />;
+    }
+
+    // Handle empty data case
+    if (!chartData.labels.length || !chartData.series[0].length) {
+      return (
+        <div style={{ textAlign: "center", padding: "30px 0" }}>
+          <Text type="secondary">Sem dados disponíveis para o gráfico</Text>
+        </div>
+      );
+    }
+
+    // Calculate safe high value to avoid chart issues
+    const safeHighValue =
+      Math.max(...chartData.series[0].filter((val) => !isNaN(val)), 10) + 50;
+
+    return (
+      <div className="ct-chart" id="chartHours">
+        <ChartistGraph
+          data={chartData}
+          type="Line"
+          style={{ zoom: "95%" }}
+          options={{
+            low: 0,
+            high: safeHighValue,
+            showArea: false,
+            height: "200px",
+            axisX: {
+              showGrid: false,
+              labelOffset: {
+                x: 0,
+                y: 5,
+              },
+              labelInterpolationFnc: function (value) {
+                // Limita o texto para evitar sobreposição
+                return value && typeof value === "string"
+                  ? value.substring(0, 2)
+                  : "";
+              },
+            },
+            lineSmooth: true,
+            showLine: true,
+            showPoint: true,
+            fullWidth: true,
+            chartPadding: {
+              right: 50,
+              left: 20,
+              top: 20,
+              bottom: 30,
+            },
+          }}
+          responsiveOptions={[
+            [
+              "screen and (max-width: 640px)",
+              {
+                axisX: {
+                  labelInterpolationFnc: function (value) {
+                    return value && typeof value === "string" ? value[0] : ""; // Mostra apenas o primeiro caractere em telas pequenas
+                  },
+                },
+              },
+            ],
+          ]}
+        />
+      </div>
+    );
+  };
+
+  // Error display component
+  const ErrorDisplay = ({ message, onRetry }) => (
+    <Result
+      status="warning"
+      title="Problema ao carregar os dados"
+      subTitle={message || "Ocorreu um erro ao carregar os dados do dashboard."}
+      extra={
+        <Button type="primary" icon={<ReloadOutlined />} onClick={onRetry}>
+          Tentar novamente
+        </Button>
+      }
+    />
+  );
+
+  // Render main component with error boundary
   return (
     <div
       className="dashboard-container"
@@ -305,184 +575,183 @@ function Dashboard() {
         Dashboard
       </Title>
 
-      {/* Stats Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 1 }} />
-            </Card>
-          ) : (
-            <StatCard
-              title={`Dias trabalhados ${monthName(new Date().getMonth())}`}
-              value={`${dataDash.dias.length} dias`}
-              icon={<CalendarOutlined />}
-              color="#1890ff"
-            />
-          )}
-        </Col>
+      {error ? (
+        <ErrorDisplay message={error} onRetry={getDataDash} />
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              {loading ? (
+                <StatCardSkeleton />
+              ) : (
+                <StatCard
+                  title={`Dias trabalhados ${monthName(new Date().getMonth())}`}
+                  value={`${dataDash.dias?.length || 0} dias`}
+                  icon={<CalendarOutlined />}
+                  color="#1890ff"
+                />
+              )}
+            </Col>
 
-        <Col xs={24} sm={12} lg={6}>
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 1 }} />
-            </Card>
-          ) : (
-            <StatCard
-              title={`Vendas ${monthName(new Date().getMonth())}`}
-              value={toMoneyFormat(dataDash.totalEsseMes)}
-              icon={<DollarOutlined />}
-              color="#52c41a"
-            />
-          )}
-        </Col>
+            <Col xs={24} sm={12} lg={6}>
+              {loading ? (
+                <StatCardSkeleton />
+              ) : (
+                <StatCard
+                  title={`Vendas ${monthName(new Date().getMonth())}`}
+                  value={toMoneyFormat(dataDash.totalEsseMes || 0)}
+                  icon={<DollarOutlined />}
+                  color="#52c41a"
+                />
+              )}
+            </Col>
 
-        <Col xs={24} sm={12} lg={6}>
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 1 }} />
-            </Card>
-          ) : (
-            <StatCard
-              title="Vendas Hoje"
-              value={toMoneyFormat(dataDash.totalHoje)}
-              icon={<ShoppingOutlined />}
-              color="#722ed1"
-            />
-          )}
-        </Col>
+            <Col xs={24} sm={12} lg={6}>
+              {loading ? (
+                <StatCardSkeleton />
+              ) : (
+                <StatCard
+                  title="Vendas Hoje"
+                  value={toMoneyFormat(dataDash.totalHoje || 0)}
+                  icon={<ShoppingOutlined />}
+                  color="#722ed1"
+                />
+              )}
+            </Col>
 
-        <Col xs={24} sm={12} lg={6}>
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 1 }} />
-            </Card>
-          ) : (
-            <StatCard
-              title={`Despesas ${monthName(new Date().getMonth())}`}
-              value={toMoneyFormat(dataDash?.despesa[0]?.total || 0)}
-              icon={<DollarOutlined />}
-              color="#f5222d"
-            />
-          )}
-        </Col>
-      </Row>
+            <Col xs={24} sm={12} lg={6}>
+              {loading ? (
+                <StatCardSkeleton />
+              ) : (
+                <StatCard
+                  title={`Despesas ${monthName(new Date().getMonth())}`}
+                  value={toMoneyFormat(dataDash?.despesa?.[0]?.total || 0)}
+                  icon={<DollarOutlined />}
+                  color="#f5222d"
+                />
+              )}
+            </Col>
+          </Row>
 
-      {/* Main Content */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        {/* Left Column */}
-        <Col xs={24} lg={16}>
-          {/* Daily Sales Chart */}
+          {/* Main Content */}
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            {/* Left Column - Daily Sales Chart */}
+            <Col xs={24} lg={16}>
+              {loading ? (
+                <Card>
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                </Card>
+              ) : (
+                <Card
+                  title="Vendas por dia"
+                  extra={<LineChartOutlined style={{ fontSize: 18 }} />}
+                  bordered={false}
+                  style={{ marginBottom: 16 }}
+                >
+                  {renderChart()}
+                  <div style={{ marginTop: 16 }}>
+                    <Space>
+                      <Badge color="#1890ff" text="Total" />
+                      <Badge color="#f5222d" text="Serviços" />
+                      <Badge color="#faad14" text="Produtos" />
+                    </Space>
+                  </div>
+                </Card>
+              )}
+            </Col>
+
+            {/* Right Column - Revenue Division Chart */}
+            <Col xs={24} lg={8}>
+              {loading ? (
+                <Card>
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                </Card>
+              ) : (
+                <Card
+                  title="Divisão de Receita"
+                  extra={<PieChartOutlined style={{ fontSize: 18 }} />}
+                  bordered={false}
+                  style={{ marginBottom: 16 }}
+                >
+                  <PieChartVisual />
+                </Card>
+              )}
+            </Col>
+          </Row>
+
+          {/* Top Selling Items Component with Error Boundary and Suspense */}
           {loading ? (
             <Card>
               <Skeleton active paragraph={{ rows: 6 }} />
             </Card>
           ) : (
-            <Card
-              title="Vendas por dia"
-              extra={<LineChartOutlined style={{ fontSize: 18 }} />}
-              bordered={false}
-              style={{ marginBottom: 16 }}
+            <React.Suspense
+              fallback={
+                <Card>
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                  <div style={{ textAlign: "center", marginTop: 16 }}>
+                    <Text type="secondary">
+                      Carregando itens mais vendidos...
+                    </Text>
+                  </div>
+                </Card>
+              }
             >
-              <div className="ct-chart" id="chartHours">
-                <ChartistGraph
-                  data={{
-                    labels: dataDash.dias,
-                    series: [
-                      dataDash.fullValues,
-                      dataDash.servicosValues,
-                      dataDash.produtosValues,
-                    ],
-                  }}
-                  type="Line"
-                  style={{ zoom: "95%" }}
-                  options={{
-                    low: 0,
-                    high: Math.max(...dataDash.fullValues) + 50,
-                    showArea: false,
-                    height: "200px",
-
-                    axisX: {
-                      showGrid: false,
-                      labelOffset: {
-                        x: 0,
-                        y: 5,
-                      },
-                      labelInterpolationFnc: function (value) {
-                        // Limita o texto para evitar sobreposição
-                        return value.substring(0, 2); // Mostra apenas os primeiros 2 caracteres
-                      },
-                    },
-                    lineSmooth: true,
-                    showLine: true,
-                    showPoint: true,
-                    fullWidth: true,
-                    chartPadding: {
-                      right: 50,
-                      left: 20,
-                      top: 20,
-                      bottom: 30, // Aumente o padding inferior para dar mais espaço aos labels
-                    },
-                  }}
-                  responsiveOptions={[
-                    [
-                      "screen and (max-width: 640px)",
-                      {
-                        axisX: {
-                          labelInterpolationFnc: function (value) {
-                            return value[0]; // Mostra apenas o primeiro caractere em telas pequenas
-                          },
-                        },
-                      },
-                    ],
+              <ErrorBoundary>
+                <TopSellingItemsDashboard
+                  defaultDateRange={[
+                    moment().startOf("month"),
+                    moment().endOf("month"),
                   ]}
                 />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <Space>
-                  <Badge color="#1890ff" text="Total" />
-                  <Badge color="#f5222d" text="Serviços" />
-                  <Badge color="#faad14" text="Produtos" />
-                </Space>
-              </div>
-            </Card>
+              </ErrorBoundary>
+            </React.Suspense>
           )}
-        </Col>
-
-        {/* Right Column */}
-        <Col xs={24} lg={8}>
-          {/* Revenue Division Chart */}
-          {loading ? (
-            <Card>
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </Card>
-          ) : (
-            <Card
-              title="Divisão de Receita"
-              extra={<PieChartOutlined style={{ fontSize: 18 }} />}
-              bordered={false}
-              style={{ marginBottom: 16 }}
-            >
-              <PieChartVisual />
-            </Card>
-          )}
-        </Col>
-      </Row>
-      {/* 
-      {loading ? (
-        <Card>
-          <Skeleton active paragraph={{ rows: 6 }} />
-        </Card>
-      ) : (
-        <TopSellingItemsDashboard
-          defaultDateRange={[
-            moment().startOf("month"),
-            moment().endOf("month"),
-          ]}
-        />
-      )} */}
+        </>
+      )}
     </div>
   );
+}
+
+// Error Boundary Component para componentes que podem falhar
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Erro capturado em ErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card style={{ marginTop: 16 }}>
+          <Result
+            status="warning"
+            title="Componente não pôde ser carregado"
+            subTitle="Ocorreu um erro ao renderizar este componente."
+            extra={
+              <Button
+                type="primary"
+                onClick={() => this.setState({ hasError: false, error: null })}
+              >
+                Tentar novamente
+              </Button>
+            }
+          />
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 export default Dashboard;
