@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, Suspense } from "react";
 import {
   Card,
   Row,
@@ -35,22 +35,15 @@ import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
 import moment from "moment";
 
-// Lazy load components to reduce initial bundle size
+// Definindo constantes para o componente fora da função do componente
+// Isso evita uma causa comum do erro #525 - recriação de componentes em cada renderização
 const TopSellingItemsDashboard = React.lazy(() =>
   import("components/Dashboard/TopSellers")
 );
 
-// Importação condicional do Chartist para evitar problemas de minificação
-let ChartistGraph = null;
-try {
-  ChartistGraph = require("react-chartist").default;
-} catch (error) {
-  console.error("Não foi possível carregar o react-chartist:", error);
-}
-
 const { Title, Text } = Typography;
 
-// Dados iniciais padrão seguros para evitar problemas com dados nulos
+// Valores padrão definidos fora do componente
 const defaultDashData = {
   produtosVendidos: [],
   totalProdutos: 0,
@@ -67,34 +60,135 @@ const defaultDashData = {
   despesa: [{ total: 0 }],
 };
 
-function Dashboard() {
-  const [dataDash, setDataDash] = useState(defaultDashData);
-  const [caixaData, setCaixaData] = useState({
-    id: 0,
-    company_id: 0,
-    fechado: false,
-    abertura_data: new Date().toISOString(),
-    fechamento_data: new Date().toISOString(),
-    aberto_por: 0,
-    fechado_por: 0,
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-    saldoInicial: 0,
-    saldoFinal: 0,
-    created_at: new Date().toISOString(),
-    diferenca: 0,
-  });
+const defaultCaixaData = {
+  id: 0,
+  company_id: 0,
+  fechado: false,
+  abertura_data: new Date().toISOString(),
+  fechamento_data: new Date().toISOString(),
+  aberto_por: 0,
+  fechado_por: 0,
+  updated_at: new Date().toISOString(),
+  deleted_at: null,
+  saldoInicial: 0,
+  saldoFinal: 0,
+  created_at: new Date().toISOString(),
+  diferenca: 0,
+};
 
+// Error Boundary Component deve ser definido fora do componente principal
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Erro capturado em ErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card style={{ marginTop: 16 }}>
+          <Result
+            status="warning"
+            title="Componente não pôde ser carregado"
+            subTitle="Ocorreu um erro ao renderizar este componente."
+            extra={
+              <Button
+                type="primary"
+                onClick={() => this.setState({ hasError: false, error: null })}
+              >
+                Tentar novamente
+              </Button>
+            }
+          />
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Funções de utilidade movidas para fora do componente
+const formatDate = (dateString) => {
+  if (!dateString) return "Data indisponível";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Data inválida";
+
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return "Erro ao formatar data";
+  }
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return "Data/hora indisponível";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Data/hora inválida";
+
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    console.error("Erro ao formatar data/hora:", error);
+    return "Erro ao formatar data/hora";
+  }
+};
+
+// Componentes estáveis que não precisam ser recriados em cada renderização
+const StatCardSkeleton = () => (
+  <Card bordered={false} style={{ height: "100%" }}>
+    <Skeleton active paragraph={{ rows: 1 }} />
+    <div style={{ marginTop: 30 }}>
+      <Skeleton.Button active size="small" style={{ width: 150 }} />
+    </div>
+  </Card>
+);
+
+function Dashboard() {
+  // Estados
+  const [dataDash, setDataDash] = useState(defaultDashData);
+  const [caixaData, setCaixaData] = useState(defaultCaixaData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch dashboard data with better error handling
-  const getDataDash = async () => {
+  // Inicialização do ChartistGraph - movida para fora de qualquer hook ou função condicional
+  // Esta é uma definição constante que não muda entre renderizações
+  const ChartistGraph = React.useMemo(() => {
+    try {
+      // Certifique-se de que o require é chamado no nível superior, não condicionalmente
+      return require("react-chartist")?.default;
+    } catch (error) {
+      console.error("Não foi possível carregar o react-chartist:", error);
+      return null;
+    }
+  }, []);
+
+  // Fetch dashboard data com useCallback para estabilidade entre renderizações
+  const getDataDash = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const resultD = await getDashboard();
-      if (resultD.success) {
+      if (resultD?.success) {
         // Validamos os dados recebidos
         const data = resultD.data || defaultDashData;
 
@@ -118,55 +212,19 @@ function Dashboard() {
       }
     } catch (error) {
       console.error("Dashboard error:", error);
-      setError(error.message || "Erro ao carregar o dashboard");
+      setError(error?.message || "Erro ao carregar o dashboard");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    getDataDash();
   }, []);
 
-  // Format date functions with safe handling
-  const formatDate = (dateString) => {
-    if (!dateString) return "Data indisponível";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Data inválida";
+  // useEffect para carregar dados - sempre use como dependência as funções que você chama
+  useEffect(() => {
+    getDataDash();
+  }, [getDataDash]); // Agora getDataDash é estável entre renderizações
 
-      return date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return "Erro ao formatar data";
-    }
-  };
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return "Data/hora indisponível";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Data/hora inválida";
-
-      return date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch (error) {
-      console.error("Erro ao formatar data/hora:", error);
-      return "Erro ao formatar data/hora";
-    }
-  };
-
-  // Calculate cash register operation duration with safe handling
-  const calculateDuration = () => {
+  // Calculate cash register operation duration com base em caixaData
+  const calculateDuration = React.useCallback(() => {
     try {
       if (!caixaData.abertura_data || !caixaData.fechamento_data) {
         return "Dados insuficientes";
@@ -182,7 +240,6 @@ function Dashboard() {
       const durationMs = end - start;
       if (durationMs < 0) return "Período inválido";
 
-      // Convert to hours and minutes
       const hours = Math.floor(durationMs / (1000 * 60 * 60));
       const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -191,10 +248,10 @@ function Dashboard() {
       console.error("Erro ao calcular duração:", error);
       return "Erro ao calcular duração";
     }
-  };
+  }, [caixaData.abertura_data, caixaData.fechamento_data]);
 
-  // Component for stats cards with error handling
-  const StatCard = ({ title, value, icon, color }) => (
+  // Component para StatCard - definida como constante para não ser recriada
+  const StatCard = React.memo(({ title, value, icon, color }) => (
     <Card className="stat-card" bordered={false} style={{ height: "100%" }}>
       <Statistic
         title={<Text strong>{title}</Text>}
@@ -214,20 +271,10 @@ function Dashboard() {
         </Space>
       </div>
     </Card>
-  );
+  ));
 
-  // Skeleton for StatCard
-  const StatCardSkeleton = () => (
-    <Card bordered={false} style={{ height: "100%" }}>
-      <Skeleton active paragraph={{ rows: 1 }} />
-      <div style={{ marginTop: 30 }}>
-        <Skeleton.Button active size="small" style={{ width: 150 }} />
-      </div>
-    </Card>
-  );
-
-  // Pie chart visualization using Progress components
-  const PieChartVisual = () => {
+  // Componentes que dependem de dados - usando React.memo para evitar re-renderizações desnecessárias
+  const PieChartVisual = React.memo(() => {
     // Handling for empty or invalid data
     if (!dataDash.totalProdutos && !dataDash.totalServicos) {
       return (
@@ -284,10 +331,10 @@ function Dashboard() {
         </Row>
       </div>
     );
-  };
+  });
 
-  // Monthly sales summary for bar chart
-  const MonthlySalesVisual = () => {
+  // Monthly sales summary - memorizando o componente
+  const MonthlySalesVisual = React.memo(() => {
     // Handling for empty data
     if (!dataDash.meses || dataDash.meses.length === 0) {
       return (
@@ -382,10 +429,10 @@ function Dashboard() {
         })}
       </div>
     );
-  };
+  });
 
-  // Alternative line chart implementation using HTML/CSS when Chartist isn't available
-  const SimpleLineChart = ({ data }) => {
+  // Alternative line chart implementation
+  const SimpleLineChart = React.memo(({ data }) => {
     // Safety check for data
     if (
       !data ||
@@ -405,8 +452,12 @@ function Dashboard() {
     const [totalSeries, servicosSeries, produtosSeries] = series;
 
     // Find max value for scaling
-    const allValues = [...totalSeries, ...servicosSeries, ...produtosSeries];
-    const maxValue = Math.max(...allValues.filter((val) => !isNaN(val)));
+    const allValues = [
+      ...totalSeries,
+      ...servicosSeries,
+      ...produtosSeries,
+    ].filter((val) => !isNaN(val));
+    const maxValue = allValues.length ? Math.max(...allValues) : 0;
 
     return (
       <div style={{ padding: "10px 0" }}>
@@ -468,10 +519,10 @@ function Dashboard() {
         </div>
       </div>
     );
-  };
+  });
 
-  // Render chart based on availability of Chartist
-  const renderChart = () => {
+  // Render chart function
+  const renderChart = React.useCallback(() => {
     const chartData = {
       labels: dataDash.dias || [],
       series: [
@@ -496,8 +547,10 @@ function Dashboard() {
     }
 
     // Calculate safe high value to avoid chart issues
-    const safeHighValue =
-      Math.max(...chartData.series[0].filter((val) => !isNaN(val)), 10) + 50;
+    const safeValues = chartData.series[0].filter((val) => !isNaN(val));
+    const safeHighValue = safeValues.length
+      ? Math.max(...safeValues) + 50
+      : 100;
 
     return (
       <div className="ct-chart" id="chartHours">
@@ -517,7 +570,6 @@ function Dashboard() {
                 y: 5,
               },
               labelInterpolationFnc: function (value) {
-                // Limita o texto para evitar sobreposição
                 return value && typeof value === "string"
                   ? value.substring(0, 2)
                   : "";
@@ -540,7 +592,7 @@ function Dashboard() {
               {
                 axisX: {
                   labelInterpolationFnc: function (value) {
-                    return value && typeof value === "string" ? value[0] : ""; // Mostra apenas o primeiro caractere em telas pequenas
+                    return value && typeof value === "string" ? value[0] : "";
                   },
                 },
               },
@@ -549,10 +601,16 @@ function Dashboard() {
         />
       </div>
     );
-  };
+  }, [
+    ChartistGraph,
+    dataDash.dias,
+    dataDash.fullValues,
+    dataDash.servicosValues,
+    dataDash.produtosValues,
+  ]);
 
   // Error display component
-  const ErrorDisplay = ({ message, onRetry }) => (
+  const ErrorDisplay = React.memo(({ message, onRetry }) => (
     <Result
       status="warning"
       title="Problema ao carregar os dados"
@@ -563,9 +621,9 @@ function Dashboard() {
         </Button>
       }
     />
-  );
+  ));
 
-  // Render main component with error boundary
+  // Render main component
   return (
     <div
       className="dashboard-container"
@@ -686,72 +744,32 @@ function Dashboard() {
               <Skeleton active paragraph={{ rows: 6 }} />
             </Card>
           ) : (
-            <React.Suspense
-              fallback={
-                <Card>
-                  <Skeleton active paragraph={{ rows: 6 }} />
-                  <div style={{ textAlign: "center", marginTop: 16 }}>
-                    <Text type="secondary">
-                      Carregando itens mais vendidos...
-                    </Text>
-                  </div>
-                </Card>
-              }
-            >
-              <ErrorBoundary>
+            <ErrorBoundary>
+              <React.Suspense
+                fallback={
+                  <Card>
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                    <div style={{ textAlign: "center", marginTop: 16 }}>
+                      <Text type="secondary">
+                        Carregando itens mais vendidos...
+                      </Text>
+                    </div>
+                  </Card>
+                }
+              >
                 <TopSellingItemsDashboard
                   defaultDateRange={[
                     moment().startOf("month"),
                     moment().endOf("month"),
                   ]}
                 />
-              </ErrorBoundary>
-            </React.Suspense>
+              </React.Suspense>
+            </ErrorBoundary>
           )}
         </>
       )}
     </div>
   );
-}
-
-// Error Boundary Component para componentes que podem falhar
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("Erro capturado em ErrorBoundary:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Card style={{ marginTop: 16 }}>
-          <Result
-            status="warning"
-            title="Componente não pôde ser carregado"
-            subTitle="Ocorreu um erro ao renderizar este componente."
-            extra={
-              <Button
-                type="primary"
-                onClick={() => this.setState({ hasError: false, error: null })}
-              >
-                Tentar novamente
-              </Button>
-            }
-          />
-        </Card>
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 export default Dashboard;
