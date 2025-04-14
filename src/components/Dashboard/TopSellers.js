@@ -30,6 +30,7 @@ import {
 } from "@ant-design/icons";
 import { getDashboard } from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
+import moment from "moment";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -457,7 +458,7 @@ function TopSellingItemsDashboard() {
       >
         <Text type="secondary">
           O dashboard mostra os produtos e serviços mais vendidos por quantidade
-          e valor. Última atualização: {new Date().toLocaleString()}
+          e valor. Última atualização: {moment().format("DD/MM/YYYY HH:mm:ss")}
         </Text>
       </div>
     </div>

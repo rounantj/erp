@@ -26,7 +26,8 @@
     "react-scripts": "5.0.1",
     "reactstrap": "8.8.1",
     "sass": "1.53.0",
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "xlsx": "^0.18.5"
   },
   "optionalDependencies": {
     "jquery": "3.5.1",

@@ -1,6 +1,7 @@
 import { getSells } from "helpers/api-integrator";
 import { toDateFormat, toMoneyFormat } from "helpers/formatters";
 import React, { useEffect, useState, useRef, useContext } from "react";
+import * as XLSX from "xlsx";
 import ptBR from "antd/lib/locale/pt_BR";
 import moment from "moment";
 import "moment/locale/pt-br";
@@ -15,6 +16,7 @@ import {
   ConfigProvider,
   Layout,
   Divider,
+  notification,
   Space,
   Tag,
   Empty,
@@ -35,6 +37,10 @@ import {
   FilterOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 import Paragraph from "antd/lib/typography/Paragraph";
@@ -201,6 +207,82 @@ function Vendas() {
     }
 
     return null;
+  };
+
+  const exportToExcel = () => {
+    // Verifica se há dados para exportar
+    if (vendas.length === 0) {
+      notification.warning({
+        message: "Sem dados para exportar",
+        description: "Não há vendas no período selecionado para exportar.",
+      });
+      return;
+    }
+
+    // Preparar os dados para exportação
+    const dataToExport = vendas.map((venda) => {
+      // Calcular o total com desconto
+      const totalComDesconto = calcularTotal(venda.total, venda.desconto);
+
+      // Formatar a data
+      const dataFormatada = moment(venda.createdAt).format("DD/MM/YYYY HH:mm");
+
+      // Status de exclusão
+      let statusExclusao = "Normal";
+      if (venda.exclusionRequested) {
+        if (venda.exclusionStatus === "pending") {
+          statusExclusao = "Aguardando aprovação";
+        } else if (venda.exclusionStatus === "approved") {
+          statusExclusao = "Exclusão aprovada";
+        } else if (venda.exclusionStatus === "rejected") {
+          statusExclusao = "Exclusão negada";
+        }
+      }
+
+      // Retornar o objeto formatado para a planilha
+      return {
+        ID: venda.id,
+        Data: dataFormatada,
+        Cliente: venda.nome_cliente || "",
+        "Valor Total": venda.total,
+        Desconto: venda.desconto,
+        "Total com Desconto": totalComDesconto,
+        "Método de Pagamento": venda.metodoPagamento || "",
+        Status: statusExclusao,
+      };
+    });
+
+    // Criar a planilha
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Ajustar a largura das colunas
+    const columnWidths = [
+      { wch: 8 }, // ID
+      { wch: 20 }, // Data
+      { wch: 30 }, // Cliente
+      { wch: 15 }, // Valor Total
+      { wch: 15 }, // Desconto
+      { wch: 20 }, // Total com Desconto
+      { wch: 20 }, // Método de Pagamento
+      { wch: 20 }, // Status
+    ];
+    worksheet["!cols"] = columnWidths;
+
+    // Criar o workbook e adicionar a planilha
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Vendas");
+
+    // Gerar o nome do arquivo com a data atual
+    const fileName = `vendas_${moment().format("YYYY-MM-DD_HH-mm")}.xlsx`;
+
+    // Exportar o arquivo
+    XLSX.writeFile(workbook, fileName);
+
+    // Notificar o usuário
+    notification.success({
+      message: "Exportação concluída",
+      description: `Os dados foram exportados para o arquivo "${fileName}"`,
+    });
   };
 
   // Abrir modal de solicitação de exclusão
@@ -711,6 +793,13 @@ function Vendas() {
                   >
                     Detalhamento
                   </Divider>
+                  <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={exportToExcel}
+                  >
+                    Exportar
+                  </Button>
 
                   <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]}>
                     <Col xs={24} md={12}>
