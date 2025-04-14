@@ -69,6 +69,72 @@ const BarcodeScannerComponent = ({ onDetect, onClose }) => {
   const streamRef = useRef(null);
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(true);
+  // Verificar se existe caixa aberto
+  const caixaEmAberto = async () => {
+    try {
+      setLoading(true);
+      const resultCx = await getCaixaEmAberto();
+
+      if (resultCx.data.length === 0) {
+        notification.warning({
+          message: "Atenção!",
+          description: "Abra um caixa para começar a vender.",
+        });
+        return; // Não há caixa aberto
+      }
+
+      if (resultCx.data.length > 1) {
+        notification.warning({
+          message: "Atenção!",
+          description: "Existe um caixa aberto de um dia anterior.",
+        });
+      }
+
+      const cx = resultCx.data.pop();
+      setCaixa(cx);
+      setCaixaAberto(true);
+
+      setHoraAbertura(moment(cx.createdAt).format("DD/MM/YYYY HH:mm"));
+      setValorAbertura(cx.saldoInicial);
+      await getResumoCaixa(cx.id);
+      await getVendas();
+    } catch (error) {
+      notification.error({
+        message: "Erro",
+        description: "Não foi possível verificar o caixa: " + error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  // Buscar resumo do caixa
+  const getResumoCaixa = async (caixaID) => {
+    try {
+      setLoading(true);
+      const result = await getResumoVendas(caixaID);
+      if (result.data) {
+        setResumoVendas(result.data);
+      } else {
+        notification.error({
+          message: "Erro",
+          description: "Problema ao buscar resumo de vendas!",
+        });
+      }
+    } catch (error) {
+      notification.error({
+        message: "Erro",
+        description:
+          "Não foi possível obter o resumo do caixa: " + error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  // Carregar dados iniciais
+  useEffect(() => {
+    caixaEmAberto();
+    getVendas();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -346,7 +412,13 @@ const Caixa = () => {
 
   // Calcula o total da venda atual
   useEffect(() => {
-    const total = venda.reduce((acc, item) => acc + item.valor * item.qtd, 0);
+    const total = venda.reduce(
+      (acc, item) =>
+        acc +
+        (item.valorEditado !== undefined ? item.valorEditado : item.valor) *
+          item.qtd,
+      0
+    );
     setTotalVendaAtual(total);
   }, [venda]);
 
@@ -449,7 +521,8 @@ const Caixa = () => {
         newVenda[index].qtd += qtd;
         return newVenda;
       } else {
-        return [...prev, { ...produto, qtd }];
+        // Adicionamos o valorEditado igual ao valor original do produto
+        return [...prev, { ...produto, qtd, valorEditado: produto.valor }];
       }
     });
     notification.success({
@@ -464,6 +537,14 @@ const Caixa = () => {
         barcodeInputRef.current.focus();
       }
     }, 100);
+  };
+
+  const atualizarValorProduto = (id, novoValor) => {
+    setVenda((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, valorEditado: novoValor } : item
+      )
+    );
   };
 
   // Remover item da venda
@@ -634,7 +715,10 @@ const Caixa = () => {
         coo: `COO: ${String(historicoVendas.length + 1).padStart(7, "0")}`,
       };
       const totalVendas = venda.reduce(
-        (acc, item) => acc + item.valor * item.qtd,
+        (acc, item) =>
+          acc +
+          (item.valorEditado !== undefined ? item.valorEditado : item.valor) *
+            item.qtd,
         0
       );
 
@@ -762,6 +846,8 @@ const Caixa = () => {
             descricao: item.descricao,
             categoria: item.categoria,
             quantidade: item.qtd,
+            valorUnitario:
+              item.valorEditado !== undefined ? item.valorEditado : item.valor,
             desconto: 0,
           };
         }),
@@ -1014,8 +1100,46 @@ const Caixa = () => {
     }
   };
 
+  const editarValorProduto = (id, novoValor) => {
+    setVenda((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, valorEditado: novoValor } : item
+      )
+    );
+    // Adicionar notificação para confirmar a alteração
+    notification.info({
+      message: "Valor atualizado",
+      description: `O valor do produto foi alterado`,
+      placement: "bottomRight",
+      duration: 1,
+    });
+  };
+  // Buscar resumo do caixa
+  const getResumoCaixa = async (caixaID) => {
+    try {
+      setLoading(true);
+      const result = await getResumoVendas(caixaID);
+      if (result.data) {
+        setResumoVendas(result.data);
+      } else {
+        notification.error({
+          message: "Erro",
+          description: "Problema ao buscar resumo de vendas!",
+        });
+      }
+    } catch (error) {
+      notification.error({
+        message: "Erro",
+        description:
+          "Não foi possível obter o resumo do caixa: " + error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   // Fechar o caixa
-  const fecharCaixa = () => {
+  const fecharCaixa = async () => {
+    await getResumoCaixa(caixa.id);
     setModalFechamento(true);
   };
 
@@ -1320,6 +1444,7 @@ const Caixa = () => {
                                       display: "flex",
                                       justifyContent: "space-between",
                                       marginTop: 8,
+                                      marginBottom: 8,
                                     }}
                                   >
                                     <div>
@@ -1357,12 +1482,44 @@ const Caixa = () => {
                                         }}
                                       />
                                     </div>
-                                    <div>
-                                      <Text>
-                                        {money(item.valor)} × {item.qtd} =
-                                      </Text>
-                                      <Text strong style={{ marginLeft: 5 }}>
-                                        R$ {money(item.valor * item.qtd)}
+                                  </div>
+
+                                  <div style={{ marginTop: 8 }}>
+                                    <div style={{ marginBottom: 8 }}>
+                                      <Text>Valor unitário:</Text>
+                                      <InputNumber
+                                        size="small"
+                                        style={{ width: 100, marginLeft: 8 }}
+                                        min={0.01}
+                                        step={0.01}
+                                        precision={2}
+                                        defaultValue={item.valor}
+                                        value={
+                                          item.valorEditado !== undefined
+                                            ? item.valorEditado
+                                            : item.valor
+                                        }
+                                        onChange={(valor) =>
+                                          editarValorProduto(item.id, valor)
+                                        }
+                                        bordered={true}
+                                        controls={false}
+                                        addonBefore="R$"
+                                      />
+                                    </div>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "flex-end",
+                                      }}
+                                    >
+                                      <Text strong>
+                                        Total: R${" "}
+                                        {money(
+                                          (item.valorEditado !== undefined
+                                            ? item.valorEditado
+                                            : item.valor) * item.qtd
+                                        )}
                                       </Text>
                                     </div>
                                   </div>
@@ -1676,29 +1833,32 @@ const Caixa = () => {
                                     danger
                                     icon={<CloseCircleOutlined />}
                                     onClick={() => removeItem(item)}
+                                    size="small"
                                   />,
                                 ]}
                               >
                                 <List.Item.Meta
                                   title={
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                      }}
-                                    >
+                                    <div style={{ fontSize: 14 }}>
                                       <Text strong>
                                         {item.descricao.toUpperCase()}
                                       </Text>
-                                      <Text type="secondary">#{item.id}</Text>
+                                      <Text
+                                        type="secondary"
+                                        style={{ marginLeft: 8 }}
+                                      >
+                                        #{item.id}
+                                      </Text>
                                     </div>
                                   }
                                   description={
                                     <div>
-                                      <Space
+                                      <div
                                         style={{
-                                          width: "100%",
+                                          display: "flex",
                                           justifyContent: "space-between",
+                                          marginTop: 8,
+                                          marginBottom: 8,
                                         }}
                                       >
                                         <div>
@@ -1736,19 +1896,50 @@ const Caixa = () => {
                                             }}
                                           />
                                         </div>
-                                        <div>
-                                          <Text>
-                                            R$ {money(item.valor)} × {item.qtd}{" "}
-                                            =
-                                          </Text>
-                                          <Text
-                                            strong
-                                            style={{ marginLeft: 5 }}
-                                          >
-                                            R$ {money(item.valor * item.qtd)}
+                                      </div>
+
+                                      <div style={{ marginTop: 8 }}>
+                                        <div style={{ marginBottom: 8 }}>
+                                          <Text>Valor unitário:</Text>
+                                          <InputNumber
+                                            size="small"
+                                            style={{
+                                              width: 100,
+                                              marginLeft: 8,
+                                            }}
+                                            min={0.01}
+                                            step={0.01}
+                                            precision={2}
+                                            defaultValue={item.valor}
+                                            value={
+                                              item.valorEditado !== undefined
+                                                ? item.valorEditado
+                                                : item.valor
+                                            }
+                                            onChange={(valor) =>
+                                              editarValorProduto(item.id, valor)
+                                            }
+                                            bordered={true}
+                                            controls={false}
+                                            addonBefore="R$"
+                                          />
+                                        </div>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            justifyContent: "flex-end",
+                                          }}
+                                        >
+                                          <Text strong>
+                                            Total: R${" "}
+                                            {money(
+                                              (item.valorEditado !== undefined
+                                                ? item.valorEditado
+                                                : item.valor) * item.qtd
+                                            )}
                                           </Text>
                                         </div>
-                                      </Space>
+                                      </div>
                                     </div>
                                   }
                                 />

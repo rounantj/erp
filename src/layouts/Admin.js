@@ -32,20 +32,62 @@ function Admin() {
   const [image, setImage] = React.useState(sidebarImage);
   const [color, setColor] = React.useState("black");
   const [hasImage, setHasImage] = React.useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const mainPanel = React.useRef(null);
   const { user } = useContext(UserContext);
-  const [trustRoutes, setTrustRoutes] = useState([])
+  const [trustRoutes, setTrustRoutes] = useState([]);
 
+  // Verificar tamanho da tela para responsividade
+  useEffect(() => {
+    const checkIfMobile = () => {
+      const isMobileView = window.innerWidth < 992;
+      setIsMobile(isMobileView);
+    };
+
+    // Verificar no carregamento inicial
+    checkIfMobile();
+
+    // Adicionar event listener para mudanças de tamanho
+    window.addEventListener("resize", checkIfMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkIfMobile);
+    };
+  }, []);
+
+  // Controlar a abertura/fechamento da sidebar em dispositivos móveis
+  useEffect(() => {
+    const handleSidebarToggle = () => {
+      setSidebarOpen(!sidebarOpen);
+    };
+
+    // Adicionar classe ao documento quando a sidebar estiver aberta em mobile
+    if (isMobile) {
+      document.body.classList.toggle("sidebar-open", sidebarOpen);
+    } else {
+      document.body.classList.remove("sidebar-open");
+    }
+
+    // Limpar o event listener quando o componente é desmontado
+    return () => {
+      document.body.classList.remove("sidebar-open");
+    };
+  }, [sidebarOpen, isMobile]);
 
   useEffect(() => {
     if (user) {
       const role = user?.user?.role;
-      let newRoutes = routes.filter(a => a?.rule.includes(role) || a?.rule.includes(undefined) || a?.rule.includes(null));
+      let newRoutes = routes.filter(
+        (a) =>
+          a?.rule.includes(role) ||
+          a?.rule.includes(undefined) ||
+          a?.rule.includes(null)
+      );
       setTrustRoutes(newRoutes);
     }
   }, [user]);
-
 
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
@@ -62,61 +104,82 @@ function Admin() {
     });
   };
 
-
   React.useEffect(() => {
     document.documentElement.scrollTop = 0;
     document.scrollingElement.scrollTop = 0;
-    mainPanel.current.scrollTop = 0;
+    if (mainPanel.current) {
+      mainPanel.current.scrollTop = 0;
+    }
+
+    // Fechar o sidebar quando mudar de rota em dispositivos móveis
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+
     if (
       window.innerWidth < 993 &&
       document.documentElement.className.indexOf("nav-open") !== -1
     ) {
       document.documentElement.classList.toggle("nav-open");
       var element = document.getElementById("bodyClick");
-      element.parentNode.removeChild(element);
+      if (element) {
+        element.parentNode.removeChild(element);
+      }
     }
-
   }, [location]);
 
+  // Função para alternar a sidebar em mobile
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
     <>
-      {
-        user &&
+      {user && (
         <>
-          <div className="wrapper">
-            <Sidebar color={color} image={hasImage ? image : ""} routes={trustRoutes} />
-            <div className="main-panel" ref={mainPanel}>
-              <AdminNavbar />
+          <div className={`wrapper ${isMobile ? "mobile" : ""}`}>
+            <Sidebar
+              color={color}
+              image={hasImage ? image : ""}
+              routes={trustRoutes}
+              isMobile={isMobile}
+              isOpen={sidebarOpen}
+              toggleSidebar={toggleSidebar}
+            />
+            <div
+              className={`main-panel ${isMobile ? "mobile" : ""} ${
+                sidebarOpen ? "sidebar-open" : ""
+              }`}
+              ref={mainPanel}
+            >
+              <AdminNavbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
               <div className="content">
                 <Switch>{getRoutes(trustRoutes)}</Switch>
               </div>
               <Footer />
             </div>
           </div>
-          <FixedPlugin
-            hasImage={hasImage}
-            setHasImage={() => setHasImage(!hasImage)}
-            color={color}
-            setColor={(color) => setColor(color)}
-            image={image}
-            setImage={(image) => setImage(image)}
-          />
+          {!isMobile && (
+            <FixedPlugin
+              hasImage={hasImage}
+              setHasImage={() => setHasImage(!hasImage)}
+              color={color}
+              setColor={(color) => setColor(color)}
+              image={image}
+              setImage={(image) => setImage(image)}
+            />
+          )}
         </>
-      }
-      {
-        !user &&
+      )}
+      {!user && (
         <>
           <div ref={mainPanel}>
-            <div >
+            <div>
               <Switch>{getRoutes(routes)}</Switch>
             </div>
-
           </div>
         </>
-      }
-
-
+      )}
     </>
   );
 }
