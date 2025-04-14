@@ -45,6 +45,7 @@ import {
 import { UserContext } from "context/UserContext";
 import Paragraph from "antd/lib/typography/Paragraph";
 import TextArea from "antd/lib/input/TextArea";
+import { aprovaExclusaoVenda } from "helpers/api-integrator";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
