@@ -29,6 +29,7 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 import { UserContext } from "context/UserContext";
@@ -42,6 +43,7 @@ import {
   aprovaExclusaoVenda,
   rejeitaExclusaoVenda,
 } from "helpers/api-integrator";
+import SaleDetailsModal from "components/modalVenda";
 
 const { Content } = Layout;
 const { Text, Paragraph } = Typography;
@@ -76,10 +78,12 @@ const VendasDoDia = () => {
   const [exclusionLoading, setExclusionLoading] = useState(false);
   const [exclusionForm] = Form.useForm();
 
+  // Estados para o modal de detalhes da venda
+  const [showModalVenda, setShowModalVenda] = useState(false);
+
   useEffect(() => {
     console.log({ user });
   }, [user]);
-  // 1. Importe as funções da API
 
   // 2. Adicione estados para o modal de revisão
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -91,6 +95,12 @@ const VendasDoDia = () => {
     setSelectedVenda(venda);
     setReviewModalVisible(true);
     reviewForm.resetFields();
+  };
+
+  // Função para abrir o modal de detalhes
+  const openDetailsModal = (venda) => {
+    setSelectedVenda(venda);
+    setShowModalVenda(true);
   };
 
   // 4. Função para aprovar solicitação
@@ -376,7 +386,6 @@ const VendasDoDia = () => {
       title: "Número",
       dataIndex: "id",
       key: "id",
-      // render: (text) => toDateFormat(text, !isMobile),
       sorter: (a, b) => a.id - b.id,
       responsive: ["sm"],
     },
@@ -388,28 +397,6 @@ const VendasDoDia = () => {
       sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
       responsive: ["md"],
     },
-    // {
-    //   title: "Cliente",
-    //   dataIndex: "nome_cliente",
-    //   key: "nome_cliente",
-    //   render: (text) => (
-    //     <Space>
-    //       <UserOutlined />
-    //       <span
-    //         className="mobile-ellipsis"
-    //         style={{
-    //           maxWidth: isMobile ? "120px" : "100%",
-    //           overflow: "hidden",
-    //           textOverflow: "ellipsis",
-    //           whiteSpace: "nowrap",
-    //           display: "inline-block",
-    //         }}
-    //       >
-    //         {text}
-    //       </span>
-    //     </Space>
-    //   ),
-    // },
     {
       title: "Total",
       key: "totalComDesconto",
@@ -420,7 +407,6 @@ const VendasDoDia = () => {
             <Text strong>{toMoneyFormat(total)}</Text>
             <Tag
               style={{ float: "right" }}
-              //icon={<CheckCircleOutlined />}
               color={
                 record.metodoPagamento == "dinheiro" ? "success" : "default"
               }
@@ -448,19 +434,35 @@ const VendasDoDia = () => {
     {
       title: "Ações",
       key: "actions",
-      width: 140,
+      width: 180, // Aumentei a largura para acomodar mais botões
       render: (_, record) => {
         const isAdmin = user?.user?.role === "admin";
 
-        // Se solicitação pendente e o usuário é admin
-        if (
-          record.exclusionRequested &&
-          record.exclusionStatus === "pending" &&
-          isAdmin
-        ) {
-          return (
-            <Space size="small">
-              <Tooltip title="Revisar solicitação">
+        // Função auxiliar para renderizar botões baseado no estado
+        const renderActionButtons = () => {
+          const buttons = [];
+
+          // Sempre incluir botão Ver Detalhes
+          buttons.push(
+            <Tooltip title="Ver detalhes da venda" key="details">
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                size={isMobile ? "small" : "middle"}
+                onClick={() => openDetailsModal(record)}
+                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+              />
+            </Tooltip>
+          );
+
+          // Se solicitação pendente e o usuário é admin
+          if (
+            record.exclusionRequested &&
+            record.exclusionStatus === "pending" &&
+            isAdmin
+          ) {
+            buttons.push(
+              <Tooltip title="Revisar solicitação" key="review">
                 <Button
                   type="primary"
                   icon={<CheckCircleOutlined />}
@@ -468,54 +470,68 @@ const VendasDoDia = () => {
                   onClick={() => openReviewModal(record)}
                 />
               </Tooltip>
-            </Space>
-          );
-        }
+            );
+            return buttons;
+          }
 
-        // Não mostrar botão de exclusão se já houver solicitação pendente
-        if (record.exclusionRequested && record.exclusionStatus === "pending") {
-          return (
-            <Tooltip title="Solicitação de exclusão pendente">
-              <Button
-                icon={<DeleteOutlined />}
-                disabled
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Não mostrar botão de exclusão se já houver solicitação pendente
+          if (
+            record.exclusionRequested &&
+            record.exclusionStatus === "pending"
+          ) {
+            buttons.push(
+              <Tooltip title="Solicitação de exclusão pendente" key="pending">
+                <Button
+                  icon={<DeleteOutlined />}
+                  disabled
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+            return buttons;
+          }
 
-        // Não mostrar botão se a exclusão já foi aprovada
-        if (record.exclusionStatus === "approved") {
-          return (
-            <Tooltip title="Exclusão aprovada">
-              <Button
-                icon={<DeleteOutlined />}
-                disabled
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Não mostrar botão se a exclusão já foi aprovada
+          if (record.exclusionStatus === "approved") {
+            buttons.push(
+              <Tooltip title="Exclusão aprovada" key="approved">
+                <Button
+                  icon={<DeleteOutlined />}
+                  disabled
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+            return buttons;
+          }
 
-        // Só mostrar o botão de solicitar exclusão se não houver solicitação ou a anterior foi rejeitada
-        if (
-          !record.exclusionRequested ||
-          record.exclusionStatus === "rejected"
-        ) {
-          return (
-            <Tooltip title="Solicitar exclusão">
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => openExclusionModal(record)}
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Só mostrar o botão de solicitar exclusão se não houver solicitação ou a anterior foi rejeitada
+          if (
+            !record.exclusionRequested ||
+            record.exclusionStatus === "rejected"
+          ) {
+            buttons.push(
+              <Tooltip title="Solicitar exclusão" key="delete">
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => openExclusionModal(record)}
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+          }
 
-        return null;
+          return buttons;
+        };
+
+        const actionButtons = renderActionButtons();
+
+        return (
+          <Space size="small" wrap={isMobile}>
+            {actionButtons}
+          </Space>
+        );
       },
     },
   ];
@@ -836,6 +852,8 @@ const VendasDoDia = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Modal de Revisão de Exclusão */}
       <Modal
         title={
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -942,6 +960,13 @@ const VendasDoDia = () => {
           </Row>
         </Form>
       </Modal>
+
+      {/* Modal de Detalhes da Venda */}
+      <SaleDetailsModal
+        visible={showModalVenda}
+        onClose={setShowModalVenda}
+        saleData={selectedVenda}
+      />
     </Layout>
   );
 };

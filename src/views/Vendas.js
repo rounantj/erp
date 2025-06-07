@@ -41,11 +41,13 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   DownloadOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 import Paragraph from "antd/lib/typography/Paragraph";
 import TextArea from "antd/lib/input/TextArea";
 import { aprovaExclusaoVenda } from "helpers/api-integrator";
+import SaleDetailsModal from "components/modalVenda";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -77,10 +79,11 @@ function Vendas() {
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewForm] = Form.useForm();
+  const [showModalVenda, setShowModalVenda] = useState(false);
 
   useEffect(() => {
-    console.log({ selectedVenda, user });
-  }, [user, selectedVenda]);
+    console.log({ selectedVenda, user, showModalVenda });
+  }, [user, selectedVenda, showModalVenda]);
   // 1. Importe as funções da API
 
   // 3. Função para abrir o modal de revisão
@@ -88,6 +91,11 @@ function Vendas() {
     setSelectedVenda(venda);
     setReviewModalVisible(true);
     reviewForm.resetFields();
+  };
+
+  const openDetailsModal = (venda) => {
+    setSelectedVenda(venda);
+    setShowModalVenda(true);
   };
 
   // 4. Função para aprovar solicitação
@@ -188,17 +196,9 @@ function Vendas() {
     if (!venda.exclusionRequested) return null;
 
     if (venda.exclusionStatus === "pending") {
-      return (
-        <Tag icon={<ClockCircleOutlined />} color="warning">
-          Aguardando aprovação
-        </Tag>
-      );
+      return <Tag color="warning">Aguardando aprovação</Tag>;
     } else if (venda.exclusionStatus === "approved") {
-      return (
-        <Tag icon={<CheckCircleOutlined />} color="success">
-          Exclusão aprovada
-        </Tag>
-      );
+      return <Tag color="success">Exclusão aprovada</Tag>;
     } else if (venda.exclusionStatus === "rejected") {
       return (
         <Tag icon={<CloseCircleOutlined />} color="error">
@@ -310,28 +310,6 @@ function Vendas() {
       sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
       responsive: ["md"],
     },
-    // {
-    //   title: "Cliente",
-    //   dataIndex: "nome_cliente",
-    //   key: "nome_cliente",
-    //   render: (text) => (
-    //     <Space>
-    //       <UserOutlined />
-    //       <span
-    //         className="mobile-ellipsis"
-    //         style={{
-    //           maxWidth: isMobile ? "120px" : "100%",
-    //           overflow: "hidden",
-    //           textOverflow: "ellipsis",
-    //           whiteSpace: "nowrap",
-    //           display: "inline-block",
-    //         }}
-    //       >
-    //         {text}
-    //       </span>
-    //     </Space>
-    //   ),
-    // },
     {
       title: "Total",
       key: "totalComDesconto",
@@ -370,19 +348,35 @@ function Vendas() {
     {
       title: "Ações",
       key: "actions",
-      width: 140,
+      width: 180, // Aumentei a largura para acomodar mais botões
       render: (_, record) => {
         const isAdmin = user?.user?.role === "admin";
 
-        // Se solicitação pendente e o usuário é admin
-        if (
-          record.exclusionRequested &&
-          record.exclusionStatus === "pending" &&
-          isAdmin
-        ) {
-          return (
-            <Space size="small">
-              <Tooltip title="Revisar solicitação">
+        // Função auxiliar para renderizar botões baseado no estado
+        const renderActionButtons = () => {
+          const buttons = [];
+
+          // Sempre incluir botão Ver Detalhes
+          buttons.push(
+            <Tooltip title="Ver detalhes da venda" key="details">
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                size={isMobile ? "small" : "middle"}
+                onClick={() => openDetailsModal(record)}
+                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+              />
+            </Tooltip>
+          );
+
+          // Se solicitação pendente e o usuário é admin
+          if (
+            record.exclusionRequested &&
+            record.exclusionStatus === "pending" &&
+            isAdmin
+          ) {
+            buttons.push(
+              <Tooltip title="Revisar solicitação" key="review">
                 <Button
                   type="primary"
                   icon={<CheckCircleOutlined />}
@@ -390,54 +384,68 @@ function Vendas() {
                   onClick={() => openReviewModal(record)}
                 />
               </Tooltip>
-            </Space>
-          );
-        }
+            );
+            return buttons;
+          }
 
-        // Não mostrar botão de exclusão se já houver solicitação pendente
-        if (record.exclusionRequested && record.exclusionStatus === "pending") {
-          return (
-            <Tooltip title="Solicitação de exclusão pendente">
-              <Button
-                icon={<DeleteOutlined />}
-                disabled
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Não mostrar botão de exclusão se já houver solicitação pendente
+          if (
+            record.exclusionRequested &&
+            record.exclusionStatus === "pending"
+          ) {
+            buttons.push(
+              <Tooltip title="Solicitação de exclusão pendente" key="pending">
+                <Button
+                  icon={<DeleteOutlined />}
+                  disabled
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+            return buttons;
+          }
 
-        // Não mostrar botão se a exclusão já foi aprovada
-        if (record.exclusionStatus === "approved") {
-          return (
-            <Tooltip title="Exclusão aprovada">
-              <Button
-                icon={<DeleteOutlined />}
-                disabled
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Não mostrar botão se a exclusão já foi aprovada
+          if (record.exclusionStatus === "approved") {
+            buttons.push(
+              <Tooltip title="Exclusão aprovada" key="approved">
+                <Button
+                  icon={<DeleteOutlined />}
+                  disabled
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+            return buttons;
+          }
 
-        // Só mostrar o botão de solicitar exclusão se não houver solicitação ou a anterior foi rejeitada
-        if (
-          !record.exclusionRequested ||
-          record.exclusionStatus === "rejected"
-        ) {
-          return (
-            <Tooltip title="Solicitar exclusão">
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => openExclusionModal(record)}
-                size={isMobile ? "small" : "middle"}
-              />
-            </Tooltip>
-          );
-        }
+          // Só mostrar o botão de solicitar exclusão se não houver solicitação ou a anterior foi rejeitada
+          if (
+            !record.exclusionRequested ||
+            record.exclusionStatus === "rejected"
+          ) {
+            buttons.push(
+              <Tooltip title="Solicitar exclusão" key="delete">
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => openExclusionModal(record)}
+                  size={isMobile ? "small" : "middle"}
+                />
+              </Tooltip>
+            );
+          }
 
-        return null;
+          return buttons;
+        };
+
+        const actionButtons = renderActionButtons();
+
+        return (
+          <Space size="small" wrap={isMobile}>
+            {actionButtons}
+          </Space>
+        );
       },
     },
   ];
@@ -1125,6 +1133,11 @@ function Vendas() {
           </Row>
         </Form>
       </Modal>
+      <SaleDetailsModal
+        visible={showModalVenda}
+        onClose={setShowModalVenda}
+        saleData={selectedVenda}
+      />
 
       {/* Drawer para filtros em dispositivos móveis */}
       <DateFilterDrawer />

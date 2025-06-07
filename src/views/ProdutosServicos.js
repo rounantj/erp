@@ -25,6 +25,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  CopyOutlined,
   ExclamationCircleOutlined,
   ShoppingOutlined,
   TagOutlined,
@@ -43,7 +44,6 @@ import {
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { confirm } = Modal;
 
 const ProductAndServiceTable = () => {
   // State management
@@ -51,13 +51,16 @@ const ProductAndServiceTable = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [productStats, setProductStats] = useState({
     total: 0,
     categories: 0,
     avgPrice: 0,
   });
+  const [deletingProduct, setDeletingProduct] = useState(false);
 
   // References and context
   const { user } = useContext(UserContext);
@@ -149,11 +152,19 @@ const ProductAndServiceTable = () => {
       const result = await updateProduct(productData);
 
       if (result.success) {
+        const actionText = editingProduct
+          ? "atualizado"
+          : form.getFieldValue("descricao")?.startsWith("Cópia de")
+          ? "duplicado"
+          : "adicionado";
+
         Modal.success({
-          title: editingProduct ? "Produto atualizado" : "Produto adicionado",
-          content: `${values.descricao} foi ${
-            editingProduct ? "atualizado" : "adicionado"
-          } com sucesso.`,
+          title: editingProduct
+            ? "Produto atualizado"
+            : form.getFieldValue("descricao")?.startsWith("Cópia de")
+            ? "Produto duplicado"
+            : "Produto adicionado",
+          content: `${values.descricao} foi ${actionText} com sucesso.`,
         });
 
         setModalVisible(false);
@@ -173,36 +184,27 @@ const ProductAndServiceTable = () => {
     }
   };
 
-  // Show delete confirmation
+  // Show delete confirmation modal
   const showDeleteConfirm = (product) => {
-    confirm({
-      title: "Confirmar exclusão",
-      icon: <ExclamationCircleOutlined />,
-      content: (
-        <div>
-          <p>Tem certeza que deseja excluir este produto?</p>
-          <Text strong>{product.descricao}</Text>
-          <br />
-          <Text type="secondary">{formatCurrency(product.valor)}</Text>
-        </div>
-      ),
-      okText: "Sim, excluir",
-      okType: "danger",
-      cancelText: "Cancelar",
-      onOk: () => handleDelete(product),
-    });
+    setProductToDelete(product);
+    setDeleteModalVisible(true);
   };
 
   // Handle product deletion
-  const handleDelete = async (product) => {
+  const handleDelete = async () => {
+    if (!productToDelete) return;
+
+    setDeletingProduct(true);
     try {
-      const result = await deleteProduct(product.id);
+      const result = await deleteProduct(productToDelete.id);
 
       if (result.success) {
         Modal.success({
           title: "Produto excluído",
-          content: `${product.descricao} foi excluído com sucesso.`,
+          content: `${productToDelete.descricao} foi excluído com sucesso.`,
         });
+        setDeleteModalVisible(false);
+        setProductToDelete(null);
         fetchProducts();
       } else {
         Modal.error({
@@ -216,13 +218,35 @@ const ProductAndServiceTable = () => {
         title: "Erro ao excluir produto",
         content: "Ocorreu um erro ao processar sua solicitação.",
       });
+    } finally {
+      setDeletingProduct(false);
     }
+  };
+
+  // Cancel delete operation
+  const handleCancelDelete = () => {
+    setDeleteModalVisible(false);
+    setProductToDelete(null);
   };
 
   // Handle edit button click
   const handleEdit = (record) => {
     setEditingProduct(record);
     form.setFieldsValue(record);
+    setModalVisible(true);
+  };
+
+  // Handle duplicate button click
+  const handleDuplicate = (record) => {
+    setEditingProduct(null); // Ensure it's treated as a new product
+    const duplicatedProduct = {
+      ...record,
+      descricao: `Cópia de ${record.descricao}`, // Add prefix to description
+    };
+    delete duplicatedProduct.id; // Remove ID so it will be created as new
+    delete duplicatedProduct.key; // Remove key as well
+
+    form.setFieldsValue(duplicatedProduct);
     setModalVisible(true);
   };
 
@@ -296,21 +320,33 @@ const ProductAndServiceTable = () => {
     columns.push({
       title: "Ações",
       key: "actions",
-      width: 120,
+      width: 160,
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => handleEdit(record)}
-          />
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            size="small"
-            onClick={() => showDeleteConfirm(record)}
-          />
+          <Tooltip title="Editar produto">
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              size="small"
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Duplicar produto">
+            <Button
+              type="default"
+              icon={<CopyOutlined />}
+              size="small"
+              onClick={() => handleDuplicate(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Excluir produto">
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+              onClick={() => showDeleteConfirm(record)}
+            />
+          </Tooltip>
         </Space>
       ),
     });
@@ -417,8 +453,15 @@ const ProductAndServiceTable = () => {
           />
         </Card>
 
+        {/* Modal para Adicionar/Editar/Duplicar Produto */}
         <Modal
-          title={editingProduct ? "Editar Produto" : "Adicionar Produto"}
+          title={
+            editingProduct
+              ? "Editar Produto"
+              : form.getFieldValue("descricao")?.startsWith("Cópia de")
+              ? "Duplicar Produto"
+              : "Adicionar Produto"
+          }
           open={modalVisible}
           onCancel={() => setModalVisible(false)}
           footer={null}
@@ -514,11 +557,66 @@ const ProductAndServiceTable = () => {
               <Space>
                 <Button onClick={() => setModalVisible(false)}>Cancelar</Button>
                 <Button type="primary" htmlType="submit">
-                  {editingProduct ? "Atualizar" : "Adicionar"}
+                  {editingProduct
+                    ? "Atualizar"
+                    : form.getFieldValue("descricao")?.startsWith("Cópia de")
+                    ? "Duplicar"
+                    : "Adicionar"}
                 </Button>
               </Space>
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* Modal de Confirmação de Exclusão */}
+        <Modal
+          title={
+            <Space>
+              <ExclamationCircleOutlined style={{ color: "#faad14" }} />
+              Confirmar exclusão
+            </Space>
+          }
+          open={deleteModalVisible}
+          onCancel={handleCancelDelete}
+          footer={[
+            <Button key="cancel" onClick={handleCancelDelete}>
+              Cancelar
+            </Button>,
+            <Button
+              key="delete"
+              type="primary"
+              danger
+              loading={deletingProduct}
+              onClick={handleDelete}
+            >
+              Sim, excluir
+            </Button>,
+          ]}
+          width={450}
+        >
+          <div style={{ padding: "20px 0" }}>
+            <p style={{ marginBottom: 16 }}>
+              Tem certeza que deseja excluir este produto?
+            </p>
+            {productToDelete && (
+              <div
+                style={{ background: "#f5f5f5", padding: 16, borderRadius: 6 }}
+              >
+                <Text strong style={{ display: "block", marginBottom: 8 }}>
+                  {productToDelete.descricao}
+                </Text>
+                <Text
+                  type="secondary"
+                  style={{ display: "block", marginBottom: 4 }}
+                >
+                  Categoria: {productToDelete.categoria}
+                </Text>
+                <Text type="secondary">
+                  Preço: {formatCurrency(productToDelete.valor)}
+                </Text>
+              </div>
+            )}
+          </div>
         </Modal>
       </Content>
     </Layout>
