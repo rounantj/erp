@@ -248,7 +248,9 @@ const Checkout = () => {
       console.error("Erro ao verificar caixa:", error);
       notification.error({
         message: "Erro",
-        description: "Não foi possível verificar o caixa: " + (error?.message || "Erro desconhecido"),
+        description:
+          "Não foi possível verificar o caixa: " +
+          (error?.message || "Erro desconhecido"),
       });
     } finally {
       setLoading(false);
@@ -345,7 +347,7 @@ const Checkout = () => {
     if (!value) return;
 
     const codigoLimpo = value.toString().trim();
-    
+
     try {
       setLoading(true);
       const result = await findProductByCode(codigoLimpo);
@@ -545,7 +547,9 @@ const Checkout = () => {
       await caixaEmAberto();
       notification.success({
         message: "Caixa aberto!",
-        description: `Saldo inicial: R$ ${valorAberturaTemp.toFixed(2).replace(".", ",")}`,
+        description: `Saldo inicial: R$ ${valorAberturaTemp
+          .toFixed(2)
+          .replace(".", ",")}`,
       });
     } catch (error) {
       notification.error({
@@ -563,21 +567,27 @@ const Checkout = () => {
   }, []);
 
   // Confirmar fechamento de caixa
-  const handleConfirmCloseCaixa = useCallback(async (caixaId, saldoFinal, diferenca) => {
-    try {
-      setLoading(true);
-      await fechaCaixa(caixaId, null, saldoFinal, diferenca);
-      setCaixaAberto(false);
-      setCaixa(null);
-      setResumoVendas({});
-      setModalFecharCaixaVisible(false);
-      notification.success({ message: "Caixa fechado com sucesso!" });
-    } catch (error) {
-      notification.error({ message: "Erro ao fechar caixa", description: error.message });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const handleConfirmCloseCaixa = useCallback(
+    async (caixaId, saldoFinal, diferenca) => {
+      try {
+        setLoading(true);
+        await fechaCaixa(caixaId, null, saldoFinal, diferenca);
+        setCaixaAberto(false);
+        setCaixa(null);
+        setResumoVendas({});
+        setModalFecharCaixaVisible(false);
+        notification.success({ message: "Caixa fechado com sucesso!" });
+      } catch (error) {
+        notification.error({
+          message: "Erro ao fechar caixa",
+          description: error.message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   // Toggle sidebar
   const handleToggleSidebar = useCallback(() => {
@@ -606,7 +616,9 @@ const Checkout = () => {
             <div>
               <h1 style={mobileStyles.headerTitle}>PDV</h1>
               <Text style={mobileStyles.headerInfo}>
-                {caixaAberto ? `Caixa aberto • ${resumoVendas?.totalVendas || 0} vendas` : "Caixa fechado"}
+                {caixaAberto
+                  ? `Caixa aberto • ${resumoVendas?.totalVendas || 0} vendas`
+                  : "Caixa fechado"}
               </Text>
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
@@ -615,8 +627,8 @@ const Checkout = () => {
                   type="primary"
                   size="small"
                   onClick={handleOpenCaixa}
-                  style={{ 
-                    background: "rgba(255,255,255,0.2)", 
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
                     border: "none",
                     color: "#fff",
                   }}
@@ -627,8 +639,8 @@ const Checkout = () => {
                 <Button
                   size="small"
                   onClick={handleCloseCaixa}
-                  style={{ 
-                    background: "rgba(255,255,255,0.2)", 
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
                     border: "none",
                     color: "#fff",
                   }}
@@ -682,17 +694,17 @@ const Checkout = () => {
 
           {/* Floating Total - Mostra quando tem itens no carrinho e está na aba de produtos */}
           {cartItemCount > 0 && activeTab === "produtos" && (
-            <div 
+            <div
               style={mobileStyles.floatingTotal}
               onClick={() => setActiveTab("carrinho")}
             >
               <ShoppingCartOutlined style={{ fontSize: "18px" }} />
               <span>{formatCurrency(totalVendaAtual)}</span>
-              <Badge 
-                count={cartItemCount} 
+              <Badge
+                count={cartItemCount}
                 size="small"
-                style={{ 
-                  backgroundColor: "#fff", 
+                style={{
+                  backgroundColor: "#fff",
                   color: "#11998e",
                   fontWeight: "bold",
                 }}
@@ -709,14 +721,14 @@ const Checkout = () => {
               }}
               onClick={() => setActiveTab("produtos")}
             >
-              <AppstoreOutlined 
-                style={{ 
+              <AppstoreOutlined
+                style={{
                   ...mobileStyles.navIcon,
                   color: activeTab === "produtos" ? "#fff" : "#666",
-                }} 
+                }}
               />
-              <span 
-                style={{ 
+              <span
+                style={{
                   ...mobileStyles.navLabel,
                   color: activeTab === "produtos" ? "#fff" : "#666",
                 }}
@@ -748,15 +760,15 @@ const Checkout = () => {
               onClick={() => setActiveTab("carrinho")}
             >
               <Badge count={cartItemCount} size="small" offset={[-2, 0]}>
-                <ShoppingCartOutlined 
-                  style={{ 
+                <ShoppingCartOutlined
+                  style={{
                     ...mobileStyles.navIcon,
                     color: activeTab === "carrinho" ? "#fff" : "#666",
-                  }} 
+                  }}
                 />
               </Badge>
-              <span 
-                style={{ 
+              <span
+                style={{
                   ...mobileStyles.navLabel,
                   color: activeTab === "carrinho" ? "#fff" : "#666",
                 }}

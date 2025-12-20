@@ -20,6 +20,23 @@ import {
   Alert,
 } from "reactstrap";
 import {
+  Card as AntCard,
+  Button as AntButton,
+  Input as AntInput,
+  Modal as AntModal,
+  Form as AntForm,
+  Row as AntRow,
+  Col as AntCol,
+  Tag,
+  Typography,
+  Spin,
+  Empty,
+  FloatButton,
+  ConfigProvider,
+  notification,
+  Popconfirm,
+} from "antd";
+import {
   Plus,
   Search,
   Edit,
@@ -31,6 +48,17 @@ import {
   FileText,
 } from "react-feather";
 import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
+import {
   getClientes,
   createCliente,
   updateCliente,
@@ -38,8 +66,127 @@ import {
 } from "../helpers/api-integrator";
 import { useUser } from "../context/UserContext";
 
+const { Text } = Typography;
+const { Search: AntSearch } = AntInput;
+
+// Estilos para mobile
+const mobileStyles = {
+  container: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "100vw",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    zIndex: 100,
+  },
+  header: {
+    background: "transparent",
+    padding: "16px",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    color: "#333",
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: "rgba(0,0,0,0.6)",
+    fontSize: "12px",
+  },
+  statsRow: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "12px",
+  },
+  statCard: {
+    flex: 1,
+    background: "rgba(255,255,255,0.5)",
+    borderRadius: "12px",
+    padding: "12px",
+    textAlign: "center",
+    backdropFilter: "blur(10px)",
+  },
+  statValue: {
+    color: "#333",
+    fontSize: "24px",
+    fontWeight: "700",
+    display: "block",
+  },
+  statLabel: {
+    color: "rgba(0,0,0,0.6)",
+    fontSize: "11px",
+  },
+  content: {
+    flex: 1,
+    background: "#f8f9fa",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    padding: "16px",
+    paddingBottom: "20px",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "100vw",
+    boxSizing: "border-box",
+    minHeight: 0,
+  },
+  searchContainer: {
+    marginBottom: "12px",
+    flexShrink: 0,
+  },
+  clienteCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+  },
+  clienteName: {
+    fontSize: "14px",
+    fontWeight: "600",
+    marginBottom: "4px",
+  },
+  clienteInfo: {
+    fontSize: "11px",
+    color: "#666",
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    marginTop: "2px",
+  },
+  clienteActions: {
+    display: "flex",
+    gap: "6px",
+    marginTop: "8px",
+  },
+};
+
 const Clientes = () => {
   const { user } = useUser();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [antForm] = AntForm.useForm();
+
+  // Detectar mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -204,6 +351,319 @@ const Clientes = () => {
     return phone;
   };
 
+  // Abrir modal mobile
+  const openMobileModal = (cliente = null) => {
+    if (cliente) {
+      antForm.setFieldsValue(cliente);
+      setEditingCliente(cliente);
+    } else {
+      antForm.resetFields();
+      setEditingCliente(null);
+    }
+    setModalOpen(true);
+  };
+
+  // Submit mobile
+  const handleMobileSubmit = async (values) => {
+    try {
+      let response;
+      if (editingCliente) {
+        response = await updateCliente(editingCliente.id, values);
+        if (response.success) {
+          notification.success({ message: "Cliente atualizado com sucesso!" });
+        } else {
+          notification.error({ message: response.message || "Erro ao atualizar cliente" });
+          return;
+        }
+      } else {
+        response = await createCliente(values);
+        if (response.success) {
+          notification.success({ message: "Cliente cadastrado com sucesso!" });
+        } else {
+          notification.error({ message: response.message || "Erro ao cadastrar cliente" });
+          return;
+        }
+      }
+      setModalOpen(false);
+      antForm.resetFields();
+      setEditingCliente(null);
+      loadClientes();
+    } catch (error) {
+      console.error("Erro ao salvar cliente:", error);
+      notification.error({ message: "Erro ao salvar cliente" });
+    }
+  };
+
+  // ========== RENDER MOBILE ==========
+  if (isMobile) {
+    return (
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: "#5e72e4",
+            borderRadius: 12,
+          },
+        }}
+      >
+        <div style={mobileStyles.container}>
+          {/* Header Mobile */}
+          <div style={mobileStyles.header}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={mobileStyles.headerTitle}>
+                  <UserOutlined style={{ marginRight: "8px" }} />
+                  Clientes
+                </h1>
+                <Text style={mobileStyles.headerSubtitle}>
+                  Gerenciar cadastro de clientes
+                </Text>
+              </div>
+              <div
+                onClick={loadClientes}
+                style={{
+                  background: "rgba(255,255,255,0.5)",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                <ReloadOutlined spin={loading} style={{ color: "#333" }} />
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div style={mobileStyles.statsRow}>
+              <div style={mobileStyles.statCard}>
+                <span style={mobileStyles.statValue}>{clientes.length}</span>
+                <span style={mobileStyles.statLabel}>Total de Clientes</span>
+              </div>
+              <div style={mobileStyles.statCard}>
+                <span style={mobileStyles.statValue}>
+                  {clientes.filter(c => c.ativo !== false).length}
+                </span>
+                <span style={mobileStyles.statLabel}>Ativos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div style={mobileStyles.content}>
+            {/* Search */}
+            <div style={mobileStyles.searchContainer}>
+              <AntSearch
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                allowClear
+                size="large"
+                style={{ borderRadius: "12px" }}
+              />
+            </div>
+
+            {/* Clientes List */}
+            <div style={{ 
+              flex: 1, 
+              overflow: "auto",
+              minHeight: 0,
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  <Spin size="large" />
+                  <div style={{ marginTop: "12px" }}>
+                    <Text type="secondary">Carregando clientes...</Text>
+                  </div>
+                </div>
+              ) : clientes.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Nenhum cliente encontrado"
+                  style={{ marginTop: "40px" }}
+                />
+              ) : (
+                clientes.map((cliente) => (
+                  <div key={cliente.id} style={mobileStyles.clienteCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={mobileStyles.clienteName}>
+                          {cliente.nome}
+                        </div>
+                        {cliente.cpf_cnpj && (
+                          <div style={mobileStyles.clienteInfo}>
+                            <UserOutlined style={{ fontSize: "10px" }} />
+                            {formatCpfCnpj(cliente.cpf_cnpj)}
+                          </div>
+                        )}
+                        {cliente.telefone && (
+                          <div style={mobileStyles.clienteInfo}>
+                            <PhoneOutlined style={{ fontSize: "10px" }} />
+                            {formatPhone(cliente.telefone)}
+                          </div>
+                        )}
+                        {cliente.email && (
+                          <div style={mobileStyles.clienteInfo}>
+                            <MailOutlined style={{ fontSize: "10px" }} />
+                            {cliente.email}
+                          </div>
+                        )}
+                        {cliente.cidade && (
+                          <div style={mobileStyles.clienteInfo}>
+                            <EnvironmentOutlined style={{ fontSize: "10px" }} />
+                            {cliente.cidade} {cliente.estado && `- ${cliente.estado}`}
+                          </div>
+                        )}
+                      </div>
+                      <Tag color={cliente.ativo !== false ? "green" : "default"}>
+                        {cliente.ativo !== false ? "Ativo" : "Inativo"}
+                      </Tag>
+                    </div>
+
+                    <div style={mobileStyles.clienteActions}>
+                      <AntButton
+                        type="primary"
+                        icon={<EditOutlined />}
+                        size="small"
+                        onClick={() => openMobileModal(cliente)}
+                        style={{ flex: 1, borderRadius: "8px" }}
+                      >
+                        Editar
+                      </AntButton>
+                      <Popconfirm
+                        title="Excluir cliente?"
+                        onConfirm={() => handleDelete(cliente.id)}
+                        okText="Sim"
+                        cancelText="Não"
+                      >
+                        <AntButton
+                          danger
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          style={{ flex: 1, borderRadius: "8px" }}
+                        >
+                          Excluir
+                        </AntButton>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Results count */}
+            {!loading && clientes.length > 0 && (
+              <div style={{ 
+                textAlign: "center", 
+                padding: "8px 0",
+                flexShrink: 0,
+              }}>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  {clientes.length} {clientes.length === 1 ? "cliente" : "clientes"}
+                </Text>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Add Button */}
+          <FloatButton
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => openMobileModal()}
+            style={{
+              right: 20,
+              bottom: 20,
+              width: 56,
+              height: 56,
+            }}
+          />
+
+          {/* Modal Mobile */}
+          <AntModal
+            title={editingCliente ? "Editar Cliente" : "Novo Cliente"}
+            open={modalOpen}
+            onCancel={() => { setModalOpen(false); antForm.resetFields(); setEditingCliente(null); }}
+            footer={null}
+            destroyOnClose
+            width="100%"
+            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
+            bodyStyle={{ padding: "16px" }}
+          >
+            <AntForm
+              form={antForm}
+              layout="vertical"
+              onFinish={handleMobileSubmit}
+              initialValues={editingCliente || {}}
+            >
+              <AntForm.Item
+                name="nome"
+                label="Nome"
+                rules={[{ required: true, message: "Nome é obrigatório" }]}
+              >
+                <AntInput placeholder="Nome do cliente" size="large" />
+              </AntForm.Item>
+
+              <AntRow gutter={12}>
+                <AntCol span={12}>
+                  <AntForm.Item name="cpf_cnpj" label="CPF/CNPJ">
+                    <AntInput placeholder="000.000.000-00" size="large" />
+                  </AntForm.Item>
+                </AntCol>
+                <AntCol span={12}>
+                  <AntForm.Item name="telefone" label="Telefone">
+                    <AntInput placeholder="(00) 00000-0000" size="large" />
+                  </AntForm.Item>
+                </AntCol>
+              </AntRow>
+
+              <AntForm.Item name="email" label="Email">
+                <AntInput placeholder="email@exemplo.com" size="large" />
+              </AntForm.Item>
+
+              <AntForm.Item name="endereco" label="Endereço">
+                <AntInput placeholder="Rua, número, bairro" size="large" />
+              </AntForm.Item>
+
+              <AntRow gutter={12}>
+                <AntCol span={8}>
+                  <AntForm.Item name="cidade" label="Cidade">
+                    <AntInput placeholder="Cidade" size="large" />
+                  </AntForm.Item>
+                </AntCol>
+                <AntCol span={8}>
+                  <AntForm.Item name="estado" label="Estado">
+                    <AntInput placeholder="UF" size="large" />
+                  </AntForm.Item>
+                </AntCol>
+                <AntCol span={8}>
+                  <AntForm.Item name="cep" label="CEP">
+                    <AntInput placeholder="00000-000" size="large" />
+                  </AntForm.Item>
+                </AntCol>
+              </AntRow>
+
+              <AntForm.Item name="observacoes" label="Observações">
+                <AntInput.TextArea rows={2} placeholder="Informações adicionais..." />
+              </AntForm.Item>
+
+              <AntForm.Item style={{ marginBottom: 0, marginTop: "16px" }}>
+                <AntButton
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  size="large"
+                  style={{ height: "48px", borderRadius: "12px" }}
+                >
+                  {editingCliente ? "Atualizar" : "Cadastrar"}
+                </AntButton>
+              </AntForm.Item>
+            </AntForm>
+          </AntModal>
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // ========== RENDER DESKTOP ==========
   return (
     <div className="content">
       <Row>

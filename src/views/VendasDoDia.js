@@ -20,6 +20,7 @@ import {
   Tag,
   Tooltip,
   Popconfirm,
+  ConfigProvider,
 } from "antd";
 import {
   DollarOutlined,
@@ -30,6 +31,11 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   EyeOutlined,
+  CalendarOutlined,
+  CreditCardOutlined,
+  WalletOutlined,
+  BankOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 import { UserContext } from "context/UserContext";
@@ -48,6 +54,128 @@ import SaleDetailsModal from "components/modalVenda";
 const { Content } = Layout;
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
+
+// Estilos para mobile
+const mobileStyles = {
+  container: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "100vw",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    zIndex: 100,
+  },
+  header: {
+    background: "transparent",
+    padding: "16px",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "8px",
+    marginTop: "12px",
+  },
+  summaryCard: {
+    background: "rgba(255,255,255,0.15)",
+    borderRadius: "12px",
+    padding: "12px",
+    backdropFilter: "blur(10px)",
+  },
+  summaryValue: {
+    color: "#fff",
+    fontSize: "16px",
+    fontWeight: "700",
+    display: "block",
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: "10px",
+  },
+  totalCard: {
+    background: "rgba(255,255,255,0.25)",
+    borderRadius: "12px",
+    padding: "14px",
+    marginTop: "8px",
+    textAlign: "center",
+  },
+  totalValue: {
+    color: "#fff",
+    fontSize: "28px",
+    fontWeight: "800",
+    display: "block",
+  },
+  totalLabel: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  content: {
+    flex: 1,
+    background: "#f8f9fa",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    padding: "16px",
+    paddingBottom: "20px",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "100vw",
+    boxSizing: "border-box",
+    minHeight: 0,
+  },
+  saleCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+  },
+  saleHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "8px",
+  },
+  saleId: {
+    fontSize: "12px",
+    color: "#666",
+  },
+  saleTime: {
+    fontSize: "11px",
+    color: "#999",
+  },
+  saleTotal: {
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#667eea",
+  },
+  saleActions: {
+    display: "flex",
+    gap: "6px",
+    marginTop: "8px",
+  },
+};
 
 const requestVendaExclusion = async (vendaId, motivo) => {
   return await solicitaExclusaoVenda(vendaId, motivo);
@@ -69,6 +197,7 @@ const VendasDoDia = () => {
     credito: 0,
     debito: 0,
     total: 0,
+    totalVendas: 0,
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -80,10 +209,6 @@ const VendasDoDia = () => {
 
   // Estados para o modal de detalhes da venda
   const [showModalVenda, setShowModalVenda] = useState(false);
-
-  useEffect(() => {
-    console.log({ user });
-  }, [user]);
 
   // 2. Adicione estados para o modal de revisão
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -121,7 +246,6 @@ const VendasDoDia = () => {
           description: "A venda será removida do sistema.",
         });
 
-        // Atualizar a venda na lista local
         setVendas((prev) =>
           prev.map((v) =>
             v.id === selectedVenda.id
@@ -136,7 +260,6 @@ const VendasDoDia = () => {
         );
 
         setReviewModalVisible(false);
-        // Recarregar a lista de vendas
         await getVendas();
       }
     } catch (error) {
@@ -169,7 +292,6 @@ const VendasDoDia = () => {
           description: "A solicitação de exclusão foi rejeitada.",
         });
 
-        // Atualizar a venda na lista local
         setVendas((prev) =>
           prev.map((v) =>
             v.id === selectedVenda.id
@@ -214,11 +336,9 @@ const VendasDoDia = () => {
       const items = await getSells(formattedStart, formattedEnd);
 
       if (items.success) {
-        // Simulando algumas vendas com solicitação de exclusão
         const vendas = items.data.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
-
         setVendas(vendas);
       }
     } catch (error) {
@@ -258,33 +378,45 @@ const VendasDoDia = () => {
       setLoading(true);
       const resultCx = await getCaixaEmAberto();
 
-      if (resultCx.data.length === 0) {
+      if (!resultCx || !resultCx.data) {
         notification.warning({
           message: "Atenção!",
           description: "Abra um caixa para começar a vender.",
         });
-        return; // Não há caixa aberto
+        return;
       }
 
-      if (resultCx.data.length > 1) {
+      const caixas = Array.isArray(resultCx.data) ? resultCx.data : [];
+
+      if (caixas.length === 0) {
+        notification.warning({
+          message: "Atenção!",
+          description: "Abra um caixa para começar a vender.",
+        });
+        return;
+      }
+
+      if (caixas.length > 1) {
         notification.warning({
           message: "Atenção!",
           description: "Existe um caixa aberto de um dia anterior.",
         });
       }
 
-      const cx = resultCx.data.pop();
-      setCaixa(cx);
-      setCaixaAberto(true);
-
-      setHoraAbertura(moment(cx.createdAt).format("DD/MM/YYYY HH:mm"));
-      setValorAbertura(cx.saldoInicial);
-      await getResumoCaixa(cx.id);
-      await getVendas();
+      const cx = caixas[caixas.length - 1];
+      if (cx) {
+        setCaixa(cx);
+        setCaixaAberto(true);
+        setHoraAbertura(moment(cx.createdAt).format("DD/MM/YYYY HH:mm"));
+        setValorAbertura(cx.saldoInicial || 0);
+        await getResumoCaixa(cx.id);
+        await getVendas();
+      }
     } catch (error) {
+      console.error("Erro ao verificar caixa:", error);
       notification.error({
         message: "Erro",
-        description: "Não foi possível verificar o caixa: " + error.message,
+        description: "Não foi possível verificar o caixa: " + (error?.message || "Erro desconhecido"),
       });
     } finally {
       setLoading(false);
@@ -312,7 +444,6 @@ const VendasDoDia = () => {
 
       setExclusionLoading(true);
 
-      // Chamar a API
       const response = await requestVendaExclusion(
         selectedVenda.id,
         values.motivo
@@ -325,7 +456,6 @@ const VendasDoDia = () => {
             "Sua solicitação de exclusão foi enviada para aprovação.",
         });
 
-        // Atualizar a venda na lista local
         setVendas((prev) =>
           prev.map((v) =>
             v.id === selectedVenda.id
@@ -354,25 +484,24 @@ const VendasDoDia = () => {
 
   // Renderizar tags de status de exclusão
   const renderExclusionStatus = (venda) => {
-    console.log({ venda });
     if (!venda.exclusionRequested) return null;
 
     if (venda.exclusionStatus === "pending") {
       return (
-        <Tag icon={<ClockCircleOutlined />} color="warning">
-          Aguardando aprovação
+        <Tag icon={<ClockCircleOutlined />} color="warning" style={{ fontSize: "10px" }}>
+          Aguardando
         </Tag>
       );
     } else if (venda.exclusionStatus === "approved") {
       return (
-        <Tag icon={<CheckCircleOutlined />} color="success">
-          Exclusão aprovada
+        <Tag icon={<CheckCircleOutlined />} color="success" style={{ fontSize: "10px" }}>
+          Aprovada
         </Tag>
       );
     } else if (venda.exclusionStatus === "rejected") {
       return (
-        <Tag icon={<CloseCircleOutlined />} color="error">
-          Exclusão negada
+        <Tag icon={<CloseCircleOutlined />} color="error" style={{ fontSize: "10px" }}>
+          Negada
         </Tag>
       );
     }
@@ -380,7 +509,26 @@ const VendasDoDia = () => {
     return null;
   };
 
-  // Configuração de colunas para tabela de vendas
+  // Formatar moeda
+  const formatCurrency = (value) => {
+    return `R$ ${(parseFloat(value) || 0).toFixed(2).replace(".", ",")}`;
+  };
+
+  // Obter cor do método de pagamento
+  const getPaymentColor = (method) => {
+    const colors = {
+      dinheiro: "#52c41a",
+      pix: "#1890ff",
+      credito: "#722ed1",
+      debito: "#fa8c16",
+    };
+    return colors[method] || "#666";
+  };
+
+  // Verificar se é admin
+  const isAdmin = user?.user?.role === "admin";
+
+  // Configuração de colunas para tabela de vendas (Desktop)
   const columnsVendas = [
     {
       title: "Número",
@@ -425,37 +573,25 @@ const VendasDoDia = () => {
       render: (_, record) => renderExclusionStatus(record),
     },
     {
-      title: "Data",
-      dataIndex: "createdAt",
-      key: "createdAtMobile",
-      render: (text) => toDateFormat(text, false),
-      responsive: ["xs", "sm"],
-    },
-    {
       title: "Ações",
       key: "actions",
-      width: 180, // Aumentei a largura para acomodar mais botões
+      width: 180,
       render: (_, record) => {
-        const isAdmin = user?.user?.role === "admin";
-
-        // Função auxiliar para renderizar botões baseado no estado
         const renderActionButtons = () => {
           const buttons = [];
 
-          // Sempre incluir botão Ver Detalhes
           buttons.push(
             <Tooltip title="Ver detalhes da venda" key="details">
               <Button
                 type="primary"
                 icon={<EyeOutlined />}
-                size={isMobile ? "small" : "middle"}
+                size="middle"
                 onClick={() => openDetailsModal(record)}
                 style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
               />
             </Tooltip>
           );
 
-          // Se solicitação pendente e o usuário é admin
           if (
             record.exclusionRequested &&
             record.exclusionStatus === "pending" &&
@@ -466,7 +602,7 @@ const VendasDoDia = () => {
                 <Button
                   type="primary"
                   icon={<CheckCircleOutlined />}
-                  size={isMobile ? "small" : "middle"}
+                  size="middle"
                   onClick={() => openReviewModal(record)}
                 />
               </Tooltip>
@@ -474,7 +610,6 @@ const VendasDoDia = () => {
             return buttons;
           }
 
-          // Não mostrar botão de exclusão se já houver solicitação pendente
           if (
             record.exclusionRequested &&
             record.exclusionStatus === "pending"
@@ -484,28 +619,26 @@ const VendasDoDia = () => {
                 <Button
                   icon={<DeleteOutlined />}
                   disabled
-                  size={isMobile ? "small" : "middle"}
+                  size="middle"
                 />
               </Tooltip>
             );
             return buttons;
           }
 
-          // Não mostrar botão se a exclusão já foi aprovada
           if (record.exclusionStatus === "approved") {
             buttons.push(
               <Tooltip title="Exclusão aprovada" key="approved">
                 <Button
                   icon={<DeleteOutlined />}
                   disabled
-                  size={isMobile ? "small" : "middle"}
+                  size="middle"
                 />
               </Tooltip>
             );
             return buttons;
           }
 
-          // Só mostrar o botão de solicitar exclusão se não houver solicitação ou a anterior foi rejeitada
           if (
             !record.exclusionRequested ||
             record.exclusionStatus === "rejected"
@@ -516,7 +649,7 @@ const VendasDoDia = () => {
                   danger
                   icon={<DeleteOutlined />}
                   onClick={() => openExclusionModal(record)}
-                  size={isMobile ? "small" : "middle"}
+                  size="middle"
                 />
               </Tooltip>
             );
@@ -525,238 +658,406 @@ const VendasDoDia = () => {
           return buttons;
         };
 
-        const actionButtons = renderActionButtons();
-
         return (
-          <Space size="small" wrap={isMobile}>
-            {actionButtons}
+          <Space size="small">
+            {renderActionButtons()}
           </Space>
         );
       },
     },
   ];
 
-  // Renderizar o componente
+  // ========== RENDER MOBILE ==========
+  if (isMobile) {
+    return (
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: "#667eea",
+            borderRadius: 12,
+          },
+        }}
+      >
+        <div style={mobileStyles.container}>
+          {/* Header Mobile */}
+          <div style={mobileStyles.header}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={mobileStyles.headerTitle}>
+                  <CalendarOutlined style={{ marginRight: "8px" }} />
+                  Resumo do Dia
+                </h1>
+                <Text style={mobileStyles.headerSubtitle}>
+                  {moment().format("DD/MM/YYYY")} • {vendas.length} vendas
+                </Text>
+              </div>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={() => { caixaEmAberto(); getVendas(); }}
+                loading={loading || loadingVendas}
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  borderRadius: "10px",
+                }}
+              />
+            </div>
+
+            {/* Summary Cards */}
+            {caixaAberto && (
+              <>
+                <div style={mobileStyles.summaryGrid}>
+                  <div style={mobileStyles.summaryCard}>
+                    <WalletOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <span style={mobileStyles.summaryValue}>
+                      {formatCurrency(resumoVendas.dinheiro).replace("R$ ", "")}
+                    </span>
+                    <span style={mobileStyles.summaryLabel}>Dinheiro</span>
+                  </div>
+                  <div style={mobileStyles.summaryCard}>
+                    <BankOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <span style={mobileStyles.summaryValue}>
+                      {formatCurrency(resumoVendas.pix).replace("R$ ", "")}
+                    </span>
+                    <span style={mobileStyles.summaryLabel}>PIX</span>
+                  </div>
+                  <div style={mobileStyles.summaryCard}>
+                    <CreditCardOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <span style={mobileStyles.summaryValue}>
+                      {formatCurrency(resumoVendas.credito).replace("R$ ", "")}
+                    </span>
+                    <span style={mobileStyles.summaryLabel}>Crédito</span>
+                  </div>
+                  <div style={mobileStyles.summaryCard}>
+                    <CreditCardOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <span style={mobileStyles.summaryValue}>
+                      {formatCurrency(resumoVendas.debito).replace("R$ ", "")}
+                    </span>
+                    <span style={mobileStyles.summaryLabel}>Débito</span>
+                  </div>
+                </div>
+
+                {/* Total Card */}
+                <div style={mobileStyles.totalCard}>
+                  <span style={mobileStyles.totalLabel}>TOTAL DO DIA</span>
+                  <span style={mobileStyles.totalValue}>
+                    {formatCurrency(resumoVendas.total)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Content Area */}
+          <div style={mobileStyles.content}>
+            {!caixaAberto ? (
+              <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                <Empty
+                  description="Abra o caixa para visualizar as vendas"
+                  style={{ margin: "40px 0" }}
+                />
+              </div>
+            ) : loadingVendas ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+                <div style={{ marginTop: "12px" }}>
+                  <Text type="secondary">Carregando vendas...</Text>
+                </div>
+              </div>
+            ) : vendas.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Nenhuma venda realizada hoje"
+                style={{ marginTop: "40px" }}
+              />
+            ) : (
+              <div style={{ 
+                flex: 1, 
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}>
+                {vendas.map((venda) => {
+                  const total = calcularTotal(venda.total, venda.desconto);
+                  return (
+                    <div key={venda.id} style={mobileStyles.saleCard}>
+                      <div style={mobileStyles.saleHeader}>
+                        <div>
+                          <Text style={mobileStyles.saleId}>
+                            Venda #{venda.id}
+                          </Text>
+                          <Text style={{ ...mobileStyles.saleTime, display: "block" }}>
+                            {moment(venda.createdAt).format("HH:mm")}
+                          </Text>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <Text style={mobileStyles.saleTotal}>
+                            {formatCurrency(total)}
+                          </Text>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        <Tag
+                          color={getPaymentColor(venda.metodoPagamento)}
+                          style={{ margin: 0, fontSize: "10px" }}
+                        >
+                          {venda.metodoPagamento?.toUpperCase()}
+                        </Tag>
+                        {renderExclusionStatus(venda)}
+                      </div>
+
+                      <div style={mobileStyles.saleActions}>
+                        <Button
+                          type="primary"
+                          icon={<EyeOutlined />}
+                          size="small"
+                          onClick={() => openDetailsModal(venda)}
+                          style={{
+                            flex: 1,
+                            backgroundColor: "#52c41a",
+                            borderColor: "#52c41a",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          Ver
+                        </Button>
+
+                        {venda.exclusionRequested && venda.exclusionStatus === "pending" && isAdmin ? (
+                          <Button
+                            type="primary"
+                            icon={<CheckCircleOutlined />}
+                            size="small"
+                            onClick={() => openReviewModal(venda)}
+                            style={{ flex: 1, borderRadius: "8px" }}
+                          >
+                            Revisar
+                          </Button>
+                        ) : !venda.exclusionRequested || venda.exclusionStatus === "rejected" ? (
+                          <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            onClick={() => openExclusionModal(venda)}
+                            style={{ flex: 1, borderRadius: "8px" }}
+                          >
+                            Excluir
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Modais */}
+          <Modal
+            title="Solicitar Exclusão"
+            open={exclusionModalVisible}
+            onCancel={() => setExclusionModalVisible(false)}
+            footer={[
+              <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
+                Cancelar
+              </Button>,
+              <Button
+                key="submit"
+                type="primary"
+                danger
+                loading={exclusionLoading}
+                onClick={handleExclusionRequest}
+              >
+                Solicitar
+              </Button>,
+            ]}
+            destroyOnClose
+          >
+            <Form form={exclusionForm} layout="vertical">
+              {selectedVenda && (
+                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                  <Text strong>Venda #{selectedVenda.id}</Text>
+                  <br />
+                  <Text type="secondary">
+                    {formatCurrency(calcularTotal(selectedVenda.total, selectedVenda.desconto))}
+                  </Text>
+                </div>
+              )}
+              <Form.Item
+                name="motivo"
+                label="Motivo da Exclusão"
+                rules={[
+                  { required: true, message: "Informe o motivo" },
+                  { min: 10, message: "Mínimo 10 caracteres" },
+                ]}
+              >
+                <TextArea rows={3} placeholder="Descreva o motivo..." maxLength={500} showCount />
+              </Form.Item>
+            </Form>
+          </Modal>
+
+          <Modal
+            title="Revisar Exclusão"
+            open={reviewModalVisible}
+            onCancel={() => setReviewModalVisible(false)}
+            footer={null}
+            destroyOnClose
+          >
+            <Form form={reviewForm} layout="vertical">
+              {selectedVenda && (
+                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                  <Text strong>Venda #{selectedVenda.id}</Text>
+                  <br />
+                  <Text type="secondary">Motivo: {selectedVenda.exclusionReason}</Text>
+                </div>
+              )}
+              <Form.Item name="observacoes" label="Observações">
+                <TextArea rows={2} placeholder="Observações..." maxLength={500} />
+              </Form.Item>
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Button
+                    danger
+                    block
+                    loading={reviewLoading}
+                    onClick={handleRejectExclusion}
+                  >
+                    Rejeitar
+                  </Button>
+                </Col>
+                <Col span={12}>
+                  <Button
+                    type="primary"
+                    block
+                    loading={reviewLoading}
+                    onClick={handleApproveExclusion}
+                  >
+                    Aprovar
+                  </Button>
+                </Col>
+              </Row>
+            </Form>
+          </Modal>
+
+          <SaleDetailsModal
+            visible={showModalVenda}
+            onClose={setShowModalVenda}
+            saleData={selectedVenda}
+          />
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // ========== RENDER DESKTOP ==========
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Layout>
-        {/* Conteúdo principal */}
         {caixaAberto ? (
           <>
-            {/* Interface Mobile */}
-            {isMobile ? (
-              <Content style={{ padding: "10px", background: "#f0f2f5" }}>
+            <Content style={{ padding: "20px", background: "#f0f2f5" }}>
+              <Row gutter={[16, 16]}>
                 {resumoVendas.total > 0 && (
-                  <Card
-                    title={
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <DollarOutlined
-                          style={{ marginRight: 8, color: "#1890ff" }}
-                        />
-                        <span>Resumo de Vendas do Dia</span>
-                      </div>
-                    }
-                    style={{ marginBottom: 16 }}
-                    bodyStyle={{ padding: "12px" }}
-                  >
-                    <Row gutter={[8, 16]}>
-                      <Col span={12}>
-                        <Statistic
-                          title="Total em Dinheiro"
-                          value={resumoVendas.dinheiro}
-                          precision={2}
-                          valueStyle={{ color: "#3f8600", fontSize: 16 }}
-                          prefix="R$"
-                        />
-                      </Col>
-                      <Col span={12}>
-                        <Statistic
-                          title="Total em PIX"
-                          value={resumoVendas.pix}
-                          precision={2}
-                          valueStyle={{ color: "#1890ff", fontSize: 16 }}
-                          prefix="R$"
-                        />
-                      </Col>
-                      <Col span={12}>
-                        <Statistic
-                          title="Total em Crédito"
-                          value={resumoVendas.credito}
-                          precision={2}
-                          valueStyle={{ color: "#722ed1", fontSize: 16 }}
-                          prefix="R$"
-                        />
-                      </Col>
-                      <Col span={12}>
-                        <Statistic
-                          title="Total em Débito"
-                          value={resumoVendas.debito}
-                          precision={2}
-                          valueStyle={{ color: "#fa8c16", fontSize: 16 }}
-                          prefix="R$"
-                        />
-                      </Col>
-                      <Col span={24}>
-                        <Divider style={{ margin: "12px 0" }} />
-                        <Statistic
-                          title="Total Geral"
-                          value={resumoVendas.total}
-                          precision={2}
-                          valueStyle={{
-                            color: "black",
-                            fontWeight: "bold",
-                            fontSize: "20px",
-                          }}
-                          prefix="R$"
-                        />
-                      </Col>
-                    </Row>
-                  </Card>
-                )}
-
-                <Card
-                  title={
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <DollarOutlined
-                        style={{ marginRight: 8, color: "#1890ff" }}
-                      />
-                      <span>Vendas do Dia</span>
-                    </div>
-                  }
-                  bodyStyle={{ padding: "12px" }}
-                >
-                  <Table
-                    columns={columnsVendas.map((col) => ({
-                      ...col,
-                      ellipsis: true,
-                    }))}
-                    dataSource={vendas.map((venda) => ({
-                      ...venda,
-                      key: venda.id,
-                    }))}
-                    pagination={{ pageSize: 5, size: "small" }}
-                    bordered
-                    loading={loadingVendas}
-                    size="small"
-                    scroll={{ x: "max-content" }}
-                    locale={{
-                      emptyText: "Sem dados para o período selecionado",
-                    }}
-                  />
-                </Card>
-              </Content>
-            ) : (
-              /* Interface Desktop */
-              <Content style={{ padding: "20px", background: "#f0f2f5" }}>
-                <Row gutter={[16, 16]}>
-                  {resumoVendas.total > 0 && (
-                    <Col span={24}>
-                      <Card
-                        title={
-                          <div
-                            style={{ display: "flex", alignItems: "center" }}
-                          >
-                            <DollarOutlined
-                              style={{ marginRight: 8, color: "#1890ff" }}
-                            />
-                            <span>Resumo de Vendas do Dia</span>
-                          </div>
-                        }
-                      >
-                        <Row gutter={16}>
-                          <Col xs={24} sm={12} md={4}>
-                            <Statistic
-                              style={{ zoom: "90%" }}
-                              title="Total em Dinheiro"
-                              value={resumoVendas.dinheiro}
-                              precision={2}
-                              valueStyle={{ color: "#3f8600" }}
-                              prefix="R$"
-                            />
-                          </Col>
-                          <Col xs={24} sm={12} md={4}>
-                            <Statistic
-                              style={{ zoom: "90%" }}
-                              title="Total em PIX"
-                              value={resumoVendas.pix}
-                              precision={2}
-                              valueStyle={{ color: "#1890ff" }}
-                              prefix="R$"
-                            />
-                          </Col>
-                          <Col xs={24} sm={12} md={4}>
-                            <Statistic
-                              style={{ zoom: "90%" }}
-                              title="Total em Crédito"
-                              value={resumoVendas.credito}
-                              precision={2}
-                              valueStyle={{ color: "#722ed1" }}
-                              prefix="R$"
-                            />
-                          </Col>
-                          <Col xs={24} sm={12} md={4}>
-                            <Statistic
-                              style={{ zoom: "90%" }}
-                              title="Total em Débito"
-                              value={resumoVendas.debito}
-                              precision={2}
-                              valueStyle={{ color: "#fa8c16" }}
-                              prefix="R$"
-                            />
-                          </Col>
-                          <Col xs={24} sm={12} md={6}>
-                            <Statistic
-                              style={{ float: "right" }}
-                              title="Total Geral"
-                              value={resumoVendas.total}
-                              precision={2}
-                              valueStyle={{
-                                color: "black",
-                                fontWeight: "bold",
-                                fontSize: "24px",
-                              }}
-                              prefix="R$"
-                            />
-                          </Col>
-                        </Row>
-                      </Card>
-                    </Col>
-                  )}
-                </Row>
-                <Row>
                   <Col span={24}>
                     <Card
                       title={
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <DollarOutlined
-                            style={{ marginRight: 8, color: "#1890ff" }}
-                          />
-                          <span>Vendas do Dia</span>
+                          <DollarOutlined style={{ marginRight: 8, color: "#1890ff" }} />
+                          <span>Resumo de Vendas do Dia</span>
                         </div>
                       }
                     >
-                      <Table
-                        columns={columnsVendas}
-                        dataSource={vendas.map((venda) => ({
-                          ...venda,
-                          key: venda.id,
-                        }))}
-                        pagination={{ pageSize: 50 }}
-                        bordered
-                        loading={loadingVendas}
-                        size="middle"
-                        locale={{
-                          emptyText: "Sem dados para o período selecionado",
-                        }}
-                      />
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12} md={4}>
+                          <Statistic
+                            style={{ zoom: "90%" }}
+                            title="Total em Dinheiro"
+                            value={resumoVendas.dinheiro}
+                            precision={2}
+                            valueStyle={{ color: "#3f8600" }}
+                            prefix="R$"
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                          <Statistic
+                            style={{ zoom: "90%" }}
+                            title="Total em PIX"
+                            value={resumoVendas.pix}
+                            precision={2}
+                            valueStyle={{ color: "#1890ff" }}
+                            prefix="R$"
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                          <Statistic
+                            style={{ zoom: "90%" }}
+                            title="Total em Crédito"
+                            value={resumoVendas.credito}
+                            precision={2}
+                            valueStyle={{ color: "#722ed1" }}
+                            prefix="R$"
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                          <Statistic
+                            style={{ zoom: "90%" }}
+                            title="Total em Débito"
+                            value={resumoVendas.debito}
+                            precision={2}
+                            valueStyle={{ color: "#fa8c16" }}
+                            prefix="R$"
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            style={{ float: "right" }}
+                            title="Total Geral"
+                            value={resumoVendas.total}
+                            precision={2}
+                            valueStyle={{
+                              color: "black",
+                              fontWeight: "bold",
+                              fontSize: "24px",
+                            }}
+                            prefix="R$"
+                          />
+                        </Col>
+                      </Row>
                     </Card>
                   </Col>
-                </Row>
-              </Content>
-            )}
+                )}
+              </Row>
+              <Row>
+                <Col span={24}>
+                  <Card
+                    title={
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <DollarOutlined style={{ marginRight: 8, color: "#1890ff" }} />
+                        <span>Vendas do Dia</span>
+                      </div>
+                    }
+                  >
+                    <Table
+                      columns={columnsVendas}
+                      dataSource={vendas.map((venda) => ({
+                        ...venda,
+                        key: venda.id,
+                      }))}
+                      pagination={{ pageSize: 50 }}
+                      bordered
+                      loading={loadingVendas}
+                      size="middle"
+                      locale={{
+                        emptyText: "Sem dados para o período selecionado",
+                      }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+            </Content>
           </>
         ) : (
-          // Quando não há caixa aberto
           <Content
             style={{
               padding: "20px",
@@ -776,7 +1077,7 @@ const VendasDoDia = () => {
         )}
       </Layout>
 
-      {/* Modal de Solicitação de Exclusão */}
+      {/* Modal de Solicitação de Exclusão - Desktop */}
       <Modal
         title={
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -853,7 +1154,7 @@ const VendasDoDia = () => {
         </Form>
       </Modal>
 
-      {/* Modal de Revisão de Exclusão */}
+      {/* Modal de Revisão de Exclusão - Desktop */}
       <Modal
         title={
           <div style={{ display: "flex", alignItems: "center" }}>

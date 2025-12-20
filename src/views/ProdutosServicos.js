@@ -26,6 +26,9 @@ import {
   Col,
   Empty,
   Tooltip,
+  ConfigProvider,
+  Spin,
+  FloatButton,
 } from "antd";
 import {
   SearchOutlined,
@@ -39,6 +42,8 @@ import {
   BarcodeOutlined,
   FileTextOutlined,
   CameraOutlined,
+  HomeOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import BarcodeScanner from "components/Checkout/BarcodeScanner";
 import { UserContext } from "context/UserContext";
@@ -53,6 +58,119 @@ import {
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { Search } = Input;
+
+// Estilos para mobile
+const mobileStyles = {
+  container: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "100vw",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    zIndex: 100,
+  },
+  header: {
+    background: "transparent",
+    padding: "16px",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  statsRow: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "12px",
+  },
+  statCard: {
+    flex: 1,
+    background: "rgba(255,255,255,0.2)",
+    borderRadius: "12px",
+    padding: "10px",
+    textAlign: "center",
+  },
+  statValue: {
+    color: "#fff",
+    fontSize: "18px",
+    fontWeight: "700",
+    display: "block",
+  },
+  statLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: "10px",
+  },
+  content: {
+    flex: 1,
+    background: "#f8f9fa",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    padding: "16px",
+    paddingBottom: "20px",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "100vw",
+    boxSizing: "border-box",
+    minHeight: 0,
+  },
+  searchContainer: {
+    marginBottom: "12px",
+    display: "flex",
+    gap: "8px",
+    flexShrink: 0,
+  },
+  productCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+  },
+  productName: {
+    fontSize: "14px",
+    fontWeight: "600",
+    marginBottom: "4px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  productPrice: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#11998e",
+  },
+  productCategory: {
+    fontSize: "10px",
+    marginRight: "6px",
+  },
+  actionButton: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+};
 
 const ProductAndServiceTable = () => {
   // State management
@@ -72,14 +190,25 @@ const ProductAndServiceTable = () => {
   const [deletingProduct, setDeletingProduct] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [eanScannerVisible, setEanScannerVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // References and context
   const { user } = useContext(UserContext);
   const searchInput = useRef(null);
 
+  // Detectar mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // Format money values
   const formatCurrency = (value) => {
-    return `R$ ${parseFloat(value).toFixed(2).replace(".", ",")}`;
+    return `R$ ${parseFloat(value || 0).toFixed(2).replace(".", ",")}`;
   };
 
   // Calculate product statistics
@@ -405,6 +534,341 @@ const ProductAndServiceTable = () => {
     form.setFieldsValue({ ean: barcode });
   };
 
+  // Verificar permissão de edição
+  const canEdit = user?.user?.role === "admin" || user?.user?.role === "atendente";
+
+  // ========== RENDER MOBILE ==========
+  if (isMobile) {
+    return (
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: "#11998e",
+            borderRadius: 12,
+          },
+        }}
+      >
+        <div style={mobileStyles.container}>
+          {/* Header Mobile */}
+          <div style={mobileStyles.header}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={mobileStyles.headerTitle}>
+                  <AppstoreOutlined style={{ marginRight: "8px" }} />
+                  Produtos
+                </h1>
+                <Text style={mobileStyles.headerSubtitle}>
+                  Gerenciar produtos e serviços
+                </Text>
+              </div>
+              <Button
+                type="primary"
+                icon={<CameraOutlined />}
+                onClick={() => setScannerVisible(true)}
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  borderRadius: "10px",
+                }}
+              />
+            </div>
+
+            {/* Stats Row */}
+            <div style={mobileStyles.statsRow}>
+              <div style={mobileStyles.statCard}>
+                <span style={mobileStyles.statValue}>{productStats.total}</span>
+                <span style={mobileStyles.statLabel}>Produtos</span>
+              </div>
+              <div style={mobileStyles.statCard}>
+                <span style={mobileStyles.statValue}>{productStats.categories}</span>
+                <span style={mobileStyles.statLabel}>Categorias</span>
+              </div>
+              <div style={mobileStyles.statCard}>
+                <span style={mobileStyles.statValue}>
+                  {formatCurrency(productStats.avgPrice).replace("R$ ", "")}
+                </span>
+                <span style={mobileStyles.statLabel}>Preço Médio</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div style={mobileStyles.content}>
+            {/* Search */}
+            <div style={mobileStyles.searchContainer}>
+              <Search
+                placeholder="Buscar produto ou código..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+                size="large"
+                style={{ flex: 1, borderRadius: "12px" }}
+              />
+            </div>
+
+            {/* Products List */}
+            <div style={{ 
+              flex: 1, 
+              overflow: "auto", 
+              minHeight: 0,
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  <Spin size="large" />
+                  <div style={{ marginTop: "12px" }}>
+                    <Text type="secondary">Carregando produtos...</Text>
+                  </div>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Nenhum produto encontrado"
+                  style={{ marginTop: "40px" }}
+                />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {filteredProducts.map((product) => (
+                    <div key={product.id} style={mobileStyles.productCard}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div style={{ flex: 1, minWidth: 0, marginRight: "12px" }}>
+                          <div style={mobileStyles.productName}>
+                            {product.descricao?.toUpperCase()}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px", flexWrap: "wrap" }}>
+                            <Tag
+                              color={product.categoria?.toLowerCase() === "serviço" ? "green" : "blue"}
+                              style={mobileStyles.productCategory}
+                            >
+                              {product.categoria?.toUpperCase()}
+                            </Tag>
+                            {product.ean && (
+                              <Text type="secondary" style={{ fontSize: "10px" }}>
+                                <BarcodeOutlined /> {product.ean}
+                              </Text>
+                            )}
+                          </div>
+                          <div style={mobileStyles.productPrice}>
+                            {formatCurrency(product.valor)}
+                          </div>
+                        </div>
+                        
+                        {canEdit && (
+                          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                            <Button
+                              type="primary"
+                              icon={<EditOutlined />}
+                              size="small"
+                              onClick={() => handleEdit(product)}
+                              style={mobileStyles.actionButton}
+                            />
+                            <Button
+                              danger
+                              icon={<DeleteOutlined />}
+                              size="small"
+                              onClick={() => showDeleteConfirm(product)}
+                              style={mobileStyles.actionButton}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quantidade de resultados */}
+            {!loading && filteredProducts.length > 0 && (
+              <div style={{ 
+                textAlign: "center", 
+                padding: "8px 0",
+                flexShrink: 0,
+              }}>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  {filteredProducts.length} {filteredProducts.length === 1 ? "produto" : "produtos"}
+                </Text>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Add Button */}
+          {canEdit && (
+            <FloatButton
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              style={{
+                right: 20,
+                bottom: 20,
+                width: 56,
+                height: 56,
+              }}
+            />
+          )}
+
+          {/* Modais */}
+          <Modal
+            title={
+              editingProduct
+                ? "Editar Produto"
+                : "Adicionar Produto"
+            }
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            footer={null}
+            destroyOnClose
+            width="100%"
+            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
+            bodyStyle={{ padding: "16px" }}
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleFormSubmit}
+              initialValues={{
+                categoria: "produto",
+                valor: 0,
+                descricao: "",
+                ean: "",
+                ncm: "",
+              }}
+            >
+              <Form.Item
+                name="descricao"
+                label="Nome do Produto"
+                rules={[
+                  { required: true, message: "Informe o nome!" },
+                ]}
+              >
+                <Input placeholder="Nome/descrição do produto" size="large" />
+              </Form.Item>
+
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Form.Item
+                    name="categoria"
+                    label="Categoria"
+                    rules={[{ required: true, message: "Selecione!" }]}
+                  >
+                    <Select placeholder="Categoria" size="large">
+                      <Option value="produto">Produto</Option>
+                      <Option value="serviço">Serviço</Option>
+                      <Option value="papelaria">Papelaria</Option>
+                      <Option value="escritório">Escritório</Option>
+                      <Option value="informática">Informática</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="valor"
+                    label="Preço (R$)"
+                    rules={[{ required: true, message: "Informe!" }]}
+                  >
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      precision={2}
+                      min={0}
+                      step={0.01}
+                      prefix="R$"
+                      size="large"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item
+                name="ean"
+                label="Código de Barras (EAN)"
+              >
+                <Input
+                  placeholder="Código de barras"
+                  size="large"
+                  addonAfter={
+                    <CameraOutlined
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setEanScannerVisible(true)}
+                    />
+                  }
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="ncm"
+                label="NCM (opcional)"
+              >
+                <Input placeholder="Código NCM" size="large" />
+              </Form.Item>
+
+              <Form.Item style={{ marginBottom: 0, marginTop: "16px" }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  size="large"
+                  style={{ height: "48px", borderRadius: "12px" }}
+                >
+                  {editingProduct ? "Atualizar Produto" : "Adicionar Produto"}
+                </Button>
+              </Form.Item>
+            </Form>
+          </Modal>
+
+          {/* Modal de Confirmação de Exclusão */}
+          <Modal
+            title={
+              <Space>
+                <ExclamationCircleOutlined style={{ color: "#faad14" }} />
+                Confirmar exclusão
+              </Space>
+            }
+            open={deleteModalVisible}
+            onCancel={handleCancelDelete}
+            footer={[
+              <Button key="cancel" onClick={handleCancelDelete}>
+                Cancelar
+              </Button>,
+              <Button
+                key="delete"
+                type="primary"
+                danger
+                loading={deletingProduct}
+                onClick={handleDelete}
+              >
+                Excluir
+              </Button>,
+            ]}
+          >
+            <div style={{ padding: "16px 0" }}>
+              <p>Tem certeza que deseja excluir este produto?</p>
+              {productToDelete && (
+                <div style={{ background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                  <Text strong>{productToDelete.descricao}</Text>
+                  <br />
+                  <Text type="secondary">{formatCurrency(productToDelete.valor)}</Text>
+                </div>
+              )}
+            </div>
+          </Modal>
+
+          {/* Scanners */}
+          <BarcodeScanner
+            visible={scannerVisible}
+            onClose={() => setScannerVisible(false)}
+            onDetect={handleBarcodeDetected}
+          />
+          <BarcodeScanner
+            visible={eanScannerVisible}
+            onClose={() => setEanScannerVisible(false)}
+            onDetect={handleEanDetected}
+          />
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // ========== RENDER DESKTOP ==========
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Content style={{ padding: "0 24px", marginTop: 16 }}>

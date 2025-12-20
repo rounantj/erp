@@ -33,8 +33,7 @@ const CloseCaixaModal = ({
   const [diferenca, setDiferenca] = useState(0);
 
   // Calcular saldo esperado
-  const saldoEsperado =
-    (valorAbertura || 0) + (resumoVendas?.dinheiro || 0);
+  const saldoEsperado = (valorAbertura || 0) + (resumoVendas?.dinheiro || 0);
 
   // Recalcular diferença quando saldo final mudar
   useEffect(() => {
@@ -143,11 +142,7 @@ const CloseCaixaModal = ({
       {/* Formulário */}
       <Form form={form} layout="vertical">
         <Form.Item
-          label={
-            <Text strong>
-              Saldo Final Contado (dinheiro no caixa)
-            </Text>
-          }
+          label={<Text strong>Saldo Final Contado (dinheiro no caixa)</Text>}
         >
           <InputNumber
             style={{ width: "100%" }}
@@ -159,7 +154,9 @@ const CloseCaixaModal = ({
             formatter={(value) =>
               `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
             }
-            parser={(value) => value.replace(/R\$\s?|(\.)/g, "").replace(",", ".")}
+            parser={(value) =>
+              value.replace(/R\$\s?|(\.)/g, "").replace(",", ".")
+            }
             placeholder="0,00"
           />
         </Form.Item>
@@ -167,7 +164,9 @@ const CloseCaixaModal = ({
         {/* Diferença */}
         {saldoFinal > 0 && (
           <Alert
-            type={diferenca === 0 ? "success" : diferenca > 0 ? "warning" : "error"}
+            type={
+              diferenca === 0 ? "success" : diferenca > 0 ? "warning" : "error"
+            }
             icon={
               diferenca === 0 ? (
                 <CheckCircleOutlined />

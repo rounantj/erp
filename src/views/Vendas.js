@@ -53,6 +53,128 @@ const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 const { Content } = Layout;
 
+// Estilos para mobile
+const mobileStyles = {
+  container: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "100vw",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    zIndex: 100,
+  },
+  header: {
+    background: "transparent",
+    padding: "16px",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "8px",
+    marginTop: "12px",
+  },
+  summaryCard: {
+    background: "rgba(255,255,255,0.15)",
+    borderRadius: "12px",
+    padding: "12px",
+    backdropFilter: "blur(10px)",
+  },
+  summaryValue: {
+    color: "#fff",
+    fontSize: "16px",
+    fontWeight: "700",
+    display: "block",
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: "10px",
+  },
+  totalCard: {
+    background: "rgba(255,255,255,0.25)",
+    borderRadius: "12px",
+    padding: "14px",
+    marginTop: "8px",
+    textAlign: "center",
+  },
+  totalValue: {
+    color: "#fff",
+    fontSize: "24px",
+    fontWeight: "800",
+    display: "block",
+  },
+  totalLabel: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  content: {
+    flex: 1,
+    background: "#f8f9fa",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    padding: "16px",
+    paddingBottom: "20px",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "100vw",
+    boxSizing: "border-box",
+    minHeight: 0,
+  },
+  saleCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+  },
+  saleHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "8px",
+  },
+  saleId: {
+    fontSize: "12px",
+    color: "#666",
+  },
+  saleTime: {
+    fontSize: "11px",
+    color: "#999",
+  },
+  saleTotal: {
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#f5576c",
+  },
+  saleActions: {
+    display: "flex",
+    gap: "6px",
+    marginTop: "8px",
+  },
+};
+
 // Função para calcular o total da venda com desconto
 export const calcularTotal = (valor, desconto) => {
   return +valor - +desconto;
@@ -726,6 +848,295 @@ function Vendas() {
     }
   };
 
+  // Formatar moeda
+  const formatCurrency = (value) => {
+    return `R$ ${(parseFloat(value) || 0).toFixed(2).replace(".", ",")}`;
+  };
+
+  // Verificar se é admin
+  const isAdmin = user?.user?.role === "admin";
+
+  // ========== RENDER MOBILE ==========
+  if (isMobile) {
+    return (
+      <ConfigProvider locale={ptBR}>
+        <div style={mobileStyles.container}>
+          {/* Header Mobile */}
+          <div style={mobileStyles.header}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={mobileStyles.headerTitle}>
+                  <ShoppingCartOutlined style={{ marginRight: "8px" }} />
+                  Faturamento
+                </h1>
+                <Text style={mobileStyles.headerSubtitle}>
+                  {startDate.format("DD/MM")} - {endDate.format("DD/MM/YYYY")}
+                </Text>
+              </div>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<FilterOutlined />}
+                  onClick={() => setFilterDrawerVisible(true)}
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
+                    border: "none",
+                    borderRadius: "10px",
+                  }}
+                />
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={exportToExcel}
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
+                    border: "none",
+                    borderRadius: "10px",
+                  }}
+                />
+              </Space>
+            </div>
+
+            {/* Summary Cards */}
+            <div style={mobileStyles.summaryGrid}>
+              <div style={mobileStyles.summaryCard}>
+                <ShoppingCartOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <span style={mobileStyles.summaryValue}>{vendas.length}</span>
+                <span style={mobileStyles.summaryLabel}>Vendas</span>
+              </div>
+              <div style={mobileStyles.summaryCard}>
+                <UserOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <span style={mobileStyles.summaryValue}>{calcularClientesUnicos()}</span>
+                <span style={mobileStyles.summaryLabel}>Clientes</span>
+              </div>
+              <div style={mobileStyles.summaryCard}>
+                <BarChartOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <span style={mobileStyles.summaryValue}>
+                  {formatCurrency(calcularValorMedioPorVenda()).replace("R$ ", "")}
+                </span>
+                <span style={mobileStyles.summaryLabel}>Ticket Médio</span>
+              </div>
+              <div style={mobileStyles.summaryCard}>
+                <DollarOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <span style={mobileStyles.summaryValue}>
+                  {formatCurrency(calcularTotalPorPeriodo()).replace("R$ ", "")}
+                </span>
+                <span style={mobileStyles.summaryLabel}>Total</span>
+              </div>
+            </div>
+
+            {/* Total Card */}
+            <div style={mobileStyles.totalCard}>
+              <span style={mobileStyles.totalLabel}>TOTAL DO PERÍODO</span>
+              <span style={mobileStyles.totalValue}>
+                {formatCurrency(calcularTotalPorPeriodo())}
+              </span>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div style={mobileStyles.content}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+                <div style={{ marginTop: "12px" }}>
+                  <Text type="secondary">Carregando vendas...</Text>
+                </div>
+              </div>
+            ) : vendas.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Nenhuma venda no período"
+                style={{ marginTop: "40px" }}
+              />
+            ) : (
+              <div style={{ 
+                flex: 1, 
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}>
+                {vendas.map((venda) => {
+                  const total = calcularTotal(venda.total, venda.desconto);
+                  return (
+                    <div key={venda.id} style={mobileStyles.saleCard}>
+                      <div style={mobileStyles.saleHeader}>
+                        <div>
+                          <Text style={mobileStyles.saleId}>
+                            Venda #{venda.id}
+                          </Text>
+                          <Text style={{ ...mobileStyles.saleTime, display: "block" }}>
+                            {moment(venda.createdAt).format("DD/MM HH:mm")}
+                          </Text>
+                          {venda.nome_cliente && (
+                            <Text style={{ fontSize: "11px", color: "#666" }}>
+                              <UserOutlined /> {venda.nome_cliente}
+                            </Text>
+                          )}
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <Text style={mobileStyles.saleTotal}>
+                            {formatCurrency(total)}
+                          </Text>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        <Tag
+                          color={venda.metodoPagamento === "dinheiro" ? "green" : venda.metodoPagamento === "pix" ? "blue" : "purple"}
+                          style={{ margin: 0, fontSize: "10px" }}
+                        >
+                          {venda.metodoPagamento?.toUpperCase()}
+                        </Tag>
+                        {renderExclusionStatus(venda)}
+                      </div>
+
+                      <div style={mobileStyles.saleActions}>
+                        <Button
+                          type="primary"
+                          icon={<EyeOutlined />}
+                          size="small"
+                          onClick={() => openDetailsModal(venda)}
+                          style={{
+                            flex: 1,
+                            backgroundColor: "#52c41a",
+                            borderColor: "#52c41a",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          Ver
+                        </Button>
+
+                        {venda.exclusionRequested && venda.exclusionStatus === "pending" && isAdmin ? (
+                          <Button
+                            type="primary"
+                            icon={<CheckCircleOutlined />}
+                            size="small"
+                            onClick={() => openReviewModal(venda)}
+                            style={{ flex: 1, borderRadius: "8px" }}
+                          >
+                            Revisar
+                          </Button>
+                        ) : !venda.exclusionRequested || venda.exclusionStatus === "rejected" ? (
+                          <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            onClick={() => openExclusionModal(venda)}
+                            style={{ flex: 1, borderRadius: "8px" }}
+                          >
+                            Excluir
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Modais */}
+          <Modal
+            title="Solicitar Exclusão"
+            open={exclusionModalVisible}
+            onCancel={() => setExclusionModalVisible(false)}
+            footer={[
+              <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
+                Cancelar
+              </Button>,
+              <Button
+                key="submit"
+                type="primary"
+                danger
+                loading={exclusionLoading}
+                onClick={handleExclusionRequest}
+              >
+                Solicitar
+              </Button>,
+            ]}
+            destroyOnClose
+          >
+            <Form form={exclusionForm} layout="vertical">
+              {selectedVenda && (
+                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                  <Text strong>Venda #{selectedVenda.id}</Text>
+                  <br />
+                  <Text type="secondary">
+                    {formatCurrency(calcularTotal(selectedVenda.total, selectedVenda.desconto))}
+                  </Text>
+                </div>
+              )}
+              <Form.Item
+                name="motivo"
+                label="Motivo da Exclusão"
+                rules={[
+                  { required: true, message: "Informe o motivo" },
+                  { min: 10, message: "Mínimo 10 caracteres" },
+                ]}
+              >
+                <TextArea rows={3} placeholder="Descreva o motivo..." maxLength={500} showCount />
+              </Form.Item>
+            </Form>
+          </Modal>
+
+          <Modal
+            title="Revisar Exclusão"
+            open={reviewModalVisible}
+            onCancel={() => setReviewModalVisible(false)}
+            footer={null}
+            destroyOnClose
+          >
+            <Form form={reviewForm} layout="vertical">
+              {selectedVenda && (
+                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                  <Text strong>Venda #{selectedVenda.id}</Text>
+                  <br />
+                  <Text type="secondary">Motivo: {selectedVenda.exclusionReason}</Text>
+                </div>
+              )}
+              <Form.Item name="observacoes" label="Observações">
+                <TextArea rows={2} placeholder="Observações..." maxLength={500} />
+              </Form.Item>
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Button
+                    danger
+                    block
+                    loading={reviewLoading}
+                    onClick={handleRejectExclusion}
+                  >
+                    Rejeitar
+                  </Button>
+                </Col>
+                <Col span={12}>
+                  <Button
+                    type="primary"
+                    block
+                    loading={reviewLoading}
+                    onClick={handleApproveExclusion}
+                  >
+                    Aprovar
+                  </Button>
+                </Col>
+              </Row>
+            </Form>
+          </Modal>
+
+          <SaleDetailsModal
+            visible={showModalVenda}
+            onClose={setShowModalVenda}
+            saleData={selectedVenda}
+          />
+
+          {/* Drawer para filtros */}
+          <DateFilterDrawer />
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // ========== RENDER DESKTOP ==========
   return (
     <ConfigProvider locale={ptBR}>
       <Layout

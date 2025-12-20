@@ -16,6 +16,10 @@ import {
   Table,
   Tag,
   Tooltip,
+  ConfigProvider,
+  Spin,
+  Empty,
+  Segmented,
 } from "antd";
 import {
   SaveOutlined,
@@ -26,6 +30,8 @@ import {
   NumberOutlined,
   BarcodeOutlined,
   KeyOutlined,
+  ReloadOutlined,
+  ShopOutlined,
 } from "@ant-design/icons";
 
 import { UserContext } from "context/UserContext";
@@ -39,6 +45,86 @@ import {
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
+
+// Estilos para mobile
+const mobileStyles = {
+  container: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "100vw",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    zIndex: 100,
+  },
+  header: {
+    background: "transparent",
+    padding: "16px",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: "12px",
+  },
+  content: {
+    flex: 1,
+    background: "#f8f9fa",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    padding: "16px",
+    paddingBottom: "20px",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "100vw",
+    boxSizing: "border-box",
+    minHeight: 0,
+  },
+  sectionCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "16px",
+    marginBottom: "12px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+  },
+  sectionTitle: {
+    fontSize: "14px",
+    fontWeight: "600",
+    marginBottom: "12px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    color: "#667eea",
+  },
+  userCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+  },
+  userName: {
+    fontSize: "14px",
+    fontWeight: "600",
+    marginBottom: "4px",
+  },
+};
 
 const roleColors = {
   visitante: "blue",
@@ -60,6 +146,17 @@ function Configuracoes() {
   const [loading, setLoading] = useState(false);
   const [usersList, setUsersList] = useState([]);
   const [activeTab, setActiveTab] = useState("1");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileTab, setMobileTab] = useState("empresa");
+
+  // Detectar mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const [company, setCompany] = useState({
     id: "",
@@ -250,6 +347,229 @@ function Configuracoes() {
     },
   ];
 
+  // ========== RENDER MOBILE ==========
+  if (isMobile) {
+    return (
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: "#667eea",
+            borderRadius: 12,
+          },
+        }}
+      >
+        <div style={mobileStyles.container}>
+          {/* Header Mobile */}
+          <div style={mobileStyles.header}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={mobileStyles.headerTitle}>
+                  <SettingOutlined style={{ marginRight: "8px" }} />
+                  Configurações
+                </h1>
+                <Text style={mobileStyles.headerSubtitle}>
+                  Gerenciar empresa e usuários
+                </Text>
+              </div>
+              <div
+                onClick={() => { fetchCompanySetup(); fetchUsers(); }}
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                <ReloadOutlined spin={loading} style={{ color: "#fff" }} />
+              </div>
+            </div>
+
+            {/* Tab Switcher */}
+            <div style={{ marginTop: "16px" }}>
+              <Segmented
+                block
+                value={mobileTab}
+                onChange={setMobileTab}
+                options={[
+                  { label: "Empresa", value: "empresa", icon: <ShopOutlined /> },
+                  { label: "Usuários", value: "usuarios", icon: <TeamOutlined /> },
+                ]}
+                style={{ 
+                  background: "rgba(255,255,255,0.2)",
+                  padding: "4px",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div style={mobileStyles.content}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+                <div style={{ marginTop: "12px" }}>
+                  <Text type="secondary">Carregando...</Text>
+                </div>
+              </div>
+            ) : mobileTab === "empresa" ? (
+              // Configurações da Empresa
+              <div style={{ 
+                flex: 1, 
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}>
+                <Form
+                  form={form}
+                  layout="vertical"
+                  onFinish={handleSaveSetup}
+                >
+                  <div style={mobileStyles.sectionCard}>
+                    <div style={mobileStyles.sectionTitle}>
+                      <IdcardOutlined />
+                      Informações Básicas
+                    </div>
+                    
+                    <Form.Item
+                      name="companyName"
+                      label="Nome da Empresa"
+                      rules={[{ required: true, message: "Obrigatório" }]}
+                    >
+                      <Input placeholder="Nome da empresa" size="large" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="companyCNPJ"
+                      label="CNPJ"
+                      rules={[{ required: true, message: "Obrigatório" }]}
+                    >
+                      <Input placeholder="00.000.000/0000-00" size="large" />
+                    </Form.Item>
+                  </div>
+
+                  <div style={mobileStyles.sectionCard}>
+                    <div style={mobileStyles.sectionTitle}>
+                      <BarcodeOutlined />
+                      Informações Fiscais
+                    </div>
+                    
+                    <Form.Item
+                      name="companyNCM"
+                      label="NCM"
+                      rules={[{ required: true, message: "Obrigatório" }]}
+                    >
+                      <Input placeholder="Código NCM" size="large" />
+                    </Form.Item>
+
+                    <Row gutter={12}>
+                      <Col span={12}>
+                        <Form.Item name="sefazCode" label="Código Sefaz">
+                          <Input placeholder="Código" size="large" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="sefazId" label="ID Sefaz">
+                          <Input placeholder="ID" size="large" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </div>
+
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    size="large"
+                    icon={<SaveOutlined />}
+                    loading={loading}
+                    style={{ height: "48px", borderRadius: "12px" }}
+                  >
+                    Salvar Configurações
+                  </Button>
+                </Form>
+              </div>
+            ) : (
+              // Gerenciamento de Usuários
+              <div style={{ 
+                flex: 1, 
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}>
+                {usersList.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Nenhum usuário encontrado"
+                    style={{ marginTop: "40px" }}
+                  />
+                ) : (
+                  usersList.map((userItem) => (
+                    <div key={userItem.key} style={mobileStyles.userCard}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={mobileStyles.userName}>
+                            <UserOutlined style={{ marginRight: "8px" }} />
+                            {userItem.username}
+                          </div>
+                          <Text type="secondary" style={{ fontSize: "11px" }}>
+                            ID: {userItem.id}
+                          </Text>
+                        </div>
+                        <Tag color={roleColors[userItem.role] || "default"}>
+                          {roleTitles[userItem.role] || "Desconhecido"}
+                        </Tag>
+                      </div>
+                      
+                      <div style={{ marginTop: "12px" }}>
+                        <Text style={{ fontSize: "12px", marginBottom: "4px", display: "block" }}>
+                          Alterar função:
+                        </Text>
+                        <Select
+                          value={userItem.role}
+                          style={{ width: "100%" }}
+                          onChange={(value) => handleRoleChange(userItem.username, value)}
+                          size="large"
+                        >
+                          <Option value="visitante">
+                            <Tag color={roleColors.visitante}>Visitante</Tag>
+                          </Option>
+                          <Option value="atendente">
+                            <Tag color={roleColors.atendente}>Atendente</Tag>
+                          </Option>
+                          <Option value="supervisor">
+                            <Tag color={roleColors.supervisor}>Supervisor</Tag>
+                          </Option>
+                          <Option value="admin">
+                            <Tag color={roleColors.admin}>Administrador</Tag>
+                          </Option>
+                        </Select>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {/* Results count */}
+                {usersList.length > 0 && (
+                  <div style={{ 
+                    textAlign: "center", 
+                    padding: "8px 0",
+                    flexShrink: 0,
+                  }}>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      {usersList.length} {usersList.length === 1 ? "usuário" : "usuários"}
+                    </Text>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // ========== RENDER DESKTOP ==========
   return (
     <Layout className="site-layout-background" style={{ padding: "24px" }}>
       <Tabs
