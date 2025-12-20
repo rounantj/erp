@@ -58,6 +58,20 @@ export const calcularTotal = (valor, desconto) => {
   return +valor - +desconto;
 };
 
+// Função para calcular o total de uma lista de itens (usado no Checkout)
+export const calcularTotalItens = (itens) => {
+  if (!Array.isArray(itens)) return 0;
+
+  return itens.reduce((total, item) => {
+    const valor =
+      parseFloat(
+        item.valorEditado !== undefined ? item.valorEditado : item.valor
+      ) || 0;
+    const quantidade = parseInt(item.qtd) || 0;
+    return total + valor * quantidade;
+  }, 0);
+};
+
 function Vendas() {
   // Estados
   const { user } = useContext(UserContext);

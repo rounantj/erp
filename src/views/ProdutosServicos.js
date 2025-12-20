@@ -1,4 +1,11 @@
-import React, { useEffect, useState, useContext, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   Layout,
   Card,
@@ -31,7 +38,9 @@ import {
   TagOutlined,
   BarcodeOutlined,
   FileTextOutlined,
+  CameraOutlined,
 } from "@ant-design/icons";
+import BarcodeScanner from "components/Checkout/BarcodeScanner";
 import { UserContext } from "context/UserContext";
 
 // Import API helpers
@@ -61,6 +70,8 @@ const ProductAndServiceTable = () => {
     avgPrice: 0,
   });
   const [deletingProduct, setDeletingProduct] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [eanScannerVisible, setEanScannerVisible] = useState(false);
 
   // References and context
   const { user } = useContext(UserContext);
@@ -90,8 +101,8 @@ const ProductAndServiceTable = () => {
     });
   };
 
-  // Fetch products from API
-  const fetchProducts = async () => {
+  // Fetch products from API - memoizado
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getProducts();
@@ -124,10 +135,10 @@ const ProductAndServiceTable = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Filter products based on search
-  const getFilteredProducts = () => {
+  // Filter products based on search - memoizado para performance
+  const filteredProducts = useMemo(() => {
     if (!searchText) return products;
 
     const searchTerm = searchText.toLowerCase();
@@ -139,7 +150,7 @@ const ProductAndServiceTable = () => {
         (item.descricao?.toLowerCase() || "").includes(searchTerm) ||
         formatCurrency(item.valor).toLowerCase().includes(searchTerm)
     );
-  };
+  }, [products, searchText]);
 
   // Handle form submission
   const handleFormSubmit = async (values) => {
@@ -355,9 +366,44 @@ const ProductAndServiceTable = () => {
   // Load products on component mount
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
-  const filteredProducts = getFilteredProducts();
+  // Handle barcode detected from scanner
+  const handleBarcodeDetected = (barcode) => {
+    setScannerVisible(false);
+    setSearchText(barcode);
+    
+    // Verificar se encontrou algum produto
+    const found = products.find(
+      (p) => p.ean === barcode || p.id?.toString() === barcode
+    );
+    
+    if (found) {
+      Modal.success({
+        title: "Produto encontrado!",
+        content: `${found.descricao} - ${formatCurrency(found.valor)}`,
+      });
+    } else {
+      Modal.info({
+        title: "Produto não encontrado",
+        content: `Nenhum produto com código "${barcode}" foi encontrado. Deseja cadastrar?`,
+        okText: "Cadastrar",
+        cancelText: "Fechar",
+        onOk: () => {
+          setEditingProduct(null);
+          form.resetFields();
+          form.setFieldsValue({ ean: barcode });
+          setModalVisible(true);
+        },
+      });
+    }
+  };
+
+  // Handle EAN barcode detected in the modal
+  const handleEanDetected = (barcode) => {
+    setEanScannerVisible(false);
+    form.setFieldsValue({ ean: barcode });
+  };
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -414,7 +460,7 @@ const ProductAndServiceTable = () => {
         </Card>
 
         <Card bordered={false} className="shadow-sm">
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", gap: "8px", alignItems: "center" }}>
             <Input
               placeholder="Buscar produtos..."
               prefix={<SearchOutlined />}
@@ -428,6 +474,14 @@ const ProductAndServiceTable = () => {
               style={{ width: 300 }}
               ref={searchInput}
             />
+            <Tooltip title="Escanear código de barras">
+              <Button
+                icon={<CameraOutlined />}
+                onClick={() => setScannerVisible(true)}
+              >
+                Scanner
+              </Button>
+            </Tooltip>
           </div>
 
           <Table
@@ -546,7 +600,17 @@ const ProductAndServiceTable = () => {
                   label="EAN"
                   tooltip="Código de barras do produto"
                 >
-                  <Input placeholder="Código de barras" />
+                  <Input
+                    placeholder="Código de barras"
+                    addonAfter={
+                      <Tooltip title="Escanear código">
+                        <CameraOutlined
+                          style={{ cursor: "pointer" }}
+                          onClick={() => setEanScannerVisible(true)}
+                        />
+                      </Tooltip>
+                    }
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -618,6 +682,20 @@ const ProductAndServiceTable = () => {
             )}
           </div>
         </Modal>
+
+        {/* Scanner de Código de Barras - Busca */}
+        <BarcodeScanner
+          visible={scannerVisible}
+          onClose={() => setScannerVisible(false)}
+          onDetect={handleBarcodeDetected}
+        />
+
+        {/* Scanner de Código de Barras - EAN no Modal */}
+        <BarcodeScanner
+          visible={eanScannerVisible}
+          onClose={() => setEanScannerVisible(false)}
+          onDetect={handleEanDetected}
+        />
       </Content>
     </Layout>
   );

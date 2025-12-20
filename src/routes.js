@@ -1,27 +1,55 @@
-import Dashboard from "views/Dashboard.js";
-import UserProfile from "views/UserProfile.js";
-import TableList from "views/TableList.js";
-import Typography from "views/Typography.js";
-import Icons from "views/Icons.js";
-import Maps from "views/Maps.js";
-import Upgrade from "views/Upgrade.js";
-import Checkout from "views/Checkout";
-import Vendas from "views/Vendas";
-import Despesas from "views/Despesas";
-import SaudeFinanceira from "views/SaudeFinanceira";
-import ProductAndServiceTable from "views/ProdutosServicos";
-import Login from "views/LoginRegister";
-import Configuracoes from "views/Configuracoes";
-import Curriculo from "views/Curriculo";
-import CriadorCurriculo from "views/Curriculo";
-import VendasDoDia from "views/VendasDoDia";
+import React, { lazy, Suspense } from "react";
+import { Spin } from "antd";
+
+// Lazy loading de todos os componentes
+const Dashboard = lazy(() => import("views/Dashboard.js"));
+const UserProfile = lazy(() => import("views/UserProfile.js"));
+const TableList = lazy(() => import("views/TableList.js"));
+const Typography = lazy(() => import("views/Typography.js"));
+const Icons = lazy(() => import("views/Icons.js"));
+const Maps = lazy(() => import("views/Maps.js"));
+const Upgrade = lazy(() => import("views/Upgrade.js"));
+const Checkout = lazy(() => import("views/Checkout"));
+const Vendas = lazy(() => import("views/Vendas"));
+const Despesas = lazy(() => import("views/Despesas"));
+const SaudeFinanceira = lazy(() => import("views/SaudeFinanceira"));
+const ProductAndServiceTable = lazy(() => import("views/ProdutosServicos"));
+const Login = lazy(() => import("views/LoginRegister"));
+const Configuracoes = lazy(() => import("views/Configuracoes"));
+const Curriculo = lazy(() => import("views/Curriculo"));
+const CriadorCurriculo = lazy(() => import("views/Curriculo"));
+const VendasDoDia = lazy(() => import("views/VendasDoDia"));
+const Clientes = lazy(() => import("views/Clientes"));
+const Empresas = lazy(() => import("views/Empresas"));
+
+// Componente de loading para Suspense
+const LoadingComponent = () => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "200px",
+    }}
+  >
+    <Spin size="large" />
+  </div>
+);
+
+// Wrapper para componentes com Suspense
+const withSuspense = (Component) => (props) =>
+  (
+    <Suspense fallback={<LoadingComponent />}>
+      <Component {...props} />
+    </Suspense>
+  );
 
 const dashboardRoutes = [
   {
     path: "/dashboard",
     name: "Dashboard",
     icon: "nc-icon nc-chart-pie-35",
-    component: Dashboard,
+    component: withSuspense(Dashboard),
     layout: "/admin",
     rule: ["admin"],
   },
@@ -29,7 +57,7 @@ const dashboardRoutes = [
     path: "/checkout",
     name: "Caixa",
     icon: "nc-icon nc-credit-card",
-    component: Checkout,
+    component: withSuspense(Checkout),
     layout: "/admin",
     rule: ["atendente", "admin"],
   },
@@ -37,7 +65,7 @@ const dashboardRoutes = [
     path: "/vendas",
     name: "Faturamento",
     icon: "nc-icon nc-money-coins",
-    component: Vendas,
+    component: withSuspense(Vendas),
     layout: "/admin",
     rule: ["admin"],
   },
@@ -45,7 +73,7 @@ const dashboardRoutes = [
   //   path: "/saude-financeira",
   //   name: "Saude Financeira",
   //   icon: "nc-icon nc-money-coins",
-  //   component: SaudeFinanceira,
+  //   component: withSuspense(SaudeFinanceira),
   //   layout: "/admin",
   //   rule: ["admin"],
   // },
@@ -54,7 +82,7 @@ const dashboardRoutes = [
     path: "/resumo-do-dia",
     name: "Resumo do dia",
     icon: "nc-icon nc-money-coins",
-    component: VendasDoDia,
+    component: withSuspense(VendasDoDia),
     layout: "/admin",
     rule: ["admin", "atendente"],
   },
@@ -62,7 +90,7 @@ const dashboardRoutes = [
     path: "/despesas",
     name: "Despesas",
     icon: "nc-icon nc-chart-pie-36",
-    component: Despesas,
+    component: withSuspense(Despesas),
     layout: "/admin",
     rule: ["admin"],
   },
@@ -70,7 +98,15 @@ const dashboardRoutes = [
     path: "/recursos",
     name: "Produtos e Serviços",
     icon: "nc-icon nc-bullet-list-67",
-    component: ProductAndServiceTable,
+    component: withSuspense(ProductAndServiceTable),
+    layout: "/admin",
+    rule: ["atendente", "admin"],
+  },
+  {
+    path: "/clientes",
+    name: "Clientes",
+    icon: "nc-icon nc-single-02",
+    component: withSuspense(Clientes),
     layout: "/admin",
     rule: ["atendente", "admin"],
   },
@@ -78,7 +114,7 @@ const dashboardRoutes = [
     path: "/login-register",
     name: "Logout or Login",
     icon: "nc-icon nc-bullet-list-67",
-    component: Login,
+    component: withSuspense(Login),
     layout: "/admin",
     rule: ["atendente", "admin", "visitante", null, undefined],
   },
@@ -86,7 +122,7 @@ const dashboardRoutes = [
     path: "/curriculo",
     name: "Curriculo",
     icon: "nc-icon nc-single-copy-04",
-    component: CriadorCurriculo,
+    component: withSuspense(CriadorCurriculo),
     layout: "/admin",
     rule: ["admin", "atendente"],
   },
@@ -95,7 +131,15 @@ const dashboardRoutes = [
     path: "/setup",
     name: "Configurações",
     icon: "nc-icon nc-settings-gear-64",
-    component: Configuracoes,
+    component: withSuspense(Configuracoes),
+    layout: "/admin",
+    rule: ["admin"],
+  },
+  {
+    path: "/empresas",
+    name: "Empresas",
+    icon: "nc-icon nc-bank",
+    component: withSuspense(Empresas),
     layout: "/admin",
     rule: ["admin"],
   },

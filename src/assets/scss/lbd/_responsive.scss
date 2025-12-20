@@ -82,6 +82,31 @@
 
 @media (max-width: 991px){
 
+    // Esconder sidebar no mobile para a página de checkout
+    .wrapper.mobile .sidebar {
+        display: none !important;
+    }
+    
+    .wrapper.mobile .main-panel {
+        width: 100% !important;
+        float: none !important;
+        margin-left: 0 !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+    }
+    
+    .wrapper.mobile .main-panel > .content {
+        padding: 0 !important;
+        overflow: visible !important;
+        min-height: 100vh !important;
+    }
+    
+    .wrapper.mobile {
+        transform: none !important;
+        -webkit-transform: none !important;
+        overflow: visible !important;
+    }
+
     .sidebar{
         right: 0 !important;
         left: auto;

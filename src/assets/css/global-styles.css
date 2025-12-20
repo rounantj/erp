@@ -1,0 +1,112 @@
+/* Estilos Globais do Sistema */
+
+/* Animações suaves */
+* {
+  transition: all 0.3s ease;
+}
+
+/* Cards com hover effect */
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* Botões com efeito hover */
+.ant-btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Inputs com foco melhorado */
+.ant-input, .ant-input-number {
+  border-radius: 6px;
+}
+
+.ant-input:focus, .ant-input-number:focus {
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Tabelas mais limpas */
+.ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+/* Modais mais modernos */
+.ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 20px 24px;
+}
+
+/* Sidebar melhorada */
+.ant-layout-sider {
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+}
+
+/* Header fixo */
+.ant-layout-header {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Estatísticas com destaque */
+.stat-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.stat-card .ant-statistic-title {
+  color: rgba(255,255,255,0.8) !important;
+}
+
+.stat-card .ant-statistic-content {
+  color: white !important;
+}
+
+/* Responsividade melhorada */
+@media (max-width: 768px) {
+  .ant-card {
+    margin-bottom: 16px;
+  }
+  
+  .ant-statistic {
+    text-align: center;
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+} 

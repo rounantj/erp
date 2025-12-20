@@ -1701,6 +1701,7 @@ const CriadorCurriculo = () => {
             </div>
           ) : (
             <div>
+              {/* Feature IA oculta
               <div style={{ paddingBottom: 20 }}>
                 <CurriculoAICard
                   setModeloSelecionado={setModeloSelecionado}
@@ -1710,6 +1711,7 @@ const CriadorCurriculo = () => {
                   MODELOS_CURRICULO={MODELOS_CURRICULO}
                 />
               </div>
+*/}
               <Card bordered={false} style={{ marginBottom: 20 }}>
                 <Steps current={currentStep} responsive={true}>
                   <Step title="Dados Pessoais" icon={<UserOutlined />} />

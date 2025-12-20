@@ -152,14 +152,14 @@ const useCupomGenerator = () => {
       y = addSeparator(y);
 
       // Lista de produtos
-      saleData.produtos.forEach((item, index) => {
+      (saleData.produtos || []).forEach((item, index) => {
         doc.setFontSize(7);
 
         // Linha do produto
         y = addText(
-          `${(index + 1).toString().padStart(3, "0")} ${item.id
+          `${(index + 1).toString().padStart(3, "0")} ${(item.id || 0)
             .toString()
-            .padStart(6, "0")} ${item.descricao
+            .padStart(6, "0")} ${(item.descricao || "")
             .toUpperCase()
             .substring(0, 30)}`,
           y,
@@ -167,9 +167,9 @@ const useCupomGenerator = () => {
         );
 
         // Linha de quantidade e valores
-        const unitValue = money(item.valorUnitario);
-        const totalValue = money(item.valorUnitario * item.quantidade);
-        const qtdText = `${item.quantidade} UN x ${unitValue}`;
+        const unitValue = money(item.valorUnitario || 0);
+        const totalValue = money((item.valorUnitario || 0) * (item.quantidade || 0));
+        const qtdText = `${item.quantidade || 0} UN x ${unitValue}`;
         const itemTotal = `= ${totalValue}`;
 
         const qtdWidth =
@@ -187,13 +187,13 @@ const useCupomGenerator = () => {
 
       // Total da venda
       doc.setFontSize(9);
-      y = addText(`TOTAL R$ ${money(saleData.total)}`, y + 1, 10, "right");
+      y = addText(`TOTAL R$ ${money(saleData.total || 0)}`, y + 1, 10, "right");
 
       // Informações de pagamento
       if (saleData.metodoPagamento) {
         const pagamentoTexto = saleData.metodoPagamento.toUpperCase();
         y = addText(
-          `${pagamentoTexto} - ${money(saleData.total)}`,
+          `${pagamentoTexto} - ${money(saleData.total || 0)}`,
           y,
           8,
           "right"
@@ -236,7 +236,7 @@ const useCupomGenerator = () => {
       notification.success({
         message: "Cupom gerado com sucesso!",
         description: `Venda #${saleData.id} - Total: R$ ${money(
-          saleData.total
+          saleData.total || 0
         )}`,
         placement: "bottomRight",
         duration: 3,
@@ -320,23 +320,17 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       render: (text, record) => (
         <Space>
           <Avatar
-            icon={
-              record.categoria === "serviço" ? (
-                <ShoppingCartOutlined />
-              ) : (
-                <ShoppingCartOutlined />
-              )
-            }
+            icon={<ShoppingCartOutlined />}
             style={{
               backgroundColor:
                 record.categoria === "serviço" ? "#52c41a" : "#1890ff",
             }}
           />
           <div>
-            <Text strong>{text}</Text>
+            <Text strong>{text || "Sem descrição"}</Text>
             <br />
             <Tag color={record.categoria === "serviço" ? "green" : "blue"}>
-              {record.categoria.toUpperCase()}
+              {(record.categoria || "produto").toUpperCase()}
             </Tag>
           </div>
         </Space>
@@ -358,7 +352,7 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       align: "right",
       render: (value) => (
         <Text strong style={{ color: "#1890ff" }}>
-          R$ {value.toFixed(2)}
+          R$ {(value || 0).toFixed(2)}
         </Text>
       ),
     },
@@ -368,8 +362,8 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       key: "desconto",
       align: "right",
       render: (desconto) => (
-        <Text style={{ color: desconto > 0 ? "#ff4d4f" : "#8c8c8c" }}>
-          {desconto > 0 ? `-R$ ${desconto.toFixed(2)}` : "Sem desconto"}
+        <Text style={{ color: (desconto || 0) > 0 ? "#ff4d4f" : "#8c8c8c" }}>
+          {(desconto || 0) > 0 ? `-R$ ${(desconto || 0).toFixed(2)}` : "Sem desconto"}
         </Text>
       ),
     },
@@ -379,7 +373,7 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       align: "right",
       render: (_, record) => {
         const subtotal =
-          record.quantidade * record.valorUnitario - record.desconto;
+          (record.quantidade || 0) * (record.valorUnitario || 0) - (record.desconto || 0);
         return (
           <Text strong style={{ fontSize: "16px", color: "#52c41a" }}>
             R$ {subtotal.toFixed(2)}
@@ -542,14 +536,14 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
           <Card
             title={
               <Space>
-                <span>Produtos ({saleData.produtos.length} itens)</span>
+                <span>Produtos ({(saleData.produtos || []).length} itens)</span>
               </Space>
             }
             headStyle={{ backgroundColor: "#f0f2f5" }}
           >
             <Table
               columns={productColumns}
-              dataSource={saleData.produtos.map((produto, index) => ({
+              dataSource={(saleData.produtos || []).map((produto, index) => ({
                 ...produto,
                 key: index,
               }))}
@@ -578,10 +572,10 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
                       <Text>Subtotal:</Text>
                       <Text>
                         R${" "}
-                        {saleData.produtos
+                        {(saleData.produtos || [])
                           .reduce(
                             (acc, prod) =>
-                              acc + prod.quantidade * prod.valorUnitario,
+                              acc + (prod.quantidade || 0) * (prod.valorUnitario || 0),
                             0
                           )
                           .toFixed(2)}
@@ -597,9 +591,9 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
                       <Text style={{ color: "#ff4d4f" }}>
                         -R${" "}
                         {(
-                          saleData.desconto +
-                          saleData.produtos.reduce(
-                            (acc, prod) => acc + prod.desconto,
+                          (saleData.desconto || 0) +
+                          (saleData.produtos || []).reduce(
+                            (acc, prod) => acc + (prod.desconto || 0),
                             0
                           )
                         ).toFixed(2)}
@@ -616,7 +610,7 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
                         Total:
                       </Title>
                       <Title level={4} style={{ margin: 0, color: "#52c41a" }}>
-                        R$ {saleData.total.toFixed(2)}
+                        R$ {(saleData.total || 0).toFixed(2)}
                       </Title>
                     </div>
                   </Space>

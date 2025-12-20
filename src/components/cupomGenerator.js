@@ -127,8 +127,15 @@ const CupomGenerator = ({
 
       // Informações do cupom
       y = addText(`DATA: ${cupomInfo.dataHora}`, y);
-      y = addText(`${cupomInfo.ccf}`, y);
-      y = addText(`${cupomInfo.coo}`, y);
+
+      // CNPJ do cliente (se fornecido)
+      console.log("Dados da venda para cupom:", saleData);
+      console.log("CNPJ do cliente:", saleData.cnpjCliente);
+
+      if (saleData.cnpjCliente && saleData.cnpjCliente.trim()) {
+        y = addText(`CPF/CNPJ CLIENTE: ${saleData.cnpjCliente}`, y);
+      }
+
       //y = addSeparator(y);
 
       // Tipo de documento
@@ -202,6 +209,14 @@ const CupomGenerator = ({
       }
 
       //y = addSeparator(y);
+
+      // Observações (se fornecidas)
+      if (saleData.observacoes && saleData.observacoes.trim()) {
+        y = addSeparator(y, 4, 2);
+        y = centerText("OBSERVAÇÕES:", y, 8);
+        y = centerText(saleData.observacoes, y, 7);
+        y = addSeparator(y, 2, 4);
+      }
 
       // Rodapé
       y = centerText("Volte Sempre!!", y, 9);

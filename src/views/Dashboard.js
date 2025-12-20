@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Card,
   Row,
@@ -92,12 +92,11 @@ function Dashboard() {
 
   const [loading, setLoading] = useState(false);
 
-  // Fetch dashboard data
-  const getDataDash = async () => {
+  // Fetch dashboard data - memoizado para evitar recriação
+  const getDataDash = useCallback(async () => {
     setLoading(true);
     try {
       const resultD = await getDashboard();
-      console.log({ resultD });
       if (resultD.success) {
         setDataDash(resultD.data);
       }
@@ -106,12 +105,11 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     getDataDash();
-    // In a real app, we would fetch caixa data here as well
-  }, []);
+  }, [getDataDash]);
 
   // Format date functions
   const formatDate = (dateString) => {
@@ -147,25 +145,29 @@ function Dashboard() {
     return `${hours}h ${minutes}min`;
   };
 
-  // Component for stats cards
-  const StatCard = ({ title, value, icon, color }) => (
-    <Card className="stat-card" bordered={false} style={{ height: "100%" }}>
-      <Statistic
-        title={<Text strong>{title}</Text>}
-        value={value}
-        valueStyle={{ color }}
-        prefix={React.cloneElement(icon, {
-          style: { fontSize: 20, marginRight: 8 },
-        })}
-      />
-      <div className="stat-footer">
-        <Divider style={{ margin: "12px 0" }} />
-        <Space>
-          <SyncOutlined spin={loading} />
-          <Text type="secondary">Atualizado agora</Text>
-        </Space>
-      </div>
-    </Card>
+  // Component for stats cards - memoizado para evitar re-renders
+  const StatCard = useMemo(
+    () =>
+      React.memo(({ title, value, icon, color }) => (
+        <Card className="stat-card" bordered={false} style={{ height: "100%" }}>
+          <Statistic
+            title={<Text strong>{title}</Text>}
+            value={value}
+            valueStyle={{ color }}
+            prefix={React.cloneElement(icon, {
+              style: { fontSize: 20, marginRight: 8 },
+            })}
+          />
+          <div className="stat-footer">
+            <Divider style={{ margin: "12px 0" }} />
+            <Space>
+              <SyncOutlined spin={loading} />
+              <Text type="secondary">Atualizado agora</Text>
+            </Space>
+          </div>
+        </Card>
+      )),
+    [loading]
   );
 
   // Pie chart visualization using Progress components

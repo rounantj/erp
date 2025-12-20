@@ -1,25 +1,101 @@
 import { urlBase } from "./environment";
 import axios from "axios";
 
-export const makeRegister = async (email, password) => {
+// Criar instância do axios com configurações otimizadas
+const api = axios.create({
+  baseURL: urlBase,
+  timeout: 10000, // 10 segundos de timeout
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Helper para obter dados do usuário logado
+export const getCurrentUser = () => {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      return JSON.parse(userStr);
+    }
+  } catch (error) {
+    console.error("Erro ao obter usuário do localStorage:", error);
+  }
+  return null;
+};
+
+// Helper para obter companyId do usuário logado
+export const getCurrentCompanyId = () => {
+  const user = getCurrentUser();
+  return user?.companyId || null;
+};
+
+// Interceptor para adicionar token automaticamente
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("api_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para tratamento de erros
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado - limpar localStorage
+      localStorage.removeItem("api_token");
+      localStorage.removeItem("user");
+      window.location.href = "/admin/login-register";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Cache simples para requisições
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Exportar instância do axios para uso direto
+export const apiIntegrator = api;
+
+const getCachedData = (key) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedData = (key, data) => {
+  cache.set(key, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
+export const makeRegister = async (email, password, companyId = null) => {
   const payload = {
-    companyId: 1,
+    companyId: companyId || 1, // Usar companyId fornecido ou default
     username: email,
     password,
     role: "visitante",
     email,
     name: "",
   };
-  const headers = {
-    "Content-Type": "application/json",
-  };
 
   try {
-    const register = await axios.post(`${urlBase}/auth/register`, payload, {
-      headers,
-    });
-    console.log({ register });
+    const register = await api.post("/auth/register", payload);
     localStorage.setItem("api_token", register.data.access_token);
+    // Armazenar dados do usuário incluindo companyId
+    if (register.data.user) {
+      localStorage.setItem("user", JSON.stringify(register.data.user));
+    }
     return {
       success: true,
       data: register.data,
@@ -34,26 +110,23 @@ export const makeRegister = async (email, password) => {
 
 export const makeLogin = async (email, password) => {
   const payload = {
-    companyId: 1,
     password,
     email,
   };
-  const headers = {
-    "Content-Type": "application/json",
-  };
 
   try {
-    const login = await axios.post(`${urlBase}/auth/login`, payload, {
-      headers,
-    });
-    console.log({ login });
+    const login = await api.post("/auth/login", payload);
     localStorage.setItem("api_token", login.data.access_token);
+    // Armazenar dados do usuário incluindo companyId
+    if (login.data.user) {
+      localStorage.setItem("user", JSON.stringify(login.data.user));
+    }
     return {
       success: true,
       data: login.data,
     };
   } catch (error) {
-    console.error("Error during registration:", error);
+    console.error("Error during login:", error);
     return {
       success: null,
       message: "Senha ou e-mail invalidos",
@@ -62,157 +135,225 @@ export const makeLogin = async (email, password) => {
 };
 
 export const getProducts = async () => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  const cacheKey = "products";
+  const cachedData = getCachedData(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   try {
-    const products = await axios.get(`${urlBase}/produtos`, { headers });
-    return {
+    const products = await api.get("/produtos");
+    const result = {
       success: true,
       data: products.data,
     };
+    setCachedData(cacheKey, result);
+    return result;
   } catch (error) {
     console.error("Error during get products:", error);
     return {
       success: null,
       message: "Erro ao buscar produtos",
+    };
+  }
+};
+
+// Busca otimizada de produtos com paginação (server-side)
+export const searchProducts = async ({
+  search = "",
+  category = "todos",
+  page = 1,
+  limit = 30,
+} = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (category && category !== "todos") params.append("category", category);
+    params.append("page", page.toString());
+    params.append("limit", limit.toString());
+
+    const response = await api.get(`/produtos/search?${params.toString()}`);
+    return {
+      success: true,
+      data: response.data.data,
+      total: response.data.total,
+      page: response.data.page,
+      limit: response.data.limit,
+      totalPages: response.data.totalPages,
+    };
+  } catch (error) {
+    console.error("Error during search products:", error);
+    return {
+      success: null,
+      message: "Erro ao buscar produtos",
+      data: [],
+      total: 0,
+    };
+  }
+};
+
+// Buscar produto por código de barras ou ID (para scanner)
+export const findProductByCode = async (code) => {
+  try {
+    const response = await api.get(
+      `/produtos/by-code/${encodeURIComponent(code)}`
+    );
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error finding product by code:", error);
+    return {
+      success: false,
+      data: null,
+      message: "Produto não encontrado",
     };
   }
 };
 
 export const getSells = async (startDate, endDate) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  const cacheKey = `sells_${startDate}_${endDate}`;
+  const cachedData = getCachedData(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   try {
-    const products = await axios.get(
-      `${urlBase}/vendas?startDate=${startDate}&endDate=${endDate}`,
-      { headers }
+    const products = await api.get(
+      `/vendas?startDate=${startDate}&endDate=${endDate}`
     );
-    return {
+    const result = {
       success: true,
       data: products.data,
     };
+    setCachedData(cacheKey, result);
+    return result;
   } catch (error) {
-    console.error("Error during get products:", error);
+    console.error("Error during get sells:", error);
     return {
       success: null,
-      message: "Erro ao buscar produtos",
+      message: "Erro ao buscar vendas",
     };
   }
 };
 
 export const getDashboard = async () => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  const cacheKey = "dashboard";
+  const cachedData = getCachedData(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   try {
-    const products = await axios.post(`${urlBase}/vendas/dashboard`, {
-      headers,
-    });
-    return {
+    const products = await api.post("/vendas/dashboard");
+    const result = {
       success: true,
       data: products.data,
     };
+    setCachedData(cacheKey, result);
+    return result;
   } catch (error) {
-    console.error("Error during get products:", error);
+    console.error("Error during get dashboard:", error);
     return {
       success: null,
-      message: "Erro ao buscar produtos",
+      message: "Erro ao buscar dashboard",
     };
   }
 };
 
 export const updateProduct = async (item) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
   try {
-    const products = await axios.post(`${urlBase}/produtos`, item, { headers });
-    console.log({ products });
+    const products = await api.post("/produtos", item);
+    // Limpar cache de produtos após atualização
+    cache.delete("products");
     return {
       success: true,
       data: products.data,
     };
   } catch (error) {
-    console.error("Error during get products:", error);
+    console.error("Error during update product:", error);
     return {
       success: null,
-      message: "Erro ao buscar produtos",
+      message: "Erro ao atualizar produto",
     };
   }
 };
 
 export const deleteProduct = async (itemId) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
   try {
-    const products = await axios.delete(
-      `${urlBase}/produtos?produtoId=${itemId}`,
-      { headers }
-    );
-    console.log({ products });
+    const products = await api.delete(`/produtos?produtoId=${itemId}`);
+    // Limpar cache de produtos após exclusão
+    cache.delete("products");
     return {
       success: true,
       data: products.data,
     };
   } catch (error) {
-    console.error("Error during get products:", error);
+    console.error("Error during delete product:", error);
     return {
       success: null,
-      message: "Erro ao buscar produtos",
+      message: "Erro ao excluir produto",
     };
   }
 };
 
 export const finalizaVenda = async (venda) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
   try {
-    const vendas = await axios.post(`${urlBase}/vendas`, venda, { headers });
-    console.log({ vendas });
+    const vendas = await api.post("/vendas", venda);
+    // Limpar caches relacionados a vendas
+    cache.delete("dashboard");
     return {
       success: true,
       data: vendas.data,
     };
   } catch (error) {
-    console.log({ error });
     console.error("Error during venda:", error);
     return {
       success: null,
-      message: "Erro ao vender",
+      message: "Erro ao finalizar venda",
     };
   }
 };
 
 export const getTopSellers = async (startDate, endDate) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  const cacheKey = `topSellers_${startDate}_${endDate}`;
+  const cachedData = getCachedData(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   try {
-    const vendas = await axios.post(
-      `${urlBase}/vendas/top-selling-products`,
-      { startDate, endDate },
-      { headers }
+    const response = await api.get(
+      `/vendas/top-sellers?startDate=${startDate}&endDate=${endDate}`
     );
-    return vendas;
+    const result = {
+      success: true,
+      data: response.data,
+    };
+    setCachedData(cacheKey, result);
+    return result;
   } catch (error) {
-    console.log({ error });
-    console.error("Error during venda:", error);
+    console.error("Error during get top sellers:", error);
     return {
       success: null,
-      message: "Erro ao vender",
+      message: "Erro ao buscar top sellers",
     };
   }
+};
+
+// Função para limpar cache
+export const clearCache = () => {
+  cache.clear();
+};
+
+// Função para limpar cache específico
+export const clearCacheByKey = (key) => {
+  cache.delete(key);
 };
 
 export const solicitaExclusaoVenda = async (vendaId, motivo) => {
@@ -493,6 +634,206 @@ export const updateUserRole = async (companyId, userName, userRule) => {
     return {
       success: null,
       message: "Erro ao buscar setup",
+    };
+  }
+};
+
+// Funções para Clientes
+export const getClientes = async (search) => {
+  try {
+    const response = await apiIntegrator.get("/clientes", {
+      params: { search },
+    });
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar clientes",
+    };
+  }
+};
+
+export const createCliente = async (cliente) => {
+  try {
+    const response = await apiIntegrator.post("/clientes", cliente);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao criar cliente:", error);
+    return {
+      success: false,
+      message: "Erro ao criar cliente",
+    };
+  }
+};
+
+export const updateCliente = async (id, cliente) => {
+  try {
+    const response = await apiIntegrator.put(`/clientes/${id}`, cliente);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao atualizar cliente:", error);
+    return {
+      success: false,
+      message: "Erro ao atualizar cliente",
+    };
+  }
+};
+
+export const deleteCliente = async (id) => {
+  try {
+    const response = await apiIntegrator.delete(`/clientes/${id}`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao excluir cliente:", error);
+    return {
+      success: false,
+      message: "Erro ao excluir cliente",
+    };
+  }
+};
+
+// ============================================
+// FUNÇÕES PARA GERENCIAMENTO DE EMPRESAS
+// ============================================
+
+export const getCompanies = async () => {
+  try {
+    const response = await api.get("/companies");
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar empresas:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar empresas",
+    };
+  }
+};
+
+export const getMyCompanies = async () => {
+  try {
+    const response = await api.get("/companies/my-companies");
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar minhas empresas:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar minhas empresas",
+    };
+  }
+};
+
+export const getCompany = async (companyId) => {
+  try {
+    const response = await api.get(`/companies/${companyId}`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar empresa:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar empresa",
+    };
+  }
+};
+
+export const createCompany = async (companyData) => {
+  try {
+    const response = await api.post("/companies", companyData);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao criar empresa:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar empresa",
+    };
+  }
+};
+
+export const updateCompany = async (companyId, companyData) => {
+  try {
+    const response = await api.put(`/companies/${companyId}`, companyData);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao atualizar empresa:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao atualizar empresa",
+    };
+  }
+};
+
+export const deleteCompany = async (companyId) => {
+  try {
+    const response = await api.delete(`/companies/${companyId}`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao excluir empresa:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao excluir empresa",
+    };
+  }
+};
+
+export const getCompanyUsers = async (companyId) => {
+  try {
+    const response = await api.get(`/companies/${companyId}/users`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar usuários da empresa:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar usuários da empresa",
+    };
+  }
+};
+
+export const addUserToCompany = async (companyId, userId) => {
+  try {
+    const response = await api.post(`/companies/${companyId}/users/${userId}`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Erro ao associar usuário à empresa:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao associar usuário à empresa",
     };
   }
 };
