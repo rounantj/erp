@@ -41,6 +41,7 @@ import ShoppingCart from "components/Checkout/ShoppingCart";
 import PaymentModal from "components/Checkout/PaymentModal";
 import BarcodeScanner from "components/Checkout/BarcodeScanner";
 import OpenCaixaModal from "components/Checkout/OpenCaixaModal";
+import CloseCaixaModal from "components/Checkout/CloseCaixaModal";
 import ClienteSelector from "components/Checkout/ClienteSelector";
 
 const { Content } = Layout;
@@ -173,6 +174,7 @@ const Checkout = () => {
   const [modalPagamentoVisible, setModalPagamentoVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [modalAbrirCaixaVisible, setModalAbrirCaixaVisible] = useState(false);
+  const [modalFecharCaixaVisible, setModalFecharCaixaVisible] = useState(false);
 
   // Estados para pagamento
   const [formaPagamento, setFormaPagamento] = useState([]);
@@ -555,17 +557,23 @@ const Checkout = () => {
     }
   }, []);
 
-  // Fechar caixa
-  const handleCloseCaixa = useCallback(async () => {
+  // Abrir modal de fechamento de caixa
+  const handleCloseCaixa = useCallback(() => {
+    setModalFecharCaixaVisible(true);
+  }, []);
+
+  // Confirmar fechamento de caixa
+  const handleConfirmCloseCaixa = useCallback(async (caixaId, saldoFinal, diferenca) => {
     try {
       setLoading(true);
-      await fechaCaixa();
+      await fechaCaixa(caixaId, null, saldoFinal, diferenca);
       setCaixaAberto(false);
       setCaixa(null);
       setResumoVendas({});
-      notification.success({ message: "Caixa fechado!" });
+      setModalFecharCaixaVisible(false);
+      notification.success({ message: "Caixa fechado com sucesso!" });
     } catch (error) {
-      notification.error({ message: "Erro", description: error.message });
+      notification.error({ message: "Erro ao fechar caixa", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -794,6 +802,16 @@ const Checkout = () => {
             onConfirm={handleConfirmOpenCaixa}
             loading={loading}
           />
+
+          <CloseCaixaModal
+            visible={modalFecharCaixaVisible}
+            onCancel={() => setModalFecharCaixaVisible(false)}
+            onConfirm={handleConfirmCloseCaixa}
+            loading={loading}
+            caixa={caixa}
+            resumoVendas={resumoVendas}
+            valorAbertura={valorAbertura}
+          />
         </div>
       </ConfigProvider>
     );
@@ -931,6 +949,16 @@ const Checkout = () => {
         onCancel={() => setModalAbrirCaixaVisible(false)}
         onConfirm={handleConfirmOpenCaixa}
         loading={loading}
+      />
+
+      <CloseCaixaModal
+        visible={modalFecharCaixaVisible}
+        onCancel={() => setModalFecharCaixaVisible(false)}
+        onConfirm={handleConfirmCloseCaixa}
+        loading={loading}
+        caixa={caixa}
+        resumoVendas={resumoVendas}
+        valorAbertura={valorAbertura}
       />
     </Layout>
   );
