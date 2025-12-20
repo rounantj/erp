@@ -16,7 +16,7 @@
 
 */
 import React, { Component, useContext, useEffect, useState } from "react";
-import { useLocation, Route, Switch } from "react-router-dom";
+import { useLocation, Route, Switch, Redirect } from "react-router-dom";
 
 import AdminNavbar from "components/Navbars/AdminNavbar";
 import Footer from "components/Footer/Footer";
@@ -27,6 +27,15 @@ import routes from "routes.js";
 
 import sidebarImage from "assets/img/sidebar-3.jpg";
 import { UserContext } from "context/UserContext";
+
+// Email do Super Admin - único usuário com acesso a funcionalidades exclusivas
+const SUPER_ADMIN_EMAIL = "rounantj@hotmail.com";
+
+// Função para verificar se é Super Admin
+const isSuperAdmin = (userEmail) => {
+  if (!userEmail) return false;
+  return userEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+};
 
 function Admin() {
   const [image, setImage] = React.useState(sidebarImage);
@@ -79,12 +88,25 @@ function Admin() {
   useEffect(() => {
     if (user) {
       const role = user?.user?.role;
-      let newRoutes = routes.filter(
-        (a) =>
-          a?.rule.includes(role) ||
-          a?.rule.includes(undefined) ||
-          a?.rule.includes(null)
-      );
+      const userEmail = user?.user?.email;
+      const userIsSuperAdmin = isSuperAdmin(userEmail);
+
+      let newRoutes = routes.filter((route) => {
+        // Se a rota é exclusiva para super admin
+        if (route.superAdminOnly) {
+          return userIsSuperAdmin;
+        }
+
+        // Filtro normal por role
+        return (
+          route?.rule.includes(role) ||
+          route?.rule.includes(undefined) ||
+          route?.rule.includes(null) ||
+          // Super admin também pode acessar rotas de admin
+          (userIsSuperAdmin && route?.rule.includes("admin"))
+        );
+      });
+
       setTrustRoutes(newRoutes);
     }
   }, [user]);

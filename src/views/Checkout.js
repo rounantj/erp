@@ -617,29 +617,37 @@ const Checkout = () => {
             {/* Botão Menu */}
             <div
               onClick={() => {
-                const isOpen = document.documentElement.classList.contains("nav-open");
-                
+                const isOpen =
+                  document.documentElement.classList.contains("nav-open");
+
                 if (isOpen) {
                   // Fechar menu
                   document.documentElement.classList.remove("nav-open");
-                  const existingBodyClick = document.getElementById("bodyClick");
+                  const existingBodyClick =
+                    document.getElementById("bodyClick");
                   if (existingBodyClick) {
-                    existingBodyClick.parentElement.removeChild(existingBodyClick);
+                    existingBodyClick.parentElement.removeChild(
+                      existingBodyClick
+                    );
                   }
                 } else {
                   // Abrir menu
                   document.documentElement.classList.add("nav-open");
-                  
+
                   // Remover bodyClick existente se houver
-                  const existingBodyClick = document.getElementById("bodyClick");
+                  const existingBodyClick =
+                    document.getElementById("bodyClick");
                   if (existingBodyClick) {
-                    existingBodyClick.parentElement.removeChild(existingBodyClick);
+                    existingBodyClick.parentElement.removeChild(
+                      existingBodyClick
+                    );
                   }
-                  
+
                   // Criar novo bodyClick
                   var node = document.createElement("div");
                   node.id = "bodyClick";
-                  node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                  node.style.cssText =
+                    "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                   node.onclick = function () {
                     this.parentElement.removeChild(this);
                     document.documentElement.classList.remove("nav-open");

@@ -141,7 +141,8 @@ const dashboardRoutes = [
     icon: "nc-icon nc-bank",
     component: withSuspense(Empresas),
     layout: "/admin",
-    rule: ["admin"],
+    rule: ["superadmin"], // Acesso exclusivo para rounantj@hotmail.com
+    superAdminOnly: true,
   },
 ];
 
