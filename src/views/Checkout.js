@@ -19,6 +19,7 @@ import {
   ScanOutlined,
   UserOutlined,
   DollarOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -613,7 +614,32 @@ const Checkout = () => {
         <div style={mobileStyles.container}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div>
+            {/* Botão Menu */}
+            <div
+              onClick={() => {
+                document.documentElement.classList.toggle("nav-open");
+                var node = document.createElement("div");
+                node.id = "bodyClick";
+                node.onclick = function () {
+                  this.parentElement.removeChild(this);
+                  document.documentElement.classList.toggle("nav-open");
+                };
+                document.body.appendChild(node);
+              }}
+              style={{
+                background: "rgba(255,255,255,0.2)",
+                borderRadius: "10px",
+                padding: "8px 10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
+            </div>
+
+            <div style={{ flex: 1, marginLeft: "12px" }}>
               <h1 style={mobileStyles.headerTitle}>PDV</h1>
               <Text style={mobileStyles.headerInfo}>
                 {caixaAberto

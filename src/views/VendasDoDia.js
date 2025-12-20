@@ -36,6 +36,7 @@ import {
   WalletOutlined,
   BankOutlined,
   ReloadOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 import { UserContext } from "context/UserContext";
@@ -682,14 +683,40 @@ const VendasDoDia = () => {
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <h1 style={mobileStyles.headerTitle}>
-                  <CalendarOutlined style={{ marginRight: "8px" }} />
-                  Resumo do Dia
-                </h1>
-                <Text style={mobileStyles.headerSubtitle}>
-                  {moment().format("DD/MM/YYYY")} • {vendas.length} vendas
-                </Text>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                {/* Botão Menu */}
+                <div
+                  onClick={() => {
+                    document.documentElement.classList.toggle("nav-open");
+                    var node = document.createElement("div");
+                    node.id = "bodyClick";
+                    node.onclick = function () {
+                      this.parentElement.removeChild(this);
+                      document.documentElement.classList.toggle("nav-open");
+                    };
+                    document.body.appendChild(node);
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
+                    borderRadius: "10px",
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
+                </div>
+                <div>
+                  <h1 style={mobileStyles.headerTitle}>
+                    <CalendarOutlined style={{ marginRight: "8px" }} />
+                    Resumo do Dia
+                  </h1>
+                  <Text style={mobileStyles.headerSubtitle}>
+                    {moment().format("DD/MM/YYYY")} • {vendas.length} vendas
+                  </Text>
+                </div>
               </div>
               <Button
                 type="primary"
