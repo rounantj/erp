@@ -868,6 +868,7 @@ const Checkout = () => {
             onCancel={() => setModalAbrirCaixaVisible(false)}
             onConfirm={handleConfirmOpenCaixa}
             loading={loading}
+            isMobile={isMobile}
           />
 
           <CloseCaixaModal
@@ -1016,6 +1017,7 @@ const Checkout = () => {
         onCancel={() => setModalAbrirCaixaVisible(false)}
         onConfirm={handleConfirmOpenCaixa}
         loading={loading}
+        isMobile={isMobile}
       />
 
       <CloseCaixaModal

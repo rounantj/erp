@@ -22,6 +22,7 @@ import {
   Popconfirm,
   ConfigProvider,
 } from "antd";
+const { Search } = Input;
 import {
   DollarOutlined,
   UserOutlined,
@@ -215,6 +216,9 @@ const VendasDoDia = () => {
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewForm] = Form.useForm();
+
+  // Estado para busca/filtro mobile
+  const [searchFilter, setSearchFilter] = useState("");
 
   // 3. Função para abrir o modal de revisão
   const openReviewModal = (venda) => {
@@ -529,6 +533,18 @@ const VendasDoDia = () => {
   // Verificar se é admin
   const isAdmin = user?.user?.role === "admin";
 
+  // Filtrar vendas para mobile
+  const filteredVendas = vendas.filter((venda) => {
+    if (!searchFilter) return true;
+    const searchLower = searchFilter.toLowerCase();
+    return (
+      venda.id.toString().includes(searchFilter) ||
+      (venda.nome_cliente && venda.nome_cliente.toLowerCase().includes(searchLower)) ||
+      (venda.metodoPagamento && venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
+      calcularTotal(venda.total, venda.desconto).toFixed(2).includes(searchFilter)
+    );
+  });
+
   // Configuração de colunas para tabela de vendas (Desktop)
   const columnsVendas = [
     {
@@ -788,6 +804,25 @@ const VendasDoDia = () => {
 
           {/* Content Area */}
           <div style={mobileStyles.content}>
+            {/* Barra de Busca Mobile */}
+            {caixaAberto && vendas.length > 0 && (
+              <div style={{ marginBottom: "12px", flexShrink: 0 }}>
+                <Search
+                  placeholder="Buscar por ID, cliente, valor..."
+                  allowClear
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  style={{ width: "100%" }}
+                  size="middle"
+                />
+                {searchFilter && (
+                  <Text type="secondary" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
+                    {filteredVendas.length} de {vendas.length} vendas
+                  </Text>
+                )}
+              </div>
+            )}
+
             {!caixaAberto ? (
               <div style={{ textAlign: "center", padding: "40px 20px" }}>
                 <Empty
@@ -802,10 +837,10 @@ const VendasDoDia = () => {
                   <Text type="secondary">Carregando vendas...</Text>
                 </div>
               </div>
-            ) : vendas.length === 0 ? (
+            ) : filteredVendas.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Nenhuma venda realizada hoje"
+                description={searchFilter ? "Nenhuma venda encontrada" : "Nenhuma venda realizada hoje"}
                 style={{ marginTop: "40px" }}
               />
             ) : (
@@ -815,7 +850,7 @@ const VendasDoDia = () => {
                 minHeight: 0,
                 WebkitOverflowScrolling: "touch",
               }}>
-                {vendas.map((venda) => {
+                {filteredVendas.map((venda) => {
                   const total = calcularTotal(venda.total, venda.desconto);
                   return (
                     <div key={venda.id} style={mobileStyles.saleCard}>

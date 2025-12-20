@@ -837,3 +837,21 @@ export const addUserToCompany = async (companyId, userId) => {
     };
   }
 };
+
+// Criar usuário para uma empresa (Super Admin only)
+export const createUserForCompany = async (companyId, userData) => {
+  try {
+    const response = await api.post(`/companies/${companyId}/create-user`, userData);
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar usuário:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar usuário",
+    };
+  }
+};

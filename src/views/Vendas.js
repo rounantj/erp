@@ -53,6 +53,7 @@ import SaleDetailsModal from "components/modalVenda";
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 const { Content } = Layout;
+const { Search } = Input;
 
 // Estilos para mobile
 const mobileStyles = {
@@ -211,6 +212,9 @@ function Vendas() {
   const [exclusionReason, setExclusionReason] = useState("");
   const [exclusionLoading, setExclusionLoading] = useState(false);
   const [exclusionForm] = Form.useForm();
+
+  // Estado para busca/filtro mobile
+  const [searchFilter, setSearchFilter] = useState("");
 
   // 2. Adicione estados para o modal de revisão
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -857,6 +861,18 @@ function Vendas() {
   // Verificar se é admin
   const isAdmin = user?.user?.role === "admin";
 
+  // Filtrar vendas para mobile
+  const filteredVendas = vendas.filter((venda) => {
+    if (!searchFilter) return true;
+    const searchLower = searchFilter.toLowerCase();
+    return (
+      venda.id.toString().includes(searchFilter) ||
+      (venda.nome_cliente && venda.nome_cliente.toLowerCase().includes(searchLower)) ||
+      (venda.metodoPagamento && venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
+      calcularTotal(venda.total, venda.desconto).toFixed(2).includes(searchFilter)
+    );
+  });
+
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
@@ -973,6 +989,25 @@ function Vendas() {
 
           {/* Content Area */}
           <div style={mobileStyles.content}>
+            {/* Barra de Busca Mobile */}
+            {vendas.length > 0 && !loading && (
+              <div style={{ marginBottom: "12px", flexShrink: 0 }}>
+                <Search
+                  placeholder="Buscar por ID, cliente, valor..."
+                  allowClear
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  style={{ width: "100%" }}
+                  size="middle"
+                />
+                {searchFilter && (
+                  <Text type="secondary" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
+                    {filteredVendas.length} de {vendas.length} vendas
+                  </Text>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
                 <Spin size="large" />
@@ -980,10 +1015,10 @@ function Vendas() {
                   <Text type="secondary">Carregando vendas...</Text>
                 </div>
               </div>
-            ) : vendas.length === 0 ? (
+            ) : filteredVendas.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Nenhuma venda no período"
+                description={searchFilter ? "Nenhuma venda encontrada" : "Nenhuma venda no período"}
                 style={{ marginTop: "40px" }}
               />
             ) : (
@@ -993,7 +1028,7 @@ function Vendas() {
                 minHeight: 0,
                 WebkitOverflowScrolling: "touch",
               }}>
-                {vendas.map((venda) => {
+                {filteredVendas.map((venda) => {
                   const total = calcularTotal(venda.total, venda.desconto);
                   return (
                     <div key={venda.id} style={mobileStyles.saleCard}>

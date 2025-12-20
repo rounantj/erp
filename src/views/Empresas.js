@@ -40,6 +40,9 @@ import {
   MenuOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  UserAddOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import { Redirect } from "react-router-dom";
 import {
@@ -49,6 +52,7 @@ import {
   deleteCompany,
   getCompanyUsers,
   getCurrentUser,
+  createUserForCompany,
 } from "../helpers/api-integrator";
 import { UserContext } from "../context/UserContext";
 
@@ -172,6 +176,12 @@ function Empresas() {
     cnpj: "",
   });
   const [antForm] = AntForm.useForm();
+  const [createUserForm] = AntForm.useForm();
+
+  // Estados para criar usuário
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Verificar se é super admin
   const userEmail = user?.user?.email;
@@ -360,6 +370,49 @@ function Empresas() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Abrir modal para criar usuário
+  const handleOpenCreateUserModal = (company) => {
+    setSelectedCompany(company);
+    setShowCreateUserModal(true);
+    createUserForm.resetFields();
+    setShowPassword(false);
+  };
+
+  // Criar usuário para empresa
+  const handleCreateUser = async (values) => {
+    if (!selectedCompany) return;
+
+    setCreateUserLoading(true);
+    try {
+      const result = await createUserForCompany(selectedCompany.id, {
+        email: values.email,
+        password: values.password,
+        name: values.name,
+        role: values.role || "atendente",
+      });
+
+      if (result.success) {
+        const msg = "Usuário criado com sucesso!";
+        setSuccess(msg);
+        if (isMobile) notification.success({ message: msg });
+        setShowCreateUserModal(false);
+        createUserForm.resetFields();
+        // Atualizar lista de usuários se o modal de usuários estiver aberto
+        if (showUsersModal) {
+          handleViewUsers(selectedCompany);
+        }
+      } else {
+        setError(result.message);
+        if (isMobile) notification.error({ message: result.message });
+      }
+    } catch (err) {
+      const msg = "Erro ao criar usuário";
+      setError(msg);
+      if (isMobile) notification.error({ message: msg });
+    }
+    setCreateUserLoading(false);
+  };
+
   // Limpar mensagens após 5 segundos
   useEffect(() => {
     if (success || error) {
@@ -517,6 +570,17 @@ function Empresas() {
                       </AntButton>
                       <AntButton
                         type="primary"
+                        icon={<UserAddOutlined />}
+                        size="small"
+                        onClick={() => handleOpenCreateUserModal(company)}
+                        style={{ flex: 1, borderRadius: "8px", background: "#52c41a", borderColor: "#52c41a" }}
+                      >
+                        + Usuário
+                      </AntButton>
+                    </div>
+                    <div style={{ ...mobileStyles.companyActions, marginTop: "4px" }}>
+                      <AntButton
+                        type="primary"
                         icon={<EditOutlined />}
                         size="small"
                         onClick={() => handleOpenModal(company)}
@@ -623,11 +687,24 @@ function Empresas() {
             title={`Usuários: ${selectedCompany?.name || ""}`}
             open={showUsersModal}
             onCancel={() => setShowUsersModal(false)}
-            footer={null}
+            footer={
+              <AntButton
+                type="primary"
+                icon={<UserAddOutlined />}
+                onClick={() => {
+                  setShowUsersModal(false);
+                  handleOpenCreateUserModal(selectedCompany);
+                }}
+                block
+                style={{ height: "44px", borderRadius: "8px" }}
+              >
+                Criar Novo Usuário
+              </AntButton>
+            }
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px", maxHeight: "70vh", overflow: "auto" }}
+            bodyStyle={{ padding: "16px", maxHeight: "60vh", overflow: "auto" }}
           >
             {loadingUsers ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
@@ -656,6 +733,119 @@ function Empresas() {
                 )}
               />
             )}
+          </AntModal>
+
+          {/* Modal Criar Usuário */}
+          <AntModal
+            title={`Novo Usuário: ${selectedCompany?.name || ""}`}
+            open={showCreateUserModal}
+            onCancel={() => {
+              setShowCreateUserModal(false);
+              createUserForm.resetFields();
+            }}
+            footer={null}
+            destroyOnClose
+            width="100%"
+            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
+            bodyStyle={{ padding: "16px" }}
+          >
+            <AntForm
+              form={createUserForm}
+              layout="vertical"
+              onFinish={handleCreateUser}
+            >
+              <AntForm.Item
+                name="name"
+                label="Nome Completo"
+                rules={[{ required: true, message: "Nome é obrigatório" }]}
+              >
+                <Input placeholder="Nome do usuário" size="large" />
+              </AntForm.Item>
+
+              <AntForm.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Email é obrigatório" },
+                  { type: "email", message: "Email inválido" }
+                ]}
+              >
+                <Input placeholder="email@exemplo.com" size="large" />
+              </AntForm.Item>
+
+              <AntForm.Item
+                name="password"
+                label="Senha"
+                rules={[
+                  { required: true, message: "Senha é obrigatória" },
+                  { min: 6, message: "Mínimo 6 caracteres" }
+                ]}
+              >
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  size="large"
+                  suffix={
+                    <span onClick={() => setShowPassword(!showPassword)} style={{ cursor: "pointer" }}>
+                      {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                    </span>
+                  }
+                />
+              </AntForm.Item>
+
+              <AntForm.Item
+                name="role"
+                label="Função"
+                initialValue="atendente"
+              >
+                <AntRow gutter={8}>
+                  <AntCol span={8}>
+                    <AntButton
+                      block
+                      type={createUserForm.getFieldValue("role") === "admin" ? "primary" : "default"}
+                      onClick={() => createUserForm.setFieldsValue({ role: "admin" })}
+                      style={{ borderRadius: "8px" }}
+                    >
+                      Admin
+                    </AntButton>
+                  </AntCol>
+                  <AntCol span={8}>
+                    <AntButton
+                      block
+                      type={createUserForm.getFieldValue("role") === "atendente" || !createUserForm.getFieldValue("role") ? "primary" : "default"}
+                      onClick={() => createUserForm.setFieldsValue({ role: "atendente" })}
+                      style={{ borderRadius: "8px" }}
+                    >
+                      Atendente
+                    </AntButton>
+                  </AntCol>
+                  <AntCol span={8}>
+                    <AntButton
+                      block
+                      type={createUserForm.getFieldValue("role") === "visitante" ? "primary" : "default"}
+                      onClick={() => createUserForm.setFieldsValue({ role: "visitante" })}
+                      style={{ borderRadius: "8px" }}
+                    >
+                      Visitante
+                    </AntButton>
+                  </AntCol>
+                </AntRow>
+              </AntForm.Item>
+
+              <AntForm.Item style={{ marginBottom: 0, marginTop: "16px" }}>
+                <AntButton
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  size="large"
+                  loading={createUserLoading}
+                  icon={<UserAddOutlined />}
+                  style={{ height: "48px", borderRadius: "12px" }}
+                >
+                  Criar Usuário
+                </AntButton>
+              </AntForm.Item>
+            </AntForm>
           </AntModal>
         </div>
       </ConfigProvider>
@@ -750,6 +940,15 @@ function Empresas() {
                               title="Ver usuários"
                             >
                               <i className="nc-icon nc-single-02"></i>
+                            </Button>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              className="me-2"
+                              onClick={() => handleOpenCreateUserModal(company)}
+                              title="Criar usuário"
+                            >
+                              <i className="nc-icon nc-simple-add"></i>
                             </Button>
                             <Button
                               variant="warning"
@@ -918,10 +1117,86 @@ function Empresas() {
           )}
         </Modal.Body>
         <Modal.Footer>
+          <Button 
+            variant="success" 
+            onClick={() => {
+              setShowUsersModal(false);
+              handleOpenCreateUserModal(selectedCompany);
+            }}
+          >
+            <i className="nc-icon nc-simple-add"></i> Criar Novo Usuário
+          </Button>
           <Button variant="secondary" onClick={() => setShowUsersModal(false)}>
             Fechar
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Criar Usuário */}
+      <Modal show={showCreateUserModal} onHide={() => setShowCreateUserModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Criar Usuário para: {selectedCompany?.name}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          handleCreateUser({
+            name: formData.get('name'),
+            email: formData.get('email'),
+            password: formData.get('password'),
+            role: formData.get('role'),
+          });
+        }}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Nome Completo *</Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                placeholder="Nome do usuário"
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Email *</Form.Label>
+              <Form.Control
+                type="email"
+                name="email"
+                placeholder="email@exemplo.com"
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Senha *</Form.Label>
+              <Form.Control
+                type="password"
+                name="password"
+                placeholder="Mínimo 6 caracteres"
+                minLength={6}
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Função</Form.Label>
+              <Form.Select name="role" defaultValue="atendente">
+                <option value="admin">Admin</option>
+                <option value="atendente">Atendente</option>
+                <option value="visitante">Visitante</option>
+              </Form.Select>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowCreateUserModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="success" type="submit" disabled={createUserLoading}>
+              {createUserLoading ? <Spinner animation="border" size="sm" /> : "Criar Usuário"}
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
     </Container>
   );

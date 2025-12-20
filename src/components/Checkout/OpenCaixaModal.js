@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
-  InputNumber,
+  Input,
   Button,
   Typography,
   Alert,
@@ -17,22 +17,68 @@ import {
 
 const { Title, Text } = Typography;
 
-const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading }) => {
+// Função para formatar valor como moeda brasileira
+const formatCurrency = (value) => {
+  if (!value && value !== 0) return "";
+  const numValue = typeof value === "string" ? parseFloat(value.replace(/[^\d]/g, "") || 0) / 100 : value;
+  return numValue.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+// Função para extrair valor numérico de string formatada
+const parseCurrency = (value) => {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  // Remove tudo exceto números
+  const numericValue = value.replace(/[^\d]/g, "");
+  return parseFloat(numericValue || 0) / 100;
+};
+
+const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading, isMobile }) => {
   const [form] = Form.useForm();
   const [valorAbertura, setValorAbertura] = useState(0);
+  const [displayValue, setDisplayValue] = useState("0,00");
+
+  // Reset quando o modal abre
+  useEffect(() => {
+    if (visible) {
+      setValorAbertura(0);
+      setDisplayValue("0,00");
+      form.setFieldsValue({ valorAbertura: "0,00" });
+    }
+  }, [visible, form]);
+
+  const handleInputChange = (e) => {
+    let value = e.target.value;
+    
+    // Remove tudo exceto números
+    const numericOnly = value.replace(/[^\d]/g, "");
+    
+    // Converte para número com 2 casas decimais
+    const numValue = parseFloat(numericOnly || 0) / 100;
+    
+    // Formata para exibição
+    const formatted = formatCurrency(numValue);
+    
+    setDisplayValue(formatted);
+    setValorAbertura(numValue);
+    form.setFieldsValue({ valorAbertura: formatted });
+  };
 
   const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      onConfirm(values.valorAbertura);
-    } catch (error) {
-      console.error("Erro na validação:", error);
+    if (valorAbertura < 0) {
+      return;
     }
+    // Permite valor 0 para abertura de caixa
+    onConfirm(valorAbertura);
   };
 
   const handleCancel = () => {
     form.resetFields();
     setValorAbertura(0);
+    setDisplayValue("0,00");
     onCancel();
   };
 
@@ -47,18 +93,14 @@ const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading }) => {
       open={visible}
       onCancel={handleCancel}
       footer={null}
-      width={400}
+      width={isMobile ? "100%" : 400}
       centered
+      style={isMobile ? { top: 0, padding: 0, margin: 0 } : {}}
     >
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ valorAbertura: 0 }}
-        onValuesChange={(changedValues) => {
-          if (changedValues.valorAbertura !== undefined) {
-            setValorAbertura(changedValues.valorAbertura);
-          }
-        }}
+        initialValues={{ valorAbertura: "0,00" }}
       >
         <Alert
           message="Abertura de Caixa"
@@ -69,29 +111,30 @@ const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading }) => {
         />
 
         <Form.Item
-          label="Valor Inicial do Caixa"
+          label="Valor Inicial do Caixa (R$)"
           name="valorAbertura"
           rules={[
             {
               required: true,
               message: "Por favor, informe o valor inicial do caixa!",
             },
-            {
-              type: "number",
-              min: 0,
-              message: "O valor deve ser maior ou igual a zero!",
-            },
           ]}
         >
-          <InputNumber
+          <Input
             size="large"
-            style={{ width: "100%" }}
-            prefix="R$"
-            precision={2}
-            min={0}
-            step={0.01}
+            style={{ 
+              width: "100%", 
+              fontSize: isMobile ? "18px" : "16px",
+              textAlign: "right",
+              fontWeight: "600",
+            }}
+            prefix={<Text style={{ color: "#999" }}>R$</Text>}
             placeholder="0,00"
             autoFocus
+            value={displayValue}
+            onChange={handleInputChange}
+            inputMode="numeric"
+            pattern="[0-9]*"
           />
         </Form.Item>
 
@@ -99,7 +142,7 @@ const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading }) => {
 
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <Title level={4} style={{ margin: 0, color: "#1890ff" }}>
-            R$ {valorAbertura.toFixed(2).replace(".", ",")}
+            R$ {formatCurrency(valorAbertura)}
           </Title>
           <Text type="secondary">
             Valor que será registrado como saldo inicial
@@ -109,25 +152,53 @@ const OpenCaixaModal = ({ visible, onCancel, onConfirm, loading }) => {
         <Space
           size="middle"
           style={{ width: "100%", justifyContent: "center" }}
+          direction={isMobile ? "vertical" : "horizontal"}
         >
-          <Button
-            size="large"
-            icon={<CloseCircleOutlined />}
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="primary"
-            size="large"
-            icon={<CheckCircleOutlined />}
-            onClick={handleSubmit}
-            loading={loading}
-            disabled={valorAbertura <= 0}
-          >
-            Abrir Caixa
-          </Button>
+          {isMobile ? (
+            <>
+              <Button
+                type="primary"
+                size="large"
+                icon={<CheckCircleOutlined />}
+                onClick={handleSubmit}
+                loading={loading}
+                block
+                style={{ height: "48px", borderRadius: "12px" }}
+              >
+                Abrir Caixa
+              </Button>
+              <Button
+                size="large"
+                icon={<CloseCircleOutlined />}
+                onClick={handleCancel}
+                disabled={loading}
+                block
+                style={{ height: "48px", borderRadius: "12px" }}
+              >
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="large"
+                icon={<CloseCircleOutlined />}
+                onClick={handleCancel}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="primary"
+                size="large"
+                icon={<CheckCircleOutlined />}
+                onClick={handleSubmit}
+                loading={loading}
+              >
+                Abrir Caixa
+              </Button>
+            </>
+          )}
         </Space>
       </Form>
     </Modal>
