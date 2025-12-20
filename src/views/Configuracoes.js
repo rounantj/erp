@@ -367,14 +367,24 @@ function Configuracoes() {
                 {/* Botão Menu */}
                 <div
                   onClick={() => {
-                    document.documentElement.classList.toggle("nav-open");
-                    var node = document.createElement("div");
-                    node.id = "bodyClick";
-                    node.onclick = function () {
-                      this.parentElement.removeChild(this);
-                      document.documentElement.classList.toggle("nav-open");
-                    };
-                    document.body.appendChild(node);
+                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    if (isOpen) {
+                      document.documentElement.classList.remove("nav-open");
+                      const existingBodyClick = document.getElementById("bodyClick");
+                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                    } else {
+                      document.documentElement.classList.add("nav-open");
+                      const existingBodyClick = document.getElementById("bodyClick");
+                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      var node = document.createElement("div");
+                      node.id = "bodyClick";
+                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.onclick = function () {
+                        this.parentElement.removeChild(this);
+                        document.documentElement.classList.remove("nav-open");
+                      };
+                      document.body.appendChild(node);
+                    }
                   }}
                   style={{
                     background: "rgba(255,255,255,0.2)",
