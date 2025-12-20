@@ -289,7 +289,11 @@ const ClienteSelector = ({
                   </Option>
                 ))}
               </Select>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openModal}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openModal}
+              >
                 Novo
               </Button>
             </Space>

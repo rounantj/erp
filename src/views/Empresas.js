@@ -182,7 +182,8 @@ function Empresas() {
 
   // Verificar se é super admin
   const userEmail = user?.user?.email;
-  const isSuperAdmin = userEmail && userEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  const isSuperAdmin =
+    userEmail && userEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
   const currentUser = getCurrentUser();
 
@@ -204,7 +205,9 @@ function Empresas() {
       } else {
         setError(result.message);
         if (isMobile) {
-          notification.error({ message: result.message || "Erro ao carregar empresas" });
+          notification.error({
+            message: result.message || "Erro ao carregar empresas",
+          });
         }
       }
     } catch (err) {
@@ -306,7 +309,9 @@ function Empresas() {
       }
 
       if (result.success) {
-        notification.success({ message: selectedCompany ? "Empresa atualizada!" : "Empresa criada!" });
+        notification.success({
+          message: selectedCompany ? "Empresa atualizada!" : "Empresa criada!",
+        });
         handleCloseModal();
         loadCompanies();
       } else {
@@ -357,7 +362,8 @@ function Empresas() {
       }
     } catch (err) {
       setError("Erro ao carregar usuários");
-      if (isMobile) notification.error({ message: "Erro ao carregar usuários" });
+      if (isMobile)
+        notification.error({ message: "Erro ao carregar usuários" });
     }
     setLoadingUsers(false);
   };
@@ -435,23 +441,45 @@ function Empresas() {
         <div style={mobileStyles.container}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
                 {/* Botão Menu */}
                 <div
                   onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    const isOpen =
+                      document.documentElement.classList.contains("nav-open");
                     if (isOpen) {
                       document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                     } else {
                       document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                       var node = document.createElement("div");
                       node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.style.cssText =
+                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                       node.onclick = function () {
                         this.parentElement.removeChild(this);
                         document.documentElement.classList.remove("nav-open");
@@ -502,7 +530,7 @@ function Empresas() {
               </div>
               <div style={mobileStyles.statCard}>
                 <span style={mobileStyles.statValue}>
-                  {companies.filter(c => c.is_active).length}
+                  {companies.filter((c) => c.is_active).length}
                 </span>
                 <span style={mobileStyles.statLabel}>Ativas</span>
               </div>
@@ -512,7 +540,14 @@ function Empresas() {
           {/* Content */}
           <div style={mobileStyles.content}>
             {/* Companies List */}
-            <div style={{ flex: 1, overflow: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {loading ? (
                 <div style={{ textAlign: "center", padding: "40px" }}>
                   <Spin size="large" />
@@ -529,27 +564,50 @@ function Empresas() {
               ) : (
                 companies.map((company) => (
                   <div key={company.id} style={mobileStyles.companyCard}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
                       <div style={{ flex: 1 }}>
                         <div style={mobileStyles.companyName}>
                           {company.name}
                           {currentUser?.companyId === company.id && (
-                            <Tag color="blue" style={{ marginLeft: "8px", fontSize: "10px" }}>Atual</Tag>
+                            <Tag
+                              color="blue"
+                              style={{ marginLeft: "8px", fontSize: "10px" }}
+                            >
+                              Atual
+                            </Tag>
                           )}
                         </div>
                         {company.cnpj && (
-                          <div style={mobileStyles.companyInfo}>CNPJ: {company.cnpj}</div>
+                          <div style={mobileStyles.companyInfo}>
+                            CNPJ: {company.cnpj}
+                          </div>
                         )}
                         {company.phone && (
-                          <div style={mobileStyles.companyInfo}>Tel: {company.phone}</div>
+                          <div style={mobileStyles.companyInfo}>
+                            Tel: {company.phone}
+                          </div>
                         )}
                         {company.address && (
-                          <div style={mobileStyles.companyInfo}>{company.address}</div>
+                          <div style={mobileStyles.companyInfo}>
+                            {company.address}
+                          </div>
                         )}
                       </div>
-                      <Tag 
+                      <Tag
                         color={company.is_active ? "green" : "default"}
-                        icon={company.is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                        icon={
+                          company.is_active ? (
+                            <CheckCircleOutlined />
+                          ) : (
+                            <CloseCircleOutlined />
+                          )
+                        }
                       >
                         {company.is_active ? "Ativa" : "Inativa"}
                       </Tag>
@@ -570,12 +628,22 @@ function Empresas() {
                         icon={<UserAddOutlined />}
                         size="small"
                         onClick={() => handleOpenCreateUserModal(company)}
-                        style={{ flex: 1, borderRadius: "8px", background: "#52c41a", borderColor: "#52c41a" }}
+                        style={{
+                          flex: 1,
+                          borderRadius: "8px",
+                          background: "#52c41a",
+                          borderColor: "#52c41a",
+                        }}
                       >
                         + Usuário
                       </AntButton>
                     </div>
-                    <div style={{ ...mobileStyles.companyActions, marginTop: "4px" }}>
+                    <div
+                      style={{
+                        ...mobileStyles.companyActions,
+                        marginTop: "4px",
+                      }}
+                    >
                       <AntButton
                         type="primary"
                         icon={<EditOutlined />}
@@ -611,9 +679,12 @@ function Empresas() {
 
             {/* Results count */}
             {!loading && companies.length > 0 && (
-              <div style={{ textAlign: "center", padding: "8px 0", flexShrink: 0 }}>
+              <div
+                style={{ textAlign: "center", padding: "8px 0", flexShrink: 0 }}
+              >
                 <Text type="secondary" style={{ fontSize: "12px" }}>
-                  {companies.length} {companies.length === 1 ? "empresa" : "empresas"}
+                  {companies.length}{" "}
+                  {companies.length === 1 ? "empresa" : "empresas"}
                 </Text>
               </div>
             )}
@@ -701,7 +772,9 @@ function Empresas() {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            styles={{ body: { padding: "16px", maxHeight: "60vh", overflow: "auto" } }}
+            styles={{
+              body: { padding: "16px", maxHeight: "60vh", overflow: "auto" },
+            }}
           >
             {loadingUsers ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
@@ -719,7 +792,9 @@ function Empresas() {
                       description={userItem.email}
                     />
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <Tag color={userItem.role === "admin" ? "blue" : "default"}>
+                      <Tag
+                        color={userItem.role === "admin" ? "blue" : "default"}
+                      >
                         {userItem.role || "visitante"}
                       </Tag>
                       <Tag color={userItem.is_active ? "green" : "red"}>
@@ -764,7 +839,7 @@ function Empresas() {
                 label="Email"
                 rules={[
                   { required: true, message: "Email é obrigatório" },
-                  { type: "email", message: "Email inválido" }
+                  { type: "email", message: "Email inválido" },
                 ]}
               >
                 <Input placeholder="email@exemplo.com" size="large" />
@@ -775,7 +850,7 @@ function Empresas() {
                 label="Senha"
                 rules={[
                   { required: true, message: "Senha é obrigatória" },
-                  { min: 6, message: "Mínimo 6 caracteres" }
+                  { min: 6, message: "Mínimo 6 caracteres" },
                 ]}
               >
                 <Input
@@ -783,18 +858,21 @@ function Empresas() {
                   placeholder="Mínimo 6 caracteres"
                   size="large"
                   suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} style={{ cursor: "pointer" }}>
-                      {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                    <span
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {showPassword ? (
+                        <EyeInvisibleOutlined />
+                      ) : (
+                        <EyeOutlined />
+                      )}
                     </span>
                   }
                 />
               </AntForm.Item>
 
-              <AntForm.Item
-                name="role"
-                label="Função"
-                initialValue="atendente"
-              >
+              <AntForm.Item name="role" label="Função" initialValue="atendente">
                 <Select
                   size="large"
                   placeholder="Selecione a função"
@@ -832,7 +910,11 @@ function Empresas() {
       <Row>
         <Col md="12">
           {success && (
-            <Alert variant="success" dismissible onClose={() => setSuccess(null)}>
+            <Alert
+              variant="success"
+              dismissible
+              onClose={() => setSuccess(null)}
+            >
               {success}
             </Alert>
           )}
@@ -849,7 +931,8 @@ function Empresas() {
                 Gerenciamento de Empresas
               </Card.Title>
               <p className="card-category">
-                Cadastre e gerencie as empresas do sistema (Acesso exclusivo Super Admin)
+                Cadastre e gerencie as empresas do sistema (Acesso exclusivo
+                Super Admin)
               </p>
               <Button
                 variant="primary"
@@ -894,14 +977,18 @@ function Empresas() {
                           <td>
                             <strong>{company.name}</strong>
                             {currentUser?.companyId === company.id && (
-                              <Badge bg="info" className="ms-2">Atual</Badge>
+                              <Badge bg="info" className="ms-2">
+                                Atual
+                              </Badge>
                             )}
                           </td>
                           <td>{company.cnpj || "-"}</td>
                           <td>{company.phone || "-"}</td>
                           <td>{company.address || "-"}</td>
                           <td>
-                            <Badge bg={company.is_active ? "success" : "secondary"}>
+                            <Badge
+                              bg={company.is_active ? "success" : "secondary"}
+                            >
                               {company.is_active ? "Ativa" : "Inativa"}
                             </Badge>
                           </td>
@@ -1016,39 +1103,59 @@ function Empresas() {
               Cancelar
             </Button>
             <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? <Spinner animation="border" size="sm" /> : selectedCompany ? "Salvar" : "Criar"}
+              {loading ? (
+                <Spinner animation="border" size="sm" />
+              ) : selectedCompany ? (
+                "Salvar"
+              ) : (
+                "Criar"
+              )}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
       {/* Modal de Confirmação de Exclusão */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+      <Modal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Confirmar Exclusão</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p>
-            Tem certeza que deseja excluir a empresa <strong>{selectedCompany?.name}</strong>?
+            Tem certeza que deseja excluir a empresa{" "}
+            <strong>{selectedCompany?.name}</strong>?
           </p>
-          <p className="text-danger">
-            Esta ação não pode ser desfeita.
-          </p>
+          <p className="text-danger">Esta ação não pode ser desfeita.</p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             Cancelar
           </Button>
-          <Button variant="danger" onClick={() => handleDelete()} disabled={loading}>
+          <Button
+            variant="danger"
+            onClick={() => handleDelete()}
+            disabled={loading}
+          >
             {loading ? <Spinner animation="border" size="sm" /> : "Excluir"}
           </Button>
         </Modal.Footer>
       </Modal>
 
       {/* Modal de Usuários da Empresa */}
-      <Modal show={showUsersModal} onHide={() => setShowUsersModal(false)} centered size="lg">
+      <Modal
+        show={showUsersModal}
+        onHide={() => setShowUsersModal(false)}
+        centered
+        size="lg"
+      >
         <Modal.Header closeButton>
-          <Modal.Title>Usuários da Empresa: {selectedCompany?.name}</Modal.Title>
+          <Modal.Title>
+            Usuários da Empresa: {selectedCompany?.name}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loadingUsers ? (
@@ -1056,7 +1163,9 @@ function Empresas() {
               <Spinner animation="border" role="status" />
             </div>
           ) : companyUsers.length === 0 ? (
-            <p className="text-center text-muted">Nenhum usuário nesta empresa</p>
+            <p className="text-center text-muted">
+              Nenhum usuário nesta empresa
+            </p>
           ) : (
             <Table striped bordered hover>
               <thead>
@@ -1075,7 +1184,9 @@ function Empresas() {
                     <td>{userItem.name || userItem.username}</td>
                     <td>{userItem.email}</td>
                     <td>
-                      <Badge bg={userItem.role === "admin" ? "primary" : "secondary"}>
+                      <Badge
+                        bg={userItem.role === "admin" ? "primary" : "secondary"}
+                      >
                         {userItem.role || "visitante"}
                       </Badge>
                     </td>
@@ -1091,8 +1202,8 @@ function Empresas() {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             onClick={() => {
               setShowUsersModal(false);
               handleOpenCreateUserModal(selectedCompany);
@@ -1107,20 +1218,26 @@ function Empresas() {
       </Modal>
 
       {/* Modal de Criar Usuário */}
-      <Modal show={showCreateUserModal} onHide={() => setShowCreateUserModal(false)} centered>
+      <Modal
+        show={showCreateUserModal}
+        onHide={() => setShowCreateUserModal(false)}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Criar Usuário para: {selectedCompany?.name}</Modal.Title>
         </Modal.Header>
-        <Form onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.target);
-          handleCreateUser({
-            name: formData.get('name'),
-            email: formData.get('email'),
-            password: formData.get('password'),
-            role: formData.get('role'),
-          });
-        }}>
+        <Form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            handleCreateUser({
+              name: formData.get("name"),
+              email: formData.get("email"),
+              password: formData.get("password"),
+              role: formData.get("role"),
+            });
+          }}
+        >
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>Nome Completo *</Form.Label>
@@ -1163,11 +1280,22 @@ function Empresas() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowCreateUserModal(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowCreateUserModal(false)}
+            >
               Cancelar
             </Button>
-            <Button variant="success" type="submit" disabled={createUserLoading}>
-              {createUserLoading ? <Spinner animation="border" size="sm" /> : "Criar Usuário"}
+            <Button
+              variant="success"
+              type="submit"
+              disabled={createUserLoading}
+            >
+              {createUserLoading ? (
+                <Spinner animation="border" size="sm" />
+              ) : (
+                "Criar Usuário"
+              )}
             </Button>
           </Modal.Footer>
         </Form>

@@ -207,3 +207,4 @@ const CloseCaixaModal = ({
 };
 
 export default CloseCaixaModal;
+
