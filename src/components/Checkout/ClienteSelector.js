@@ -222,9 +222,10 @@ const ClienteSelector = ({
           <div className="ml-auto">
             <ChevronDown
               size={16}
-              className={`transition-transform ${
-                isExpanded ? "rotate-180" : ""
-              }`}
+              style={{ 
+                transition: "transform 0.3s ease",
+                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)"
+              }}
             />
           </div>
         </div>
@@ -316,7 +317,7 @@ const ClienteSelector = ({
                         />
                       </div>
                     </div>
-                    <div className="max-height-200 overflow-auto">
+                    <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                       {loading ? (
                         <DropdownItem disabled>Carregando...</DropdownItem>
                       ) : clientes.length === 0 ? (
@@ -499,36 +500,6 @@ const ClienteSelector = ({
         </ModalFooter>
       </Modal>
 
-      <style jsx>{`
-        .max-height-200 {
-          max-height: 200px;
-        }
-        .overflow-auto {
-          overflow-y: auto;
-        }
-        .selected-cliente {
-          transition: all 0.2s ease;
-        }
-        .selected-cliente:hover {
-          background-color: #f8f9fa !important;
-        }
-        .cliente-content {
-          animation: slideDown 0.3s ease-out;
-        }
-        .transition-transform {
-          transition: transform 0.3s ease;
-        }
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </Card>
   );
 };
