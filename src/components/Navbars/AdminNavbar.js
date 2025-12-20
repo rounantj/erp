@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Layout, Button, Menu, Dropdown, Space } from "antd";
+import { Layout, Button, Dropdown, Space } from "antd";
 import {
   MenuOutlined,
   DownOutlined,
@@ -35,14 +35,20 @@ function AdminNavbar() {
 
   const mobileSidebarToggle = (e) => {
     e.preventDefault();
+    const existingBodyClick = document.getElementById("bodyClick");
+    if (existingBodyClick) {
+      existingBodyClick.parentElement.removeChild(existingBodyClick);
+    }
     document.documentElement.classList.toggle("nav-open");
-    var node = document.createElement("div");
-    node.id = "bodyClick";
-    node.onclick = function () {
-      this.parentElement.removeChild(this);
-      document.documentElement.classList.toggle("nav-open");
-    };
-    document.body.appendChild(node);
+    if (document.documentElement.classList.contains("nav-open")) {
+      var node = document.createElement("div");
+      node.id = "bodyClick";
+      node.onclick = function () {
+        this.parentElement.removeChild(this);
+        document.documentElement.classList.remove("nav-open");
+      };
+      document.body.appendChild(node);
+    }
   };
   const { user, setUser } = useContext(UserContext);
 
@@ -68,10 +74,13 @@ function AdminNavbar() {
   // Menu items para o dropdown do usuário
   const userMenuItems = [
     {
-      key: "1",
-      label: "Sair",
-      icon: <LogoutOutlined />,
-      onClick: logout,
+      key: "logout",
+      label: (
+        <span onClick={logout} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <LogoutOutlined style={{ color: "#ff4d4f" }} />
+          <span>Sair</span>
+        </span>
+      ),
     },
   ];
 
@@ -84,6 +93,9 @@ function AdminNavbar() {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        height: "auto",
+        minHeight: "64px",
+        lineHeight: "normal",
       }}
       className="responsive-header"
     >
@@ -133,28 +145,38 @@ function AdminNavbar() {
             </Dropdown>
           </Space>
         </div>
-      ) : (
-        <></>
-      )}
+      ) : null}
 
-      {/* Área do usuário - agora visível */}
+      {/* Área do usuário com dropdown para logout */}
       <div style={{ display: "flex", alignItems: "center" }}>
         {user && (
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <span
-              style={{ cursor: "pointer" }}
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            placement="bottomRight"
+            trigger={["click"]}
+          >
+            <div
+              style={{
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "#f5f5f5",
+                transition: "background 0.2s",
+              }}
               className="user-dropdown-trigger"
             >
               <Space>
-                <UserOutlined style={{ fontSize: "16px" }} />
+                <UserOutlined style={{ fontSize: "16px", color: "#1890ff" }} />
                 {!isMobile ? (
-                  <span className="user-email">
-                    {user?.user.email} | <b>{user?.user.role ?? "Admin"}</b>
+                  <span style={{ color: "#333", fontSize: "14px" }}>
+                    {user?.user?.email} | <b>{user?.user?.role ?? "Admin"}</b>
                   </span>
                 ) : null}
-                <DownOutlined />
+                <DownOutlined style={{ fontSize: "12px", color: "#999" }} />
               </Space>
-            </span>
+            </div>
           </Dropdown>
         )}
       </div>

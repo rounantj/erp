@@ -13,13 +13,10 @@ import {
   Alert,
 } from "react-bootstrap";
 import {
-  Card as AntCard,
   Button as AntButton,
   Modal as AntModal,
   Form as AntForm,
   Input,
-  Row as AntRow,
-  Col as AntCol,
   Tag,
   Typography,
   Spin,
@@ -29,6 +26,7 @@ import {
   notification,
   Popconfirm,
   List,
+  Select,
 } from "antd";
 import {
   PlusOutlined,
@@ -56,8 +54,7 @@ import {
 } from "../helpers/api-integrator";
 import { UserContext } from "../context/UserContext";
 
-const { Text, Title } = Typography;
-const { Search } = Input;
+const { Text } = Typography;
 
 // Email do Super Admin - único usuário com acesso
 const SUPER_ADMIN_EMAIL = "rounantj@hotmail.com";
@@ -639,7 +636,7 @@ function Empresas() {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px" }}
+            styles={{ body: { padding: "16px" } }}
           >
             <AntForm
               form={antForm}
@@ -704,7 +701,7 @@ function Empresas() {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px", maxHeight: "60vh", overflow: "auto" }}
+            styles={{ body: { padding: "16px", maxHeight: "60vh", overflow: "auto" } }}
           >
             {loadingUsers ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
@@ -747,7 +744,7 @@ function Empresas() {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px" }}
+            styles={{ body: { padding: "16px" } }}
           >
             <AntForm
               form={createUserForm}
@@ -798,38 +795,15 @@ function Empresas() {
                 label="Função"
                 initialValue="atendente"
               >
-                <AntRow gutter={8}>
-                  <AntCol span={8}>
-                    <AntButton
-                      block
-                      type={createUserForm.getFieldValue("role") === "admin" ? "primary" : "default"}
-                      onClick={() => createUserForm.setFieldsValue({ role: "admin" })}
-                      style={{ borderRadius: "8px" }}
-                    >
-                      Admin
-                    </AntButton>
-                  </AntCol>
-                  <AntCol span={8}>
-                    <AntButton
-                      block
-                      type={createUserForm.getFieldValue("role") === "atendente" || !createUserForm.getFieldValue("role") ? "primary" : "default"}
-                      onClick={() => createUserForm.setFieldsValue({ role: "atendente" })}
-                      style={{ borderRadius: "8px" }}
-                    >
-                      Atendente
-                    </AntButton>
-                  </AntCol>
-                  <AntCol span={8}>
-                    <AntButton
-                      block
-                      type={createUserForm.getFieldValue("role") === "visitante" ? "primary" : "default"}
-                      onClick={() => createUserForm.setFieldsValue({ role: "visitante" })}
-                      style={{ borderRadius: "8px" }}
-                    >
-                      Visitante
-                    </AntButton>
-                  </AntCol>
-                </AntRow>
+                <Select
+                  size="large"
+                  placeholder="Selecione a função"
+                  options={[
+                    { value: "admin", label: "Admin" },
+                    { value: "atendente", label: "Atendente" },
+                    { value: "visitante", label: "Visitante" },
+                  ]}
+                />
               </AntForm.Item>
 
               <AntForm.Item style={{ marginBottom: 0, marginTop: "16px" }}>
