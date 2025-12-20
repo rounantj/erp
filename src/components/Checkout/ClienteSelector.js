@@ -1,35 +1,33 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  CardBody,
   Button,
   Input,
   Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Form,
-  FormGroup,
-  Label,
   Row,
   Col,
-  Badge,
   Alert,
-  Dropdown,
-  DropdownToggle,
-  DropdownMenu,
-  DropdownItem,
-} from "reactstrap";
+  Select,
+  Typography,
+  Space,
+  Spin,
+} from "antd";
 import {
-  User,
-  Search,
-  Plus,
-  ChevronDown,
-  Mail,
-  Phone,
-  MapPin,
-} from "react-feather";
+  UserOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  DownOutlined,
+  UpOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  CloseOutlined,
+} from "@ant-design/icons";
 import { getClientes, createCliente } from "../../helpers/api-integrator";
+
+const { Text, Title } = Typography;
+const { Option } = Select;
 
 const ClienteSelector = ({
   selectedCliente,
@@ -39,24 +37,13 @@ const ClienteSelector = ({
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: "",
-    cpf_cnpj: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    cidade: "",
-    estado: "",
-    cep: "",
-    observacoes: "",
-  });
-  const [alert, setAlert] = useState({
+  const [form] = Form.useForm();
+  const [alertInfo, setAlertInfo] = useState({
     show: false,
     message: "",
-    color: "success",
+    type: "success",
   });
 
   const loadClientes = useCallback(async () => {
@@ -66,11 +53,11 @@ const ClienteSelector = ({
       if (response.success) {
         setClientes(response.data);
       } else {
-        showAlert(response.message || "Erro ao carregar clientes", "danger");
+        showAlert(response.message || "Erro ao carregar clientes", "error");
       }
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
-      showAlert("Erro ao carregar clientes", "danger");
+      showAlert("Erro ao carregar clientes", "error");
     } finally {
       setLoading(false);
     }
@@ -104,81 +91,54 @@ const ClienteSelector = ({
     loadDefaultCliente();
   }, []);
 
-  const showAlert = (message, color = "success") => {
-    setAlert({ show: true, message, color });
+  const showAlert = (message, type = "success") => {
+    setAlertInfo({ show: true, message, type });
     setTimeout(
-      () => setAlert({ show: false, message: "", color: "success" }),
+      () => setAlertInfo({ show: false, message: "", type: "success" }),
       3000
     );
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const resetForm = () => {
-    setFormData({
-      nome: "",
-      cpf_cnpj: "",
-      email: "",
-      telefone: "",
-      endereco: "",
-      cidade: "",
-      estado: "",
-      cep: "",
-      observacoes: "",
-    });
-  };
-
   const openModal = () => {
-    resetForm();
+    form.resetFields();
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    resetForm();
+    form.resetFields();
   };
 
   const handleSubmit = async () => {
-    if (!formData.nome.trim()) {
-      showAlert("Nome é obrigatório", "danger");
-      return;
-    }
-
     try {
-      const response = await createCliente(formData);
+      const values = await form.validateFields();
+      const response = await createCliente(values);
       if (response.success) {
         const novoCliente = response.data;
-
         showAlert("Cliente cadastrado com sucesso!");
         closeModal();
         loadClientes();
-
-        // Seleciona automaticamente o novo cliente
         onClienteSelect(novoCliente);
         if (onClienteChange) {
           onClienteChange(novoCliente);
         }
       } else {
-        showAlert(response.message || "Erro ao cadastrar cliente", "danger");
+        showAlert(response.message || "Erro ao cadastrar cliente", "error");
       }
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
-      showAlert("Erro ao cadastrar cliente", "danger");
+      showAlert("Erro ao cadastrar cliente", "error");
     }
   };
 
-  const handleClienteSelect = (cliente) => {
-    onClienteSelect(cliente);
-    if (onClienteChange) {
-      onClienteChange(cliente);
+  const handleClienteSelect = (clienteId) => {
+    const cliente = clientes.find((c) => c.id === clienteId);
+    if (cliente) {
+      onClienteSelect(cliente);
+      if (onClienteChange) {
+        onClienteChange(cliente);
+      }
     }
-    setDropdownOpen(false);
   };
 
   const formatCpfCnpj = (cpfCnpj) => {
@@ -207,299 +167,214 @@ const ClienteSelector = ({
   };
 
   return (
-    <Card className="mb-3">
-      <CardBody className="p-3">
-        <div
-          className="d-flex align-items-center mb-2 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{ cursor: "pointer" }}
-        >
-          <User size={16} className="mr-2" />
-          <h6 className="mb-0">Cliente</h6>
-          {selectedCliente && (
-            <small className="text-muted ml-2">({selectedCliente.nome})</small>
-          )}
-          <div className="ml-auto">
-            <ChevronDown
-              size={16}
-              style={{ 
-                transition: "transform 0.3s ease",
-                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)"
-              }}
-            />
-          </div>
+    <Card
+      size="small"
+      style={{ marginBottom: 12 }}
+      bodyStyle={{ padding: "12px" }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+        }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <UserOutlined style={{ marginRight: 8, color: "#1890ff" }} />
+        <Text strong>Cliente</Text>
+        {selectedCliente && (
+          <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+            ({selectedCliente.nome})
+          </Text>
+        )}
+        <div style={{ marginLeft: "auto" }}>
+          {isExpanded ? <UpOutlined /> : <DownOutlined />}
         </div>
+      </div>
 
-        {isExpanded && (
-          <div className="cliente-content">
-            {selectedCliente ? (
-              <div className="selected-cliente p-2 border rounded bg-light">
-                <div className="d-flex justify-content-between align-items-start">
-                  <div className="flex-grow-1">
-                    <h6 className="mb-1">{selectedCliente.nome}</h6>
-                    {selectedCliente.cpf_cnpj && (
-                      <small className="text-muted d-block">
-                        CPF/CNPJ: {formatCpfCnpj(selectedCliente.cpf_cnpj)}
-                      </small>
-                    )}
-                    {(selectedCliente.email || selectedCliente.telefone) && (
-                      <div className="mt-1">
-                        {selectedCliente.email && (
-                          <div className="d-flex align-items-center mb-1">
-                            <Mail size={12} className="mr-1" />
-                            <small>{selectedCliente.email}</small>
-                          </div>
-                        )}
-                        {selectedCliente.telefone && (
-                          <div className="d-flex align-items-center">
-                            <Phone size={12} className="mr-1" />
-                            <small>
-                              {formatPhone(selectedCliente.telefone)}
-                            </small>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {selectedCliente.endereco && (
-                      <div className="d-flex align-items-center mt-1">
-                        <MapPin size={12} className="mr-1" />
-                        <small className="text-muted">
-                          {selectedCliente.endereco}
-                          {selectedCliente.cidade &&
-                            `, ${selectedCliente.cidade}`}
-                          {selectedCliente.estado &&
-                            ` - ${selectedCliente.estado}`}
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <Button
-                      color="link"
-                      size="sm"
-                      onClick={() => onClienteSelect(null)}
-                      className="p-0 text-danger"
-                      style={{ border: "none", boxShadow: "none", outline: "none" }}
+      {isExpanded && (
+        <div style={{ marginTop: 12 }}>
+          {selectedCliente ? (
+            <div
+              style={{
+                padding: 12,
+                border: "1px solid #d9d9d9",
+                borderRadius: 6,
+                background: "#fafafa",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
+                    {selectedCliente.nome}
+                  </Title>
+                  {selectedCliente.cpf_cnpj && (
+                    <Text type="secondary" style={{ display: "block" }}>
+                      CPF/CNPJ: {formatCpfCnpj(selectedCliente.cpf_cnpj)}
+                    </Text>
+                  )}
+                  {(selectedCliente.email || selectedCliente.telefone) && (
+                    <Space
+                      direction="vertical"
+                      size={2}
+                      style={{ marginTop: 4 }}
                     >
-                      ✕
-                    </Button>
-                  </div>
+                      {selectedCliente.email && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          <MailOutlined style={{ marginRight: 4 }} />
+                          {selectedCliente.email}
+                        </Text>
+                      )}
+                      {selectedCliente.telefone && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          <PhoneOutlined style={{ marginRight: 4 }} />
+                          {formatPhone(selectedCliente.telefone)}
+                        </Text>
+                      )}
+                    </Space>
+                  )}
+                  {selectedCliente.endereco && (
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: 12, display: "block", marginTop: 4 }}
+                    >
+                      <EnvironmentOutlined style={{ marginRight: 4 }} />
+                      {selectedCliente.endereco}
+                      {selectedCliente.cidade && `, ${selectedCliente.cidade}`}
+                      {selectedCliente.estado && ` - ${selectedCliente.estado}`}
+                    </Text>
+                  )}
                 </div>
+                <Button
+                  type="text"
+                  danger
+                  icon={<CloseOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClienteSelect(null);
+                  }}
+                />
               </div>
-            ) : (
-              <div className="d-flex gap-2">
-                <Dropdown
-                  isOpen={dropdownOpen}
-                  toggle={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex-grow-1"
-                >
-                  <DropdownToggle
-                    color="outline-secondary"
-                    className="w-100 text-left d-flex justify-content-between align-items-center"
-                  >
-                    <span className="text-muted">Selecionar cliente...</span>
-                    <ChevronDown size={16} />
-                  </DropdownToggle>
-                  <DropdownMenu className="w-100">
-                    <div className="p-2">
-                      <div className="input-group input-group-sm">
-                        <div className="input-group-prepend">
-                          <span className="input-group-text">
-                            <Search size={12} />
-                          </span>
-                        </div>
-                        <Input
-                          type="text"
-                          placeholder="Buscar clientes..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="border-0"
-                        />
-                      </div>
-                    </div>
-                    <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                      {loading ? (
-                        <DropdownItem disabled>Carregando...</DropdownItem>
-                      ) : clientes.length === 0 ? (
-                        <DropdownItem disabled>
-                          Nenhum cliente encontrado
-                        </DropdownItem>
-                      ) : (
-                        clientes.map((cliente) => (
-                          <DropdownItem
-                            key={cliente.id}
-                            onClick={() => handleClienteSelect(cliente)}
-                            className="py-2"
-                          >
-                            <div>
-                              <div className="font-weight-bold">
-                                {cliente.nome}
-                              </div>
-                              {cliente.cpf_cnpj && (
-                                <small className="text-muted">
-                                  {formatCpfCnpj(cliente.cpf_cnpj)}
-                                </small>
-                              )}
-                            </div>
-                          </DropdownItem>
-                        ))
+            </div>
+          ) : (
+            <Space style={{ width: "100%" }}>
+              <Select
+                showSearch
+                placeholder="Selecionar cliente..."
+                style={{ width: 250 }}
+                loading={loading}
+                filterOption={false}
+                onSearch={setSearchTerm}
+                onChange={handleClienteSelect}
+                notFoundContent={
+                  loading ? <Spin size="small" /> : "Nenhum cliente encontrado"
+                }
+              >
+                {clientes.map((cliente) => (
+                  <Option key={cliente.id} value={cliente.id}>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{cliente.nome}</div>
+                      {cliente.cpf_cnpj && (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {formatCpfCnpj(cliente.cpf_cnpj)}
+                        </Text>
                       )}
                     </div>
-                  </DropdownMenu>
-                </Dropdown>
-                <Button
-                  color="primary"
-                  size="sm"
-                  onClick={openModal}
-                  className="btn-round"
-                >
-                  <Plus size={14} />
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </CardBody>
+                  </Option>
+                ))}
+              </Select>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openModal}>
+                Novo
+              </Button>
+            </Space>
+          )}
+        </div>
+      )}
 
       {/* Modal de Cadastro Rápido */}
-      <Modal isOpen={modalOpen} toggle={closeModal} size="lg">
-        <ModalHeader toggle={closeModal}>
-          <Plus size={16} className="mr-2" />
-          Cadastrar Novo Cliente
-        </ModalHeader>
-        <ModalBody>
-          {alert.show && (
-            <Alert color={alert.color} className="mb-3">
-              {alert.message}
-            </Alert>
-          )}
+      <Modal
+        title={
+          <Space>
+            <PlusOutlined />
+            <span>Cadastrar Novo Cliente</span>
+          </Space>
+        }
+        open={modalOpen}
+        onCancel={closeModal}
+        onOk={handleSubmit}
+        okText="Cadastrar e Selecionar"
+        cancelText="Cancelar"
+        width={600}
+      >
+        {alertInfo.show && (
+          <Alert
+            message={alertInfo.message}
+            type={alertInfo.type}
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
 
-          <Form>
-            <Row>
-              <Col md="6">
-                <FormGroup>
-                  <Label for="nome">Nome *</Label>
-                  <Input
-                    id="nome"
-                    name="nome"
-                    type="text"
-                    value={formData.nome}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </FormGroup>
-              </Col>
-              <Col md="6">
-                <FormGroup>
-                  <Label for="cpf_cnpj">CPF/CNPJ</Label>
-                  <Input
-                    id="cpf_cnpj"
-                    name="cpf_cnpj"
-                    type="text"
-                    value={formData.cpf_cnpj}
-                    onChange={handleInputChange}
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                  />
-                </FormGroup>
-              </Col>
-            </Row>
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="nome"
+                label="Nome"
+                rules={[{ required: true, message: "Nome é obrigatório" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="cpf_cnpj" label="CPF/CNPJ">
+                <Input placeholder="000.000.000-00 ou 00.000.000/0000-00" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-            <Row>
-              <Col md="6">
-                <FormGroup>
-                  <Label for="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </FormGroup>
-              </Col>
-              <Col md="6">
-                <FormGroup>
-                  <Label for="telefone">Telefone</Label>
-                  <Input
-                    id="telefone"
-                    name="telefone"
-                    type="text"
-                    value={formData.telefone}
-                    onChange={handleInputChange}
-                    placeholder="(00) 00000-0000"
-                  />
-                </FormGroup>
-              </Col>
-            </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="email" label="Email">
+                <Input type="email" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="telefone" label="Telefone">
+                <Input placeholder="(00) 00000-0000" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-            <Row>
-              <Col md="12">
-                <FormGroup>
-                  <Label for="endereco">Endereço</Label>
-                  <Input
-                    id="endereco"
-                    name="endereco"
-                    type="text"
-                    value={formData.endereco}
-                    onChange={handleInputChange}
-                    placeholder="Rua, número, bairro"
-                  />
-                </FormGroup>
-              </Col>
-            </Row>
+          <Form.Item name="endereco" label="Endereço">
+            <Input placeholder="Rua, número, bairro" />
+          </Form.Item>
 
-            <Row>
-              <Col md="4">
-                <FormGroup>
-                  <Label for="cidade">Cidade</Label>
-                  <Input
-                    id="cidade"
-                    name="cidade"
-                    type="text"
-                    value={formData.cidade}
-                    onChange={handleInputChange}
-                  />
-                </FormGroup>
-              </Col>
-              <Col md="4">
-                <FormGroup>
-                  <Label for="estado">Estado</Label>
-                  <Input
-                    id="estado"
-                    name="estado"
-                    type="text"
-                    value={formData.estado}
-                    onChange={handleInputChange}
-                    placeholder="UF"
-                  />
-                </FormGroup>
-              </Col>
-              <Col md="4">
-                <FormGroup>
-                  <Label for="cep">CEP</Label>
-                  <Input
-                    id="cep"
-                    name="cep"
-                    type="text"
-                    value={formData.cep}
-                    onChange={handleInputChange}
-                    placeholder="00000-000"
-                  />
-                </FormGroup>
-              </Col>
-            </Row>
-          </Form>
-        </ModalBody>
-        <ModalFooter>
-          <Button color="secondary" onClick={closeModal}>
-            Cancelar
-          </Button>
-          <Button color="primary" onClick={handleSubmit}>
-            Cadastrar e Selecionar
-          </Button>
-        </ModalFooter>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="cidade" label="Cidade">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="estado" label="Estado">
+                <Input placeholder="UF" maxLength={2} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="cep" label="CEP">
+                <Input placeholder="00000-000" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
       </Modal>
-
     </Card>
   );
 };
