@@ -29,7 +29,6 @@ import {
   ConfigProvider,
   Spin,
   FloatButton,
-  Upload,
   Avatar,
   message,
 } from "antd";
@@ -214,6 +213,7 @@ const ProductAndServiceTable = () => {
   // References and context
   const { user } = useContext(UserContext);
   const searchInput = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Detectar mobile
   useEffect(() => {
@@ -421,25 +421,35 @@ const ProductAndServiceTable = () => {
     setModalVisible(true);
   };
 
-  // Handle image upload
-  const handleImageUpload = async (file) => {
+  // Handle file input change
+  const handleFileInputChange = (e) => {
+    console.log("=== handleFileInputChange chamado ===");
+    console.log("Event:", e);
+    console.log("Files:", e.target.files);
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log("Nenhum arquivo selecionado");
+      return;
+    }
+    console.log("Arquivo selecionado:", file.name, file.type, file.size);
+
     const isImage = file.type.startsWith("image/");
     if (!isImage) {
       message.error("Apenas imagens são permitidas!");
-      return false;
+      return;
     }
 
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       message.error("A imagem deve ter menos de 2MB!");
-      return false;
+      return;
     }
 
     // Se estiver editando, faz upload direto
     if (editingProduct?.id) {
       const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result;
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result;
         setImagePreview(base64);
 
         try {
@@ -462,14 +472,28 @@ const ProductAndServiceTable = () => {
     } else {
       // Se for novo produto, apenas mostra preview
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target.result);
+      reader.onload = (ev) => {
+        setImagePreview(ev.target.result);
         message.info("A imagem será salva após criar o produto");
       };
       reader.readAsDataURL(file);
     }
 
-    return false; // Previne upload automático
+    // Reset input para permitir selecionar o mesmo arquivo novamente
+    e.target.value = "";
+  };
+
+  // Trigger file input click
+  const triggerFileInput = () => {
+    console.log("=== triggerFileInput chamado ===");
+    console.log("fileInputRef.current:", fileInputRef.current);
+    if (fileInputRef.current) {
+      console.log("Chamando click() no input...");
+      fileInputRef.current.click();
+      console.log("click() executado");
+    } else {
+      console.error("ERRO: fileInputRef.current é null!");
+    }
   };
 
   // Define table columns
@@ -978,7 +1002,7 @@ const ProductAndServiceTable = () => {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px" }}
+            styles={{ body: { padding: "16px" } }}
           >
             <Form
               form={form}
@@ -1065,19 +1089,21 @@ const ProductAndServiceTable = () => {
                       background: imagePreview ? "transparent" : "#f0f0f0",
                     }}
                   />
-                  <Upload
-                    beforeUpload={handleImageUpload}
-                    showUploadList={false}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInputChange}
                     accept="image/*"
+                    style={{ display: "none" }}
+                  />
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={uploadingImage}
+                    size="large"
+                    onClick={triggerFileInput}
                   >
-                    <Button
-                      icon={<UploadOutlined />}
-                      loading={uploadingImage}
-                      size="large"
-                    >
-                      {imagePreview ? "Trocar" : "Enviar"}
-                    </Button>
-                  </Upload>
+                    {imagePreview ? "Trocar" : "Enviar"}
+                  </Button>
                 </div>
               </Form.Item>
 
@@ -1184,11 +1210,14 @@ const ProductAndServiceTable = () => {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Content style={{ padding: "0 24px", marginTop: 16 }}>
-        <Breadcrumb style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>Início</Breadcrumb.Item>
-          <Breadcrumb.Item>Cadastros</Breadcrumb.Item>
-          <Breadcrumb.Item>Produtos e Serviços</Breadcrumb.Item>
-        </Breadcrumb>
+        <Breadcrumb
+          style={{ margin: "16px 0" }}
+          items={[
+            { title: "Início" },
+            { title: "Cadastros" },
+            { title: "Produtos e Serviços" },
+          ]}
+        />
 
         {/* Page Header - Using Card instead of PageHeader */}
         <Card
@@ -1437,15 +1466,20 @@ const ProductAndServiceTable = () => {
                   )}
                 </div>
                 <div>
-                  <Upload
-                    beforeUpload={handleImageUpload}
-                    showUploadList={false}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInputChange}
                     accept="image/*"
+                    style={{ display: "none" }}
+                  />
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={uploadingImage}
+                    onClick={triggerFileInput}
                   >
-                    <Button icon={<UploadOutlined />} loading={uploadingImage}>
-                      {imagePreview ? "Trocar Imagem" : "Enviar Imagem"}
-                    </Button>
-                  </Upload>
+                    {imagePreview ? "Trocar Imagem" : "Enviar Imagem"}
+                  </Button>
                   <div style={{ marginTop: "8px" }}>
                     <Text type="secondary" style={{ fontSize: "12px" }}>
                       PNG, JPG ou GIF. Máx 2MB.

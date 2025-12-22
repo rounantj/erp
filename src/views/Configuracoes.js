@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Button,
-  Select,
   Typography,
   Row,
   Col,
@@ -15,7 +14,6 @@ import {
   Space,
   Table,
   Tag,
-  Tooltip,
   ConfigProvider,
   Spin,
   Empty,
@@ -59,7 +57,6 @@ import {
 import defaultLogo from "assets/img/logo.png";
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 const { TextArea } = Input;
 
 // Estilos para mobile
@@ -397,6 +394,19 @@ function Configuracoes() {
     }
   }, [companySetup]);
 
+  // Estilos do select nativo
+  const nativeSelectStyles = {
+    width: "160px",
+    height: "32px",
+    padding: "0 8px",
+    fontSize: "14px",
+    border: "1px solid #d9d9d9",
+    borderRadius: "6px",
+    backgroundColor: "#fff",
+    cursor: "pointer",
+    outline: "none",
+  };
+
   // Colunas da tabela de usuários
   const userColumns = [
     {
@@ -415,24 +425,16 @@ function Configuracoes() {
       dataIndex: "role",
       key: "role",
       render: (role, record) => (
-        <Select
+        <select
           value={role}
-          style={{ width: 160 }}
-          onChange={(value) => handleRoleChange(record.username, value)}
+          style={nativeSelectStyles}
+          onChange={(e) => handleRoleChange(record.username, e.target.value)}
         >
-          <Option value="visitante">
-            <Tag color={roleColors.visitante}>Visitante</Tag>
-          </Option>
-          <Option value="atendente">
-            <Tag color={roleColors.atendente}>Atendente</Tag>
-          </Option>
-          <Option value="supervisor">
-            <Tag color={roleColors.supervisor}>Supervisor</Tag>
-          </Option>
-          <Option value="admin">
-            <Tag color={roleColors.admin}>Administrador</Tag>
-          </Option>
-        </Select>
+          <option value="visitante">Visitante</option>
+          <option value="atendente">Atendente</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="admin">Administrador</option>
+        </select>
       ),
     },
     {
@@ -786,19 +788,28 @@ function Configuracoes() {
                           {roleTitles[userItem.role]}
                         </Tag>
                       </div>
-                      <Select
+                      <select
                         value={userItem.role}
-                        style={{ width: "100%", marginTop: "8px" }}
-                        onChange={(value) =>
-                          handleRoleChange(userItem.username, value)
+                        style={{
+                          width: "100%",
+                          marginTop: "8px",
+                          height: "40px",
+                          padding: "0 12px",
+                          fontSize: "14px",
+                          border: "1px solid #d9d9d9",
+                          borderRadius: "6px",
+                          backgroundColor: "#fff",
+                          cursor: "pointer",
+                        }}
+                        onChange={(e) =>
+                          handleRoleChange(userItem.username, e.target.value)
                         }
                       >
-                        {Object.entries(roleTitles).map(([key, title]) => (
-                          <Option key={key} value={key}>
-                            <Tag color={roleColors[key]}>{title}</Tag>
-                          </Option>
-                        ))}
-                      </Select>
+                        <option value="visitante">Visitante</option>
+                        <option value="atendente">Atendente</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="admin">Administrador</option>
+                      </select>
                     </div>
                   ))
                 )}

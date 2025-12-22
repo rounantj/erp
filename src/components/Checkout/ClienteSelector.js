@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   Button,
@@ -8,14 +8,11 @@ import {
   Row,
   Col,
   Alert,
-  Select,
   Typography,
   Space,
-  Spin,
 } from "antd";
 import {
   UserOutlined,
-  SearchOutlined,
   PlusOutlined,
   DownOutlined,
   UpOutlined,
@@ -23,11 +20,11 @@ import {
   PhoneOutlined,
   EnvironmentOutlined,
   CloseOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { getClientes, createCliente } from "../../helpers/api-integrator";
 
 const { Text, Title } = Typography;
-const { Option } = Select;
 
 const ClienteSelector = ({
   selectedCliente,
@@ -39,7 +36,7 @@ const ClienteSelector = ({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(isMobile); // Expandido por padrão no mobile
+  const [isExpanded, setIsExpanded] = useState(isMobile);
   const [form] = Form.useForm();
   const [alertInfo, setAlertInfo] = useState({
     show: false,
@@ -47,10 +44,12 @@ const ClienteSelector = ({
     type: "success",
   });
 
-  const loadClientes = useCallback(async () => {
+  const debounceRef = useRef(null);
+
+  const loadClientes = useCallback(async (search = "") => {
     setLoading(true);
     try {
-      const response = await getClientes(searchTerm);
+      const response = await getClientes(search);
       if (response.success) {
         setClientes(response.data);
       } else {
@@ -62,13 +61,23 @@ const ClienteSelector = ({
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, []);
 
   useEffect(() => {
     loadClientes();
-  }, [loadClientes]);
+  }, []);
 
-  // Carregar cliente padrão na inicialização
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      loadClientes(value);
+    }, 300);
+  };
+
   useEffect(() => {
     const loadDefaultCliente = async () => {
       try {
@@ -132,7 +141,12 @@ const ClienteSelector = ({
     }
   };
 
-  const handleClienteSelect = (clienteId) => {
+  const handleClienteSelect = (e) => {
+    const clienteId = parseInt(e.target.value, 10);
+    if (!clienteId) {
+      onClienteSelect(null);
+      return;
+    }
     const cliente = clientes.find((c) => c.id === clienteId);
     if (cliente) {
       onClienteSelect(cliente);
@@ -165,6 +179,28 @@ const ClienteSelector = ({
       return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
     }
     return phone;
+  };
+
+  const selectStyles = {
+    width: "100%",
+    height: isMobile ? "44px" : "36px",
+    padding: "0 12px",
+    fontSize: isMobile ? "16px" : "14px",
+    border: "1px solid #d9d9d9",
+    borderRadius: "6px",
+    backgroundColor: "#fff",
+    cursor: "pointer",
+    outline: "none",
+  };
+
+  const inputStyles = {
+    width: "100%",
+    height: isMobile ? "44px" : "36px",
+    padding: "0 12px",
+    fontSize: isMobile ? "16px" : "14px",
+    border: "1px solid #d9d9d9",
+    borderRadius: "6px",
+    marginBottom: "8px",
   };
 
   return (
@@ -267,47 +303,62 @@ const ClienteSelector = ({
             <div
               style={{
                 display: "flex",
-                flexDirection: isMobile ? "column" : "row",
+                flexDirection: "column",
                 gap: 8,
                 width: "100%",
               }}
             >
-              <Select
-                showSearch
-                placeholder="Buscar cliente..."
-                style={{ flex: 1, width: isMobile ? "100%" : 250 }}
-                loading={loading}
-                filterOption={false}
-                onSearch={setSearchTerm}
+              {/* Input de busca */}
+              <div style={{ position: "relative" }}>
+                <SearchOutlined
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#999",
+                    zIndex: 1,
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Buscar cliente..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  style={{
+                    ...inputStyles,
+                    paddingLeft: 36,
+                    marginBottom: 0,
+                  }}
+                />
+              </div>
+
+              {/* Select nativo */}
+              <select
                 onChange={handleClienteSelect}
-                size={isMobile ? "large" : "middle"}
-                dropdownStyle={{ zIndex: 99999, maxHeight: 300 }}
-                popupMatchSelectWidth={true}
-                virtual={false}
-                getPopupContainer={() => document.body}
-                notFoundContent={
-                  loading ? <Spin size="small" /> : "Nenhum cliente encontrado"
-                }
+                value={selectedCliente?.id || ""}
+                style={selectStyles}
+                disabled={loading}
               >
+                <option value="">
+                  {loading ? "Carregando..." : "Selecione um cliente"}
+                </option>
                 {clientes.map((cliente) => (
-                  <Option key={cliente.id} value={cliente.id}>
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{cliente.nome}</div>
-                      {cliente.cpf_cnpj && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          {formatCpfCnpj(cliente.cpf_cnpj)}
-                        </Text>
-                      )}
-                    </div>
-                  </Option>
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome}
+                    {cliente.cpf_cnpj
+                      ? ` - ${formatCpfCnpj(cliente.cpf_cnpj)}`
+                      : ""}
+                  </option>
                 ))}
-              </Select>
+              </select>
+
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={openModal}
                 size={isMobile ? "large" : "middle"}
-                style={{ width: isMobile ? "100%" : "auto" }}
+                style={{ width: "100%" }}
               >
                 Novo Cliente
               </Button>

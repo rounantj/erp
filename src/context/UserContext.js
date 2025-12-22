@@ -20,20 +20,23 @@ export const useUser = () => {
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
+  // Função memoizada para atualizar o usuário
+  const updateUser = useCallback((newUser) => {
+    setUser(newUser);
+    if (newUser) {
+      localStorage.setItem("user", JSON.stringify(newUser));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, []);
+
   // Memoizar o valor do contexto para evitar re-renders desnecessários
   const contextValue = useMemo(
     () => ({
       user,
-      setUser: useCallback((newUser) => {
-        setUser(newUser);
-        if (newUser) {
-          localStorage.setItem("user", JSON.stringify(newUser));
-        } else {
-          localStorage.removeItem("user");
-        }
-      }, []),
+      setUser: updateUser,
     }),
-    [user]
+    [user, updateUser]
   );
 
   // Carregar usuário do localStorage apenas uma vez na inicialização

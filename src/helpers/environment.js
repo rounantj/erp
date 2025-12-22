@@ -1,7 +1,10 @@
-export const urlBase = "https://erp-api-a826ac7bcd67.herokuapp.com";
-
-// export const urlBase = "http://localhost:3009";
 import axios from "axios";
+
+const isDev = process.env.NODE_ENV === "development";
+
+export const urlBase = isDev
+  ? "http://localhost:3009"
+  : "https://erp-api-a826ac7bcd67.herokuapp.com";
 axios.interceptors.request.use(
   (config) => {
     console.log({ config });
