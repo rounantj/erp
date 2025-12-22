@@ -12,7 +12,6 @@ import {
   Tabs,
   Tag,
   Skeleton,
-  Avatar,
   Empty,
   Button,
   Alert,
@@ -101,6 +100,7 @@ function TopSellingItemsDashboard() {
         quantidade: Number(item.quantidade) || 0,
         valorUnitario: item.valor || 0,
         valorTotal: item.valorTotal || 0,
+        imageUrl: item.imageUrl || null,
       };
 
       if (
@@ -145,10 +145,34 @@ function TopSellingItemsDashboard() {
       key: "descricao",
       render: (text, record) => (
         <Space>
-          <Avatar
-            style={{ backgroundColor: "#1890ff" }}
-            icon={<TagOutlined />}
-          />
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              overflow: "hidden",
+              background: record.imageUrl ? "#fff" : "#f8fafc",
+              border: "1px solid #e2e8f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {record.imageUrl ? (
+              <img
+                src={record.imageUrl}
+                alt={text}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <TagOutlined style={{ fontSize: 18, color: "#94a3b8" }} />
+            )}
+          </div>
           <Text strong>{text}</Text>
         </Space>
       ),
@@ -193,10 +217,34 @@ function TopSellingItemsDashboard() {
       key: "descricao",
       render: (text, record) => (
         <Space>
-          <Avatar
-            style={{ backgroundColor: "#722ed1" }}
-            icon={<BoxPlotOutlined />}
-          />
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              overflow: "hidden",
+              background: record.imageUrl ? "#fff" : "#f5f3ff",
+              border: "1px solid #e2e8f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {record.imageUrl ? (
+              <img
+                src={record.imageUrl}
+                alt={text}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <BoxPlotOutlined style={{ fontSize: 18, color: "#8b5cf6" }} />
+            )}
+          </div>
           <Text strong>{text}</Text>
         </Space>
       ),

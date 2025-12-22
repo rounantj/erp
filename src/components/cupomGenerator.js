@@ -22,11 +22,18 @@ const CupomGenerator = ({
   // Configurações da empresa - usa companySetup se disponível, senão fallback
   const empresaConfig = {
     nome: companySetup?.companyName || "FOFA PAPELARIA",
-    endereco: companySetup?.companyAddress || "RUA ORLINDO BORGES - BARRA DO SAHY",
+    endereco:
+      companySetup?.companyAddress || "RUA ORLINDO BORGES - BARRA DO SAHY",
     cidade: companySetup?.companyCity || "ARACRUZ - ES",
-    cnpj: companySetup?.companyCNPJ ? `CNPJ: ${companySetup.companyCNPJ}` : "CNPJ: 54.007.957/0001-99",
-    ie: companySetup?.companyIE ? `IE: ${companySetup.companyIE}` : "IE: 084231440",
-    im: companySetup?.companyIM ? `IM: ${companySetup.companyIM}` : "IM: ISENTO",
+    cnpj: companySetup?.companyCNPJ
+      ? `CNPJ: ${companySetup.companyCNPJ}`
+      : "CNPJ: 54.007.957/0001-99",
+    ie: companySetup?.companyIE
+      ? `IE: ${companySetup.companyIE}`
+      : "IE: 084231440",
+    im: companySetup?.companyIM
+      ? `IM: ${companySetup.companyIM}`
+      : "IM: ISENTO",
     uf: companySetup?.companyUF ? `UF: ${companySetup.companyUF}` : "UF: ES",
     receiptFooter: companySetup?.receiptFooter || "",
   };
@@ -224,7 +231,7 @@ const CupomGenerator = ({
       // Usa o texto configurado ou fallback para o padrão
       if (empresaConfig.receiptFooter && empresaConfig.receiptFooter.trim()) {
         // Divide o texto em linhas para suportar múltiplas linhas
-        const footerLines = empresaConfig.receiptFooter.split('\n');
+        const footerLines = empresaConfig.receiptFooter.split("\n");
         footerLines.forEach((line) => {
           if (line.trim()) {
             y = centerText(line.trim(), y, 8);
@@ -315,28 +322,34 @@ export const CupomPreviewModal = ({
 export const useCupomGenerator = (companySetup = null) => {
   const [previewVisible, setPreviewVisible] = React.useState(false);
 
-  const gerarCupomComPreview = React.useCallback((saleData) => {
-    const generator = CupomGenerator({
-      saleData,
-      onSuccess: () => setPreviewVisible(true),
-      showPreview: true,
-      autoDownload: true,
-      companySetup,
-    });
+  const gerarCupomComPreview = React.useCallback(
+    (saleData) => {
+      const generator = CupomGenerator({
+        saleData,
+        onSuccess: () => setPreviewVisible(true),
+        showPreview: true,
+        autoDownload: true,
+        companySetup,
+      });
 
-    return generator.gerarCupom();
-  }, [companySetup]);
+      return generator.gerarCupom();
+    },
+    [companySetup]
+  );
 
-  const gerarCupomSemPreview = React.useCallback((saleData) => {
-    const generator = CupomGenerator({
-      saleData,
-      showPreview: false,
-      autoDownload: true,
-      companySetup,
-    });
+  const gerarCupomSemPreview = React.useCallback(
+    (saleData) => {
+      const generator = CupomGenerator({
+        saleData,
+        showPreview: false,
+        autoDownload: true,
+        companySetup,
+      });
 
-    return generator.gerarCupom();
-  }, [companySetup]);
+      return generator.gerarCupom();
+    },
+    [companySetup]
+  );
 
   return {
     gerarCupomComPreview,

@@ -1000,15 +1000,23 @@ function Empresas() {
                                   type="primary"
                                   icon={<TeamOutlined />}
                                   onClick={() => handleViewUsers(company)}
-                                  style={{ background: "#17a2b8", borderColor: "#17a2b8" }}
+                                  style={{
+                                    background: "#17a2b8",
+                                    borderColor: "#17a2b8",
+                                  }}
                                 />
                               </Tooltip>
                               <Tooltip title="Criar usuário">
                                 <AntButton
                                   type="primary"
                                   icon={<UserAddOutlined />}
-                                  onClick={() => handleOpenCreateUserModal(company)}
-                                  style={{ background: "#28a745", borderColor: "#28a745" }}
+                                  onClick={() =>
+                                    handleOpenCreateUserModal(company)
+                                  }
+                                  style={{
+                                    background: "#28a745",
+                                    borderColor: "#28a745",
+                                  }}
                                 />
                               </Tooltip>
                               <Tooltip title="Editar empresa">
@@ -1016,7 +1024,11 @@ function Empresas() {
                                   type="primary"
                                   icon={<EditOutlined />}
                                   onClick={() => handleOpenModal(company)}
-                                  style={{ background: "#ffc107", borderColor: "#ffc107", color: "#000" }}
+                                  style={{
+                                    background: "#ffc107",
+                                    borderColor: "#ffc107",
+                                    color: "#000",
+                                  }}
                                 />
                               </Tooltip>
                               <Tooltip title="Excluir empresa">
@@ -1028,7 +1040,9 @@ function Empresas() {
                                     setSelectedCompany(company);
                                     setShowDeleteModal(true);
                                   }}
-                                  disabled={currentUser?.companyId === company.id}
+                                  disabled={
+                                    currentUser?.companyId === company.id
+                                  }
                                 />
                               </Tooltip>
                             </Space>

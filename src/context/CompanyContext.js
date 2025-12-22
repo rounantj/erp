@@ -86,13 +86,18 @@ export const CompanyProvider = ({ children }) => {
       ...prev,
       ...newSetup,
     }));
-    
+
     // Atualizar localStorage
-    const currentSetup = JSON.parse(localStorage.getItem("companySetup") || "{}");
-    localStorage.setItem("companySetup", JSON.stringify({
-      ...currentSetup,
-      ...newSetup,
-    }));
+    const currentSetup = JSON.parse(
+      localStorage.getItem("companySetup") || "{}"
+    );
+    localStorage.setItem(
+      "companySetup",
+      JSON.stringify({
+        ...currentSetup,
+        ...newSetup,
+      })
+    );
   }, []);
 
   // Função para recarregar setup
@@ -144,9 +149,17 @@ export const CompanyProvider = ({ children }) => {
       logoUrl: companySetup.logoUrl,
       sidebarColor: companySetup.sidebarColor,
       onboardingCompleted: companySetup.onboardingCompleted,
-      needsOnboarding: !companySetup.onboardingCompleted && !companySetup.logoUrl,
+      needsOnboarding:
+        !companySetup.onboardingCompleted && !companySetup.logoUrl,
     }),
-    [companySetup, loading, error, loadCompanySetup, updateCompanySetup, refreshSetup]
+    [
+      companySetup,
+      loading,
+      error,
+      loadCompanySetup,
+      updateCompanySetup,
+      refreshSetup,
+    ]
   );
 
   return (

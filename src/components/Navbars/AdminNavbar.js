@@ -17,7 +17,9 @@ const adjustColor = (hex, percent) => {
   r = Math.max(0, Math.min(255, r + percent));
   g = Math.max(0, Math.min(255, g + percent));
   b = Math.max(0, Math.min(255, b + percent));
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  return `#${r.toString(16).padStart(2, "0")}${g
+    .toString(16)
+    .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 };
 
 function AdminNavbar() {
@@ -25,7 +27,7 @@ function AdminNavbar() {
   const [isMobile, setIsMobile] = useState(false);
   const { user, setUser } = useContext(UserContext);
   const { sidebarColor } = useCompany();
-  
+
   // Usar cor da empresa ou fallback
   const primaryColor = sidebarColor || "#667eea";
   const gradientColor = adjustColor(primaryColor, -30);

@@ -67,18 +67,50 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Estatísticas com destaque */
+/* Estatísticas com design clean e profissional */
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #ffffff;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .stat-card .ant-statistic-title {
-  color: rgba(255,255,255,0.8) !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stat-card .ant-statistic-content {
-  color: white !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+.stat-card .ant-statistic-content-value {
+  font-size: 24px !important;
+}
+
+.stat-card .stat-footer {
+  border-top: 1px solid #f1f5f9;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.stat-card .stat-footer .ant-divider {
+  display: none;
+}
+
+.stat-card .stat-footer .ant-typography-secondary {
+  color: #94a3b8 !important;
+  font-size: 12px !important;
 }
 
 /* Responsividade melhorada */

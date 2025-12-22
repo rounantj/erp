@@ -68,11 +68,26 @@ const tourSteps = [
         <div style={{ textAlign: "center", marginBottom: "16px" }}>
           <RocketOutlined style={{ fontSize: "48px", color: "#667eea" }} />
         </div>
-        <h3 style={{ fontSize: "20px", fontWeight: "700", marginBottom: "12px", textAlign: "center" }}>
+        <h3
+          style={{
+            fontSize: "20px",
+            fontWeight: "700",
+            marginBottom: "12px",
+            textAlign: "center",
+          }}
+        >
           Bem-vindo ao Sistema! 🎉
         </h3>
-        <p style={{ fontSize: "14px", color: "#666", textAlign: "center", lineHeight: "1.6" }}>
-          Vamos configurar sua empresa em poucos passos para você começar a usar o sistema.
+        <p
+          style={{
+            fontSize: "14px",
+            color: "#666",
+            textAlign: "center",
+            lineHeight: "1.6",
+          }}
+        >
+          Vamos configurar sua empresa em poucos passos para você começar a usar
+          o sistema.
         </p>
       </div>
     ),
@@ -88,14 +103,22 @@ const tourSteps = [
     target: '[href="/admin/setup"]',
     content: (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
           <SettingOutlined style={{ fontSize: "24px", color: "#667eea" }} />
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
             Menu de Configurações
           </h3>
         </div>
         <p style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
-          Clique aqui para acessar as configurações da sua empresa. É onde você personaliza tudo!
+          Clique aqui para acessar as configurações da sua empresa. É onde você
+          personaliza tudo!
         </p>
       </div>
     ),
@@ -106,15 +129,22 @@ const tourSteps = [
     target: "body",
     content: (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
           <PictureOutlined style={{ fontSize: "24px", color: "#667eea" }} />
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
             Adicione sua Logo
           </h3>
         </div>
         <p style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
-          Na aba "Identidade Visual", você pode fazer upload da logo da sua empresa.
-          Ela aparecerá no menu lateral e nos cupons.
+          Na aba "Identidade Visual", você pode fazer upload da logo da sua
+          empresa. Ela aparecerá no menu lateral e nos cupons.
         </p>
       </div>
     ),
@@ -125,15 +155,22 @@ const tourSteps = [
     target: "body",
     content: (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
           <BgColorsOutlined style={{ fontSize: "24px", color: "#667eea" }} />
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
             Personalize as Cores
           </h3>
         </div>
         <p style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
-          Escolha a cor do menu lateral para combinar com a identidade visual da sua marca.
-          O sistema inteiro se adapta à sua escolha!
+          Escolha a cor do menu lateral para combinar com a identidade visual da
+          sua marca. O sistema inteiro se adapta à sua escolha!
         </p>
       </div>
     ),
@@ -144,15 +181,22 @@ const tourSteps = [
     target: "body",
     content: (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
           <ShopOutlined style={{ fontSize: "24px", color: "#667eea" }} />
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
             Dados para o Cupom
           </h3>
         </div>
         <p style={{ fontSize: "14px", color: "#666", lineHeight: "1.6" }}>
-          Na aba "Dados da Empresa", preencha as informações que aparecerão no cupom não fiscal:
-          nome, CNPJ, endereço, telefone e email.
+          Na aba "Dados da Empresa", preencha as informações que aparecerão no
+          cupom não fiscal: nome, CNPJ, endereço, telefone e email.
         </p>
       </div>
     ),
@@ -163,7 +207,14 @@ const tourSteps = [
     target: ".sidebar",
     content: (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
           <CheckCircleOutlined style={{ fontSize: "24px", color: "#52c41a" }} />
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
             Explore o Sistema!
@@ -201,10 +252,11 @@ function OnboardingTour({ run, onFinish }) {
         // Marcar onboarding como concluído no backend
         await completeOnboarding();
         refreshSetup();
-        
+
         notification.success({
           message: "Configuração concluída!",
-          description: "Você pode acessar este tour novamente nas configurações.",
+          description:
+            "Você pode acessar este tour novamente nas configurações.",
           icon: <CheckCircleOutlined style={{ color: "#52c41a" }} />,
         });
 
@@ -263,12 +315,19 @@ export function WelcomeModal({ visible, onStart, onSkip }) {
       <div style={{ marginBottom: "24px" }}>
         <RocketOutlined style={{ fontSize: "64px", color: "#667eea" }} />
       </div>
-      
+
       <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>
         Bem-vindo! 🎉
       </h2>
-      
-      <p style={{ fontSize: "16px", color: "#666", marginBottom: "24px", lineHeight: "1.6" }}>
+
+      <p
+        style={{
+          fontSize: "16px",
+          color: "#666",
+          marginBottom: "24px",
+          lineHeight: "1.6",
+        }}
+      >
         Parece que é sua primeira vez por aqui!
         <br />
         Vamos configurar sua empresa rapidinho?
@@ -291,12 +350,8 @@ export function WelcomeModal({ visible, onStart, onSkip }) {
         >
           Iniciar Configuração
         </Button>
-        
-        <Button
-          type="text"
-          onClick={onSkip}
-          style={{ color: "#999" }}
-        >
+
+        <Button type="text" onClick={onSkip} style={{ color: "#999" }}>
           Configurar depois
         </Button>
       </div>
