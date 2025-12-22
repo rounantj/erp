@@ -26,7 +26,8 @@ function AdminNavbar() {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
   const { user, setUser } = useContext(UserContext);
-  const { sidebarColor } = useCompany();
+  const { sidebarColor, companySetup } = useCompany();
+  const companyName = companySetup?.companyName || "";
 
   // Usar cor da empresa ou fallback
   const primaryColor = sidebarColor || "#667eea";
@@ -95,7 +96,7 @@ function AdminNavbar() {
         boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}
     >
-      {/* Lado esquerdo - Menu e Título */}
+      {/* Lado esquerdo - Menu e Breadcrumb */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <Button
           type="text"
@@ -112,16 +113,36 @@ function AdminNavbar() {
             background: "rgba(255,255,255,0.1)",
           }}
         />
-        <span
-          style={{
-            fontSize: isMobile ? "16px" : "20px",
-            fontWeight: "600",
-            color: "#fff",
-            letterSpacing: "-0.5px",
-          }}
-        >
-          {getBrandText()}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {companyName && !isMobile && (
+            <>
+              <span
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "500",
+                  color: "rgba(255,255,255,0.85)",
+                }}
+              >
+                {companyName}
+              </span>
+              <span
+                style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}
+              >
+                ›
+              </span>
+            </>
+          )}
+          <span
+            style={{
+              fontSize: isMobile ? "16px" : "18px",
+              fontWeight: "600",
+              color: "#fff",
+              letterSpacing: "-0.3px",
+            }}
+          >
+            {getBrandText()}
+          </span>
+        </div>
       </div>
 
       {/* Lado direito - Usuário e Logout */}

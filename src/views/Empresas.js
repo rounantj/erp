@@ -43,6 +43,10 @@ import {
   UserAddOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  CrownOutlined,
+  SettingOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { Redirect } from "react-router-dom";
 import {
@@ -53,6 +57,12 @@ import {
   getCompanyUsers,
   getCurrentUser,
   createUserForCompany,
+  getPlans,
+  getCompanySubscription,
+  createTrialSubscription,
+  createPaidSubscription,
+  changeSubscriptionPlanAdmin,
+  updatePlanTrialDays,
 } from "../helpers/api-integrator";
 import { UserContext } from "../context/UserContext";
 
@@ -182,6 +192,14 @@ function Empresas() {
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Estados para planos e subscriptions
+  const [plans, setPlans] = useState([]);
+  const [subscriptions, setSubscriptions] = useState({});
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showTrialConfigModal, setShowTrialConfigModal] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+
   // Verificar se é super admin
   const userEmail = user?.user?.email;
   const isSuperAdmin =
@@ -204,6 +222,21 @@ function Empresas() {
       const result = await getCompanies();
       if (result.success) {
         setCompanies(result.data || []);
+        // Carregar subscriptions de cada empresa
+        const subsMap = {};
+        for (const company of result.data || []) {
+          try {
+            const subResult = await getCompanySubscription(company.id);
+            if (subResult.success && subResult.data) {
+              subsMap[company.id] = subResult.data;
+            }
+          } catch (e) {
+            console.log(
+              `Subscription não encontrada para empresa ${company.id}`
+            );
+          }
+        }
+        setSubscriptions(subsMap);
       } else {
         setError(result.message);
         if (isMobile) {
@@ -221,11 +254,190 @@ function Empresas() {
     setLoading(false);
   }, [isMobile]);
 
+  const loadPlans = useCallback(async () => {
+    try {
+      const result = await getPlans();
+      if (result.success) {
+        setPlans(result.data || []);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar planos:", err);
+    }
+  }, []);
+
   useEffect(() => {
     if (isSuperAdmin) {
       loadCompanies();
+      loadPlans();
     }
-  }, [loadCompanies, isSuperAdmin]);
+  }, [loadCompanies, loadPlans, isSuperAdmin]);
+
+  // Helpers para subscription
+  const getSubscriptionStatusBadge = (subscription) => {
+    if (!subscription) {
+      return <Tag color="default">Sem plano</Tag>;
+    }
+
+    const statusConfig = {
+      trial: { color: "blue", icon: <ClockCircleOutlined />, text: "Trial" },
+      active: { color: "green", icon: <CheckCircleOutlined />, text: "Ativo" },
+      past_due: {
+        color: "orange",
+        icon: <ExclamationCircleOutlined />,
+        text: "Atrasado",
+      },
+      cancelled: {
+        color: "red",
+        icon: <CloseCircleOutlined />,
+        text: "Cancelado",
+      },
+      readonly: {
+        color: "default",
+        icon: <EyeOutlined />,
+        text: "Somente Leitura",
+      },
+    };
+
+    const config = statusConfig[subscription.status] || statusConfig.readonly;
+
+    return (
+      <Tag color={config.color} icon={config.icon}>
+        {config.text}
+      </Tag>
+    );
+  };
+
+  const getPlanDisplayName = (subscription) => {
+    if (!subscription || !subscription.plan) return "-";
+    return subscription.plan.displayName || subscription.plan.name;
+  };
+
+  const getTrialDaysRemaining = (subscription) => {
+    if (
+      !subscription ||
+      subscription.status !== "trial" ||
+      !subscription.trialEndsAt
+    ) {
+      return null;
+    }
+    const now = new Date();
+    const trialEnd = new Date(subscription.trialEndsAt);
+    const diffTime = trialEnd - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  // Gerenciamento de planos
+  const handleOpenPlanModal = (company) => {
+    setSelectedCompany(company);
+    setShowPlanModal(true);
+  };
+
+  const handleCreateTrial = async (company) => {
+    setPlanLoading(true);
+    try {
+      const result = await createTrialSubscription(company.id);
+      if (result.success) {
+        notification.success({ message: "Trial iniciado com sucesso!" });
+        loadCompanies();
+      } else {
+        notification.error({
+          message: result.message || "Erro ao criar trial",
+        });
+      }
+    } catch (err) {
+      notification.error({ message: "Erro ao criar trial" });
+    }
+    setPlanLoading(false);
+  };
+
+  const handleChangePlan = async (values) => {
+    if (!selectedCompany) return;
+    setPlanLoading(true);
+
+    const subscription = subscriptions[selectedCompany.id];
+    const selectedPlanObj = plans.find((p) => p.id === values.planId);
+
+    try {
+      if (selectedPlanObj?.name === "empresarial") {
+        notification.info({
+          message: "Plano Empresarial",
+          description: `Entre em contato para negociar: ${
+            selectedPlanObj.contactPhone || "27996011204"
+          }`,
+          duration: 10,
+        });
+        setPlanLoading(false);
+        return;
+      }
+
+      let result;
+      if (subscription) {
+        // Trocar plano existente
+        result = await changeSubscriptionPlanAdmin(subscription.id, values.planId);
+      } else {
+        // Criar nova subscription
+        if (selectedPlanObj?.name === "free_trial") {
+          result = await createTrialSubscription(selectedCompany.id);
+        } else {
+          result = await createPaidSubscription({
+            companyId: selectedCompany.id,
+            planId: values.planId,
+            customerEmail:
+              selectedCompany.email || `empresa${selectedCompany.id}@erp.com`,
+            customerName: selectedCompany.name,
+            customerCpfCnpj: selectedCompany.cnpj || "00000000000",
+            customerPhone: selectedCompany.phone,
+          });
+        }
+      }
+
+      if (result.success) {
+        notification.success({ message: "Plano atualizado com sucesso!" });
+        setShowPlanModal(false);
+        loadCompanies();
+      } else {
+        notification.error({
+          message: result.message || "Erro ao atualizar plano",
+        });
+      }
+    } catch (err) {
+      notification.error({ message: "Erro ao atualizar plano" });
+    }
+    setPlanLoading(false);
+  };
+
+  const handleOpenTrialConfig = () => {
+    const freePlan = plans.find((p) => p.name === "free_trial");
+    if (freePlan) {
+      setSelectedPlan(freePlan);
+      setShowTrialConfigModal(true);
+    }
+  };
+
+  const handleUpdateTrialDays = async (values) => {
+    if (!selectedPlan) return;
+    setPlanLoading(true);
+
+    try {
+      const result = await updatePlanTrialDays(
+        selectedPlan.id,
+        values.trialDays
+      );
+      if (result.success) {
+        notification.success({
+          message: `Dias de trial atualizados para ${values.trialDays}`,
+        });
+        setShowTrialConfigModal(false);
+        loadPlans();
+      } else {
+        notification.error({ message: result.message || "Erro ao atualizar" });
+      }
+    } catch (err) {
+      notification.error({ message: "Erro ao atualizar dias de trial" });
+    }
+    setPlanLoading(false);
+  };
 
   // Se não for super admin, redirecionar para dashboard
   if (!isSuperAdmin) {
@@ -936,15 +1148,32 @@ function Empresas() {
                 Cadastre e gerencie as empresas do sistema (Acesso exclusivo
                 Super Admin)
               </p>
-              <AntButton
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handleOpenModal()}
-                style={{ float: "right", marginTop: "-40px" }}
-                size="large"
+              <div
+                style={{
+                  float: "right",
+                  marginTop: "-40px",
+                  display: "flex",
+                  gap: "8px",
+                }}
               >
-                Nova Empresa
-              </AntButton>
+                <Tooltip title="Configurar dias de trial gratuito">
+                  <AntButton
+                    icon={<SettingOutlined />}
+                    onClick={handleOpenTrialConfig}
+                    size="large"
+                  >
+                    Config Trial
+                  </AntButton>
+                </Tooltip>
+                <AntButton
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => handleOpenModal()}
+                  size="large"
+                >
+                  Nova Empresa
+                </AntButton>
+              </div>
             </Card.Header>
             <Card.Body className="table-full-width table-responsive px-0">
               {loading ? (
@@ -958,8 +1187,8 @@ function Empresas() {
                       <th className="border-0">ID</th>
                       <th className="border-0">Nome</th>
                       <th className="border-0">CNPJ</th>
-                      <th className="border-0">Telefone</th>
-                      <th className="border-0">Endereço</th>
+                      <th className="border-0">Plano</th>
+                      <th className="border-0">Status Plano</th>
                       <th className="border-0">Status</th>
                       <th className="border-0">Ações</th>
                     </tr>
@@ -967,88 +1196,132 @@ function Empresas() {
                   <tbody>
                     {companies.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center">
+                        <td colSpan="8" className="text-center">
                           Nenhuma empresa cadastrada
                         </td>
                       </tr>
                     ) : (
-                      companies.map((company) => (
-                        <tr key={company.id}>
-                          <td>{company.id}</td>
-                          <td>
-                            <strong>{company.name}</strong>
-                            {currentUser?.companyId === company.id && (
-                              <Badge bg="info" className="ms-2">
-                                Atual
+                      companies.map((company) => {
+                        const subscription = subscriptions[company.id];
+                        const trialDays = getTrialDaysRemaining(subscription);
+                        return (
+                          <tr key={company.id}>
+                            <td>{company.id}</td>
+                            <td>
+                              <strong>{company.name}</strong>
+                              {currentUser?.companyId === company.id && (
+                                <Badge bg="info" className="ms-2">
+                                  Atual
+                                </Badge>
+                              )}
+                            </td>
+                            <td>{company.cnpj || "-"}</td>
+                            <td>
+                              <Space direction="vertical" size="small">
+                                <Text strong>
+                                  <CrownOutlined style={{ marginRight: 4 }} />
+                                  {getPlanDisplayName(subscription)}
+                                </Text>
+                                {trialDays !== null && (
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: 11 }}
+                                  >
+                                    {trialDays} dias restantes
+                                  </Text>
+                                )}
+                              </Space>
+                            </td>
+                            <td>{getSubscriptionStatusBadge(subscription)}</td>
+                            <td>
+                              <Badge
+                                bg={company.is_active ? "success" : "secondary"}
+                              >
+                                {company.is_active ? "Ativa" : "Inativa"}
                               </Badge>
-                            )}
-                          </td>
-                          <td>{company.cnpj || "-"}</td>
-                          <td>{company.phone || "-"}</td>
-                          <td>{company.address || "-"}</td>
-                          <td>
-                            <Badge
-                              bg={company.is_active ? "success" : "secondary"}
-                            >
-                              {company.is_active ? "Ativa" : "Inativa"}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Space size="small">
-                              <Tooltip title="Ver usuários">
-                                <AntButton
-                                  type="primary"
-                                  icon={<TeamOutlined />}
-                                  onClick={() => handleViewUsers(company)}
-                                  style={{
-                                    background: "#17a2b8",
-                                    borderColor: "#17a2b8",
-                                  }}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Criar usuário">
-                                <AntButton
-                                  type="primary"
-                                  icon={<UserAddOutlined />}
-                                  onClick={() =>
-                                    handleOpenCreateUserModal(company)
-                                  }
-                                  style={{
-                                    background: "#28a745",
-                                    borderColor: "#28a745",
-                                  }}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Editar empresa">
-                                <AntButton
-                                  type="primary"
-                                  icon={<EditOutlined />}
-                                  onClick={() => handleOpenModal(company)}
-                                  style={{
-                                    background: "#ffc107",
-                                    borderColor: "#ffc107",
-                                    color: "#000",
-                                  }}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Excluir empresa">
-                                <AntButton
-                                  type="primary"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => {
-                                    setSelectedCompany(company);
-                                    setShowDeleteModal(true);
-                                  }}
-                                  disabled={
-                                    currentUser?.companyId === company.id
-                                  }
-                                />
-                              </Tooltip>
-                            </Space>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td>
+                              <Space size="small" wrap>
+                                <Tooltip title="Gerenciar Plano">
+                                  <AntButton
+                                    type="primary"
+                                    icon={<CrownOutlined />}
+                                    onClick={() => handleOpenPlanModal(company)}
+                                    style={{
+                                      background: "#722ed1",
+                                      borderColor: "#722ed1",
+                                    }}
+                                  />
+                                </Tooltip>
+                                {!subscription && (
+                                  <Tooltip title="Iniciar Trial">
+                                    <AntButton
+                                      type="primary"
+                                      icon={<ClockCircleOutlined />}
+                                      onClick={() => handleCreateTrial(company)}
+                                      loading={planLoading}
+                                      style={{
+                                        background: "#13c2c2",
+                                        borderColor: "#13c2c2",
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                                <Tooltip title="Ver usuários">
+                                  <AntButton
+                                    type="primary"
+                                    icon={<TeamOutlined />}
+                                    onClick={() => handleViewUsers(company)}
+                                    style={{
+                                      background: "#17a2b8",
+                                      borderColor: "#17a2b8",
+                                    }}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Criar usuário">
+                                  <AntButton
+                                    type="primary"
+                                    icon={<UserAddOutlined />}
+                                    onClick={() =>
+                                      handleOpenCreateUserModal(company)
+                                    }
+                                    style={{
+                                      background: "#28a745",
+                                      borderColor: "#28a745",
+                                    }}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Editar empresa">
+                                  <AntButton
+                                    type="primary"
+                                    icon={<EditOutlined />}
+                                    onClick={() => handleOpenModal(company)}
+                                    style={{
+                                      background: "#ffc107",
+                                      borderColor: "#ffc107",
+                                      color: "#000",
+                                    }}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Excluir empresa">
+                                  <AntButton
+                                    type="primary"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => {
+                                      setSelectedCompany(company);
+                                      setShowDeleteModal(true);
+                                    }}
+                                    disabled={
+                                      currentUser?.companyId === company.id
+                                    }
+                                  />
+                                </Tooltip>
+                              </Space>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </Table>
@@ -1309,6 +1582,174 @@ function Empresas() {
                 <Spinner animation="border" size="sm" />
               ) : (
                 "Criar Usuário"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Modal de Gerenciar Plano */}
+      <Modal
+        show={showPlanModal}
+        onHide={() => setShowPlanModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <CrownOutlined style={{ color: "#722ed1", marginRight: 8 }} />
+            Gerenciar Plano: {selectedCompany?.name}
+          </Modal.Title>
+        </Modal.Header>
+        <Form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const planId = Number(formData.get("planId"));
+            if (planId) {
+              handleChangePlan({ planId });
+            }
+          }}
+        >
+          <Modal.Body>
+            <p className="text-muted mb-3">
+              Selecione o plano para esta empresa. A cobrança será feita
+              automaticamente via Asaas.
+            </p>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Plano *</Form.Label>
+              <Form.Select
+                name="planId"
+                size="lg"
+                required
+                defaultValue={subscriptions[selectedCompany?.id]?.planId || ""}
+              >
+                <option value="">Selecione um plano...</option>
+                {plans.map((plan) => (
+                  <option 
+                    key={plan.id} 
+                    value={plan.id}
+                    style={plan.neverExpires ? { fontWeight: 'bold', color: '#722ed1' } : {}}
+                  >
+                    {plan.neverExpires ? "⭐ " : ""}
+                    {plan.displayName} -{" "}
+                    {plan.neverExpires 
+                      ? "NUNCA EXPIRA"
+                      : plan.price > 0
+                        ? `R$ ${Number(plan.price).toFixed(2)}/mês`
+                        : plan.name === "empresarial"
+                          ? "Sob consulta"
+                          : `Grátis (${plan.trialDays} dias)`}{" "}
+                    - {plan.maxUsers === -1 ? "Usuários ilimitados" : `Até ${plan.maxUsers} usuários`}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted">
+                ⭐ Planos com estrela são internos e não aparecem para clientes
+              </Form.Text>
+            </Form.Group>
+
+            {subscriptions[selectedCompany?.id] && (
+              <Alert variant="info" className="mt-3">
+                <strong>Plano Atual:</strong>{" "}
+                {getPlanDisplayName(subscriptions[selectedCompany?.id])}
+                <br />
+                <strong>Status:</strong>{" "}
+                {subscriptions[selectedCompany?.id]?.status}
+                {getTrialDaysRemaining(subscriptions[selectedCompany?.id]) !==
+                  null && (
+                  <>
+                    <br />
+                    <strong>Trial restante:</strong>{" "}
+                    {getTrialDaysRemaining(subscriptions[selectedCompany?.id])}{" "}
+                    dias
+                  </>
+                )}
+              </Alert>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={planLoading}
+              style={{ background: "#722ed1", borderColor: "#722ed1" }}
+            >
+              {planLoading ? (
+                <Spinner animation="border" size="sm" />
+              ) : subscriptions[selectedCompany?.id] ? (
+                "Alterar Plano"
+              ) : (
+                "Atribuir Plano"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Modal de Configurar Trial */}
+      <Modal
+        show={showTrialConfigModal}
+        onHide={() => setShowTrialConfigModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <SettingOutlined style={{ marginRight: 8 }} />
+            Configurar Dias de Trial
+          </Modal.Title>
+        </Modal.Header>
+        <Form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const trialDays = Number(formData.get("trialDays"));
+            if (trialDays > 0) {
+              handleUpdateTrialDays({ trialDays });
+            }
+          }}
+        >
+          <Modal.Body>
+            <p className="text-muted mb-3">
+              Configure quantos dias de teste gratuito as novas empresas terão
+              ao se cadastrar.
+            </p>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Dias de Trial *</Form.Label>
+              <Form.Control
+                type="number"
+                name="trialDays"
+                min={1}
+                max={365}
+                defaultValue={selectedPlan?.trialDays || 15}
+                required
+              />
+              <Form.Text className="text-muted">Entre 1 e 365 dias</Form.Text>
+            </Form.Group>
+
+            <Alert variant="warning">
+              <strong>Atenção:</strong> Esta alteração afetará apenas novas
+              empresas. Empresas existentes manterão o período de trial
+              original.
+            </Alert>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="secondary"
+              onClick={() => setShowTrialConfigModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" disabled={planLoading}>
+              {planLoading ? (
+                <Spinner animation="border" size="sm" />
+              ) : (
+                "Salvar Configuração"
               )}
             </Button>
           </Modal.Footer>

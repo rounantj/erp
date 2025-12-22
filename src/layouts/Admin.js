@@ -16,7 +16,15 @@
 
 */
 import React, { useContext, useEffect, useState } from "react";
-import { useLocation, Route, Switch } from "react-router-dom";
+import { useLocation, Route, Switch, useHistory } from "react-router-dom";
+import { Button, Spinner } from "react-bootstrap";
+import {
+  CreditCardOutlined,
+  CloseCircleOutlined,
+  LockOutlined,
+  ClockCircleOutlined,
+  WhatsAppOutlined,
+} from "@ant-design/icons";
 
 import AdminNavbar from "components/Navbars/AdminNavbar";
 import Footer from "components/Footer/Footer";
@@ -29,6 +37,8 @@ import routes from "routes.js";
 import sidebarImage from "assets/img/sidebar-3.jpg";
 import { UserContext } from "context/UserContext";
 import { useCompany } from "context/CompanyContext";
+import { SubscriptionContext } from "context/SubscriptionContext";
+import { createSingleCharge } from "helpers/api-integrator";
 
 // Email do Super Admin - único usuário com acesso a funcionalidades exclusivas
 const SUPER_ADMIN_EMAIL = "rounantj@hotmail.com";
@@ -68,7 +78,54 @@ function Admin() {
     onboardingCompleted,
     sidebarColor,
   } = useCompany();
+  const {
+    status,
+    isReadonly,
+    canAccess,
+    plan,
+    loading: subscriptionLoading,
+  } = useContext(SubscriptionContext);
   const [trustRoutes, setTrustRoutes] = useState([]);
+  const history = useHistory();
+
+  // Verificar se deve bloquear o sistema
+  const isBlocked =
+    !canAccess && status !== "no_subscription" && !subscriptionLoading;
+  const blockedStatuses = ["past_due", "cancelled", "readonly", "expired"];
+  const showBlockBanner =
+    blockedStatuses.includes(status) && !subscriptionLoading;
+
+  // Estado para loading do pagamento
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
+  // Função para abrir checkout de pagamento diretamente
+  const handlePayNow = async () => {
+    if (status !== "past_due") {
+      history.push("/admin/meu-plano");
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      const response = await createSingleCharge();
+      const checkoutUrl =
+        response?.data?.paymentUrl ||
+        response?.data?.invoiceUrl ||
+        response?.data?.payment?.invoiceUrl;
+
+      if (checkoutUrl) {
+        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      } else {
+        // Se não conseguir gerar, redireciona para a página de planos
+        history.push("/admin/meu-plano");
+      }
+    } catch (error) {
+      console.error("Erro ao gerar pagamento:", error);
+      history.push("/admin/meu-plano");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // Estados para o onboarding tour
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -262,6 +319,129 @@ function Admin() {
               ref={mainPanel}
             >
               <AdminNavbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
+
+              {/* Banner de Subscription Bloqueada - Design Moderno */}
+              {showBlockBanner && (
+                <div className="subscription-block-banner">
+                  <div className="block-banner-content">
+                    <div className="block-banner-icon">
+                      {status === "past_due" && "⚠️"}
+                      {status === "cancelled" && "❌"}
+                      {status === "readonly" && "🔒"}
+                      {status === "expired" && "⏰"}
+                    </div>
+                    <div className="block-banner-text">
+                      <strong>
+                        {status === "past_due" && "Pagamento em Atraso"}
+                        {status === "cancelled" && "Assinatura Cancelada"}
+                        {status === "readonly" && "Acesso Limitado"}
+                        {status === "expired" && "Período de Teste Expirado"}
+                      </strong>
+                      <span>
+                        {status === "past_due" &&
+                          "Regularize seu pagamento para continuar usando o sistema."}
+                        {status === "cancelled" &&
+                          "Sua assinatura foi cancelada. Reative para continuar."}
+                        {status === "readonly" &&
+                          "Assine um plano para usar todas as funcionalidades."}
+                        {status === "expired" &&
+                          "Escolha um plano para continuar usando o sistema."}
+                      </span>
+                    </div>
+                    <Button
+                      variant="light"
+                      className="block-banner-btn"
+                      onClick={
+                        status === "past_due"
+                          ? handlePayNow
+                          : () => history.push("/admin/meu-plano")
+                      }
+                      disabled={paymentLoading}
+                    >
+                      {paymentLoading ? (
+                        <Spinner size="sm" animation="border" />
+                      ) : status === "past_due" ? (
+                        "Pagar Agora"
+                      ) : (
+                        "Ver Planos"
+                      )}
+                    </Button>
+                    <a
+                      href="https://wa.me/5527996011204"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block-banner-contact"
+                    >
+                      Contato: (27) 99601-1204
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Overlay de Bloqueio Total */}
+              {isBlocked &&
+                location.pathname !== "/admin/meu-plano" &&
+                location.pathname !== "/admin/setup" && (
+                  <div className="subscription-block-overlay">
+                    <div className="block-overlay-content">
+                      <div className="block-overlay-icon">
+                        {status === "past_due" && <CreditCardOutlined />}
+                        {status === "cancelled" && <CloseCircleOutlined />}
+                        {status === "readonly" && <LockOutlined />}
+                        {status === "expired" && <ClockCircleOutlined />}
+                        {!blockedStatuses.includes(status) && <LockOutlined />}
+                      </div>
+                      <h2>
+                        {status === "past_due" && "Pagamento Pendente"}
+                        {status === "cancelled" && "Assinatura Cancelada"}
+                        {status === "readonly" && "Acesso Bloqueado"}
+                        {status === "expired" && "Período de Teste Encerrado"}
+                        {!blockedStatuses.includes(status) && "Acesso Restrito"}
+                      </h2>
+                      <p>
+                        {status === "past_due" &&
+                          "Regularize seu pagamento para continuar utilizando todas as funcionalidades do sistema."}
+                        {status === "cancelled" &&
+                          "Sua assinatura foi cancelada. Reative seu plano para voltar a usar o sistema."}
+                        {status === "readonly" &&
+                          "Seu acesso está limitado. Escolha um plano para desbloquear."}
+                        {status === "expired" &&
+                          "Seu período de avaliação chegou ao fim. Escolha um plano para continuar."}
+                        {!blockedStatuses.includes(status) &&
+                          "Você não possui acesso a esta funcionalidade."}
+                      </p>
+                      <div className="block-overlay-actions">
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          onClick={
+                            status === "past_due"
+                              ? handlePayNow
+                              : () => history.push("/admin/meu-plano")
+                          }
+                          disabled={paymentLoading}
+                        >
+                          {paymentLoading ? (
+                            <Spinner size="sm" animation="border" />
+                          ) : status === "past_due" ? (
+                            "Pagar Agora"
+                          ) : (
+                            "Ver Planos"
+                          )}
+                        </Button>
+                        <a
+                          href="https://wa.me/5527996011204?text=Olá! Preciso de ajuda com minha assinatura."
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block-overlay-whatsapp"
+                        >
+                          <WhatsAppOutlined /> Falar no WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               <div className="content">
                 <Switch>{getRoutes(trustRoutes)}</Switch>
               </div>

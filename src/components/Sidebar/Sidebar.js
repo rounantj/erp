@@ -19,6 +19,7 @@ import React from "react";
 import { useLocation, NavLink } from "react-router-dom";
 import { Nav } from "react-bootstrap";
 import { useCompany } from "context/CompanyContext";
+import { CrownOutlined } from "@ant-design/icons";
 
 // Logo padrão como fallback
 import defaultLogo from "assets/img/logo.png";
@@ -65,7 +66,13 @@ function Sidebar({ color, image, routes }) {
         </div>
         <Nav>
           {routes
-            .filter((item) => item.path !== "/login-register")
+            .filter(
+              (item) =>
+                item.path !== "/login-register" &&
+                item.path !== "/meu-plano" &&
+                item.path !== "/cadastro" &&
+                !item.hideFromMenu
+            )
             .map((prop, key) => {
               if (!prop.redirect)
                 return (
@@ -90,6 +97,22 @@ function Sidebar({ color, image, routes }) {
               return null;
             })}
         </Nav>
+
+        {/* Seção fixa no rodapé do sidebar */}
+        <div className="sidebar-footer">
+          <Nav>
+            <li className={activeRoute("/admin/meu-plano")}>
+              <NavLink
+                to="/admin/meu-plano"
+                className="nav-link"
+                activeClassName="active"
+              >
+                <CrownOutlined className="sidebar-crown-icon" />
+                <p>Meu Plano</p>
+              </NavLink>
+            </li>
+          </Nav>
+        </div>
       </div>
     </div>
   );

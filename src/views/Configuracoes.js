@@ -59,6 +59,101 @@ import defaultLogo from "assets/img/logo.png";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
+// ============ VALIDAÇÕES DE CPF/CNPJ ============
+
+// Validar CPF
+const isValidCPF = (cpf) => {
+  cpf = cpf.replace(/[^\d]/g, "");
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1+$/.test(cpf)) return false; // Todos dígitos iguais
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+  let rest = (sum * 10) % 11;
+  if (rest === 10 || rest === 11) rest = 0;
+  if (rest !== parseInt(cpf[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+  rest = (sum * 10) % 11;
+  if (rest === 10 || rest === 11) rest = 0;
+  if (rest !== parseInt(cpf[10])) return false;
+
+  return true;
+};
+
+// Validar CNPJ
+const isValidCNPJ = (cnpj) => {
+  cnpj = cnpj.replace(/[^\d]/g, "");
+  if (cnpj.length !== 14) return false;
+  if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
+
+  let size = cnpj.length - 2;
+  let numbers = cnpj.substring(0, size);
+  let digits = cnpj.substring(size);
+  let sum = 0;
+  let pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digits.charAt(0))) return false;
+
+  size = size + 1;
+  numbers = cnpj.substring(0, size);
+  sum = 0;
+  pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digits.charAt(1))) return false;
+
+  return true;
+};
+
+// Validar CPF ou CNPJ
+const isValidCPFOrCNPJ = (value) => {
+  if (!value) return true; // Permite vazio
+  const cleaned = value.replace(/[^\d]/g, "");
+  if (cleaned.length === 11) return isValidCPF(cleaned);
+  if (cleaned.length === 14) return isValidCNPJ(cleaned);
+  return false;
+};
+
+// Formatar CPF: 000.000.000-00
+const formatCPF = (value) => {
+  const cleaned = value.replace(/[^\d]/g, "").slice(0, 11);
+  return cleaned
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
+// Formatar CNPJ: 00.000.000/0000-00
+const formatCNPJ = (value) => {
+  const cleaned = value.replace(/[^\d]/g, "").slice(0, 14);
+  return cleaned
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+};
+
+// Auto-formatar CPF ou CNPJ baseado no tamanho
+const formatCPFOrCNPJ = (value) => {
+  if (!value) return "";
+  const cleaned = value.replace(/[^\d]/g, "");
+  if (cleaned.length <= 11) return formatCPF(cleaned);
+  return formatCNPJ(cleaned);
+};
+
 // Estilos para mobile
 const mobileStyles = {
   container: {
@@ -721,8 +816,37 @@ function Configuracoes() {
                   >
                     <Input size="large" />
                   </Form.Item>
-                  <Form.Item name="companyCNPJ" label="CNPJ">
-                    <Input size="large" />
+                  <Form.Item
+                    name="companyCNPJ"
+                    label="CPF ou CNPJ"
+                    rules={[
+                      {
+                        validator: (_, value) => {
+                          if (
+                            !value ||
+                            value.replace(/[^\d]/g, "").length === 0
+                          ) {
+                            return Promise.resolve();
+                          }
+                          if (isValidCPFOrCNPJ(value)) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error("CPF ou CNPJ inválido")
+                          );
+                        },
+                      },
+                    ]}
+                  >
+                    <Input
+                      size="large"
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      onChange={(e) => {
+                        const formatted = formatCPFOrCNPJ(e.target.value);
+                        form.setFieldsValue({ companyCNPJ: formatted });
+                      }}
+                      maxLength={18}
+                    />
                   </Form.Item>
                   <Form.Item name="companyAddress" label="Endereço">
                     <Input size="large" prefix={<HomeOutlined />} />
@@ -1014,10 +1138,37 @@ function Configuracoes() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="companyCNPJ" label="CNPJ">
+                  <Form.Item
+                    name="companyCNPJ"
+                    label="CPF ou CNPJ"
+                    rules={[
+                      {
+                        validator: (_, value) => {
+                          if (
+                            !value ||
+                            value.replace(/[^\d]/g, "").length === 0
+                          ) {
+                            return Promise.resolve();
+                          }
+                          if (isValidCPFOrCNPJ(value)) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error("CPF ou CNPJ inválido")
+                          );
+                        },
+                      },
+                    ]}
+                    extra="Digite apenas números. O sistema identifica automaticamente se é CPF ou CNPJ."
+                  >
                     <Input
                       prefix={<NumberOutlined />}
-                      placeholder="00.000.000/0000-00"
+                      placeholder="CPF: 000.000.000-00 ou CNPJ: 00.000.000/0000-00"
+                      onChange={(e) => {
+                        const formatted = formatCPFOrCNPJ(e.target.value);
+                        form.setFieldsValue({ companyCNPJ: formatted });
+                      }}
+                      maxLength={18}
                     />
                   </Form.Item>
                 </Col>

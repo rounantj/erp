@@ -1,52 +1,36 @@
-import React, { Component } from "react";
-import { useLocation, Route, Switch } from "react-router-dom";
+import React, { lazy, Suspense } from "react";
+import { Route, Switch, Redirect } from "react-router-dom";
+import { Spin } from "antd";
 
-import AdminNavbar from "components/Navbars/AdminNavbar";
-import Footer from "components/Footer/Footer";
-import Sidebar from "components/Sidebar/Sidebar";
-import FixedPlugin from "components/FixedPlugin/FixedPlugin.js";
+// Lazy loading dos componentes públicos
+const LoginRegister = lazy(() => import("views/LoginRegister"));
+const Cadastro = lazy(() => import("views/Cadastro"));
 
-
-import sidebarImage from "assets/img/sidebar-3.jpg";
+// Componente de loading
+const LoadingComponent = () => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100vh",
+    }}
+  >
+    <Spin size="large" />
+  </div>
+);
 
 function Guest() {
-
-  const { user } = useContext(UserContext);
-  useEffect(() => {
-    console.log({ user })
-  }, [user])
-
-  const getRoutes = (routes) => {
-    const routes = [
-      {
-        path: "/wellcome",
-        name: "Bem vindo!",
-        icon: "nc-icon nc-bullet-list-67",
-        component: ProductAndServiceTable,
-        layout: "/guest"
-      },
-    ]
-
-    return routes.filter(a => a?.rule.includes(user?.user?.role)).map((prop, key) => {
-      if (prop.layout === "/admin") {
-        return (
-          <Route
-            path={prop.layout + prop.path}
-            render={(props) => <prop.component {...props} />}
-            key={key}
-          />
-        );
-      } else {
-        return null;
-      }
-    });
-  };
   return (
-    <>
-      <div className="content">
-        <Switch>{getRoutes(routes)}</Switch>
-      </div>
-    </>
+    <div className="guest-layout">
+      <Suspense fallback={<LoadingComponent />}>
+        <Switch>
+          <Route path="/admin/login-register" component={LoginRegister} />
+          <Route path="/admin/cadastro" component={Cadastro} />
+          <Redirect from="/admin" to="/admin/login-register" />
+        </Switch>
+      </Suspense>
+    </div>
   );
 }
 

@@ -15,7 +15,10 @@ export const getCurrentUser = () => {
   try {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      return JSON.parse(userStr);
+      const data = JSON.parse(userStr);
+      // O login salva { user: {...}, access_token: '...' }
+      // Retornar o objeto user interno se existir, senão retornar o objeto inteiro
+      return data?.user || data;
     }
   } catch (error) {
     console.error("Erro ao obter usuário do localStorage:", error);
@@ -25,8 +28,17 @@ export const getCurrentUser = () => {
 
 // Helper para obter companyId do usuário logado
 export const getCurrentCompanyId = () => {
-  const user = getCurrentUser();
-  return user?.companyId || null;
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const data = JSON.parse(userStr);
+      // Estrutura pode ser { user: { companyId: 1 } } ou { companyId: 1 }
+      return data?.user?.companyId || data?.companyId || null;
+    }
+  } catch (error) {
+    console.error("Erro ao obter companyId do localStorage:", error);
+  }
+  return null;
 };
 
 // Interceptor para adicionar token automaticamente
@@ -108,6 +120,26 @@ export const makeRegister = async (email, password, companyId = null) => {
   }
 };
 
+/**
+ * Registra uma nova empresa com trial automático
+ * Gera senha automática que é retornada apenas uma vez
+ */
+export const registerCompany = async (payload) => {
+  try {
+    const response = await api.post("/auth/register-company", payload);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Erro ao criar empresa. Tente novamente.";
+    return {
+      success: false,
+      message: errorMessage,
+    };
+  }
+};
+
 export const makeLogin = async (email, password) => {
   const payload = {
     password,
@@ -121,6 +153,10 @@ export const makeLogin = async (email, password) => {
     if (login.data.user) {
       localStorage.setItem("user", JSON.stringify(login.data.user));
     }
+
+    // Disparar evento customizado para que o SubscriptionContext seja atualizado
+    window.dispatchEvent(new CustomEvent("userLoggedIn"));
+
     return {
       success: true,
       data: login.data,
@@ -914,6 +950,363 @@ export const uploadProductImage = async (productId, base64Image) => {
       success: false,
       message:
         error.response?.data?.message || "Erro ao fazer upload da imagem",
+    };
+  }
+};
+
+// ============================================
+// FUNÇÕES PARA SUBSCRIPTIONS E PLANOS
+// ============================================
+
+// Buscar todos os planos disponíveis
+export const getPlans = async () => {
+  try {
+    const response = await api.get("/subscriptions/plans");
+    return {
+      success: true,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar planos:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar planos",
+    };
+  }
+};
+
+// Buscar plano por ID
+export const getPlanById = async (planId) => {
+  try {
+    const response = await api.get(`/subscriptions/plans/${planId}`);
+    return {
+      success: true,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar plano:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar plano",
+    };
+  }
+};
+
+// Atualizar dias de trial de um plano
+export const updatePlanTrialDays = async (planId, trialDays) => {
+  try {
+    const response = await api.put(
+      `/subscriptions/plans/${planId}/trial-days`,
+      {
+        trialDays,
+      }
+    );
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao atualizar dias de trial:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao atualizar dias de trial",
+    };
+  }
+};
+
+// Buscar subscription de uma empresa
+export const getCompanySubscription = async (companyId) => {
+  try {
+    const response = await api.get(`/subscriptions/company/${companyId}`);
+    return {
+      success: true,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar subscription:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar subscription",
+    };
+  }
+};
+
+// Criar trial para empresa
+export const createTrialSubscription = async (companyId) => {
+  try {
+    const response = await api.post("/subscriptions/trial", { companyId });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar trial:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar trial",
+    };
+  }
+};
+
+// Criar subscription paga
+export const createPaidSubscription = async (data) => {
+  try {
+    const response = await api.post("/subscriptions/create", data);
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar subscription:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar subscription",
+    };
+  }
+};
+
+// Trocar plano - ADMIN (altera direto, usado na tela de Empresas)
+export const changeSubscriptionPlanAdmin = async (subscriptionId, newPlanId) => {
+  try {
+    const response = await api.put(
+      `/subscriptions/${subscriptionId}/change-plan-admin`,
+      {
+        newPlanId,
+      }
+    );
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao trocar plano:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao trocar plano",
+    };
+  }
+};
+
+// Trocar plano - USUÁRIO (gera link de pagamento, plano muda via webhook)
+export const changeSubscriptionPlan = async (subscriptionId, newPlanId, billingPeriod, totalAmount) => {
+  try {
+    const response = await api.put(
+      `/subscriptions/${subscriptionId}/change-plan`,
+      {
+        newPlanId,
+        billingPeriod,
+        totalAmount,
+      }
+    );
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao solicitar troca de plano:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao solicitar troca de plano",
+    };
+  }
+};
+
+// Cancelar subscription
+export const cancelSubscription = async (subscriptionId) => {
+  try {
+    const response = await api.delete(`/subscriptions/${subscriptionId}`);
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao cancelar subscription:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao cancelar subscription",
+    };
+  }
+};
+
+// Criar assinatura paga (com dados do cliente)
+export const createSubscription = async (
+  planId,
+  paymentMethod,
+  customerData,
+  billingPeriod = "monthly",
+  totalAmount = null
+) => {
+  try {
+    const companyId = getCurrentCompanyId();
+    const user = getCurrentUser();
+
+    const response = await api.post("/subscriptions/create", {
+      companyId,
+      planId,
+      customerEmail: customerData?.email || user?.email,
+      customerName: customerData?.name || user?.name,
+      customerCpfCnpj: customerData?.cpfCnpj,
+      customerPhone: customerData?.phone,
+      paymentMethod,
+      billingPeriod,
+      totalAmount,
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar subscription:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar subscription",
+    };
+  }
+};
+
+// Mudar de plano
+export const changePlan = async (
+  newPlanId,
+  billingPeriod = "monthly",
+  totalAmount = null
+) => {
+  try {
+    const companyId = getCurrentCompanyId();
+    // Primeiro buscar a subscription atual
+    const subResponse = await api.get(`/subscriptions/company/${companyId}`);
+    const subscriptionId = subResponse.data?.data?.id;
+
+    if (!subscriptionId) {
+      throw new Error("Subscription não encontrada");
+    }
+
+    const response = await api.put(
+      `/subscriptions/${subscriptionId}/change-plan`,
+      {
+        newPlanId,
+        billingPeriod,
+        totalAmount,
+      }
+    );
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao mudar de plano:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao mudar de plano",
+    };
+  }
+};
+
+// Criar cobrança avulsa (para pagar mensalidade em atraso)
+export const createSingleCharge = async (paymentMethod) => {
+  try {
+    const companyId = getCurrentCompanyId();
+    // Buscar subscription atual para pegar o valor do plano
+    const subResponse = await api.get(`/subscriptions/company/${companyId}`);
+    const subscription = subResponse.data?.data;
+
+    if (!subscription) {
+      throw new Error("Subscription não encontrada");
+    }
+
+    const response = await api.post("/subscriptions/payments/single", {
+      companyId,
+      amount: subscription.plan?.price || 0,
+      description: `Pagamento em atraso - Plano ${
+        subscription.plan?.displayName || "ERP"
+      }`,
+      paymentMethod,
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar cobrança:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar cobrança",
+    };
+  }
+};
+
+// Criar cobrança avulsa manual (com valor e descrição)
+export const createSinglePayment = async (companyId, amount, description) => {
+  try {
+    const response = await api.post("/subscriptions/payments/single", {
+      companyId,
+      amount,
+      description,
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao criar cobrança:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao criar cobrança",
+    };
+  }
+};
+
+// Buscar histórico de pagamentos
+export const getPaymentHistory = async () => {
+  try {
+    const companyId = getCurrentCompanyId();
+    if (!companyId) {
+      return { success: true, data: [] };
+    }
+    const response = await api.get(`/subscriptions/payments/${companyId}`);
+    return {
+      success: true,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar histórico de pagamentos:", error);
+    return {
+      success: false,
+      data: [],
+      message: "Erro ao buscar histórico de pagamentos",
+    };
+  }
+};
+
+// Buscar features da empresa
+export const getCompanyFeatures = async (companyId) => {
+  try {
+    const response = await api.get(`/subscriptions/features/${companyId}`);
+    return {
+      success: true,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar features:", error);
+    return {
+      success: false,
+      message: "Erro ao buscar features",
+      data: {
+        plan: null,
+        features: {},
+        status: "no_subscription",
+        canAccess: false,
+      },
     };
   }
 };

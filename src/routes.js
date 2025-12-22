@@ -15,12 +15,14 @@ const Despesas = lazy(() => import("views/Despesas"));
 const SaudeFinanceira = lazy(() => import("views/SaudeFinanceira"));
 const ProductAndServiceTable = lazy(() => import("views/ProdutosServicos"));
 const Login = lazy(() => import("views/LoginRegister"));
+const Cadastro = lazy(() => import("views/Cadastro"));
 const Configuracoes = lazy(() => import("views/Configuracoes"));
 const Curriculo = lazy(() => import("views/Curriculo"));
 const CriadorCurriculo = lazy(() => import("views/Curriculo"));
 const VendasDoDia = lazy(() => import("views/VendasDoDia"));
 const Clientes = lazy(() => import("views/Clientes"));
 const Empresas = lazy(() => import("views/Empresas"));
+const MeuPlano = lazy(() => import("views/MeuPlano"));
 
 // Componente de loading para Suspense
 const LoadingComponent = () => (
@@ -119,6 +121,16 @@ const dashboardRoutes = [
     rule: ["atendente", "admin", "visitante", null, undefined],
   },
   {
+    path: "/cadastro",
+    name: "Cadastro",
+    icon: "nc-icon nc-badge",
+    component: withSuspense(Cadastro),
+    layout: "/admin",
+    rule: [null, undefined], // Apenas para usuários não logados
+    public: true, // Rota pública
+    hideFromMenu: true, // Não mostrar no menu
+  },
+  {
     path: "/curriculo",
     name: "Curriculo",
     icon: "nc-icon nc-single-copy-04",
@@ -134,6 +146,14 @@ const dashboardRoutes = [
     component: withSuspense(Configuracoes),
     layout: "/admin",
     rule: ["admin"],
+  },
+  {
+    path: "/meu-plano",
+    name: "Meu Plano",
+    icon: "nc-icon nc-diamond",
+    component: withSuspense(MeuPlano),
+    layout: "/admin",
+    rule: ["admin", "atendente"],
   },
   {
     path: "/empresas",

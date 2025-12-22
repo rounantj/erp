@@ -1,0 +1,767 @@
+/* =============================================
+   MEU PLANO - Design Profissional
+   ============================================= */
+
+.meu-plano-container {
+  padding: 24px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 16px;
+  color: #6c757d;
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  color: #6c757d;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Payment Alert */
+.payment-alert {
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: none;
+}
+
+.payment-alert .alert-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.payment-alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Current Plan Card */
+.current-plan-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+}
+
+.current-plan-card .card-body {
+  padding: 24px;
+}
+
+.current-plan-card .plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.current-plan-card .plan-header h4 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0;
+}
+
+.plan-price-display {
+  margin-bottom: 20px;
+}
+
+.plan-price-display .price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.plan-price-display .period {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.plan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.detail-row .anticon {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.detail-row span {
+  flex: 1;
+  color: #6c757d;
+}
+
+.detail-row strong {
+  color: #212529;
+  font-weight: 600;
+}
+
+/* Features Section */
+.features-section h6 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.features-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.features-list li .anticon {
+  color: #28a745;
+  font-size: 14px;
+}
+
+.no-features {
+  color: #adb5bd;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Plans Card */
+.plans-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.plans-card .card-header {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  padding: 20px 24px;
+  border-radius: 12px 12px 0 0;
+}
+
+.plans-card .card-header h5 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0 0 4px 0;
+}
+
+.plans-card .card-header p {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+}
+
+.plans-card .card-body {
+  padding: 24px;
+}
+
+/* Plan Cards */
+.plan-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s ease;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-card:hover {
+  border-color: #dee2e6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.plan-card.current {
+  background: #f8f9fa;
+  border-style: dashed;
+  border-color: #adb5bd;
+}
+
+.plan-card.popular {
+  border-color: #212529;
+  border-width: 2px;
+}
+
+.popular-tag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #212529;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.plan-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 12px;
+}
+
+.plan-pricing {
+  margin-bottom: 8px;
+}
+
+.plan-pricing .currency {
+  font-size: 14px;
+  color: #6c757d;
+  vertical-align: top;
+}
+
+.plan-pricing .price-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #212529;
+  line-height: 1;
+}
+
+.plan-pricing .price-period {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.plan-pricing .price-free,
+.plan-pricing .price-custom {
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.plan-users-info {
+  font-size: 13px;
+  color: #6c757d;
+  margin-bottom: 16px;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  text-align: left;
+  flex: 1;
+}
+
+.plan-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #495057;
+  margin-bottom: 6px;
+}
+
+.plan-features li .anticon {
+  color: #28a745;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.plan-button {
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 10px;
+  font-size: 14px;
+}
+
+/* History Card */
+.history-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.history-card .card-header {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  padding: 20px 24px;
+  border-radius: 12px 12px 0 0;
+}
+
+.history-card .card-header h5 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0;
+}
+
+.history-card .card-body {
+  padding: 24px;
+}
+
+/* Payment List */
+.payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.payment-status {
+  flex-shrink: 0;
+}
+
+.status-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot.success {
+  background: #28a745;
+}
+
+.status-dot.pending {
+  background: #ffc107;
+}
+
+.status-dot.error {
+  background: #dc3545;
+}
+
+.payment-details {
+  flex: 1;
+}
+
+.payment-details strong {
+  display: block;
+  font-size: 14px;
+  color: #212529;
+}
+
+.payment-date {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.payment-method-tag {
+  font-size: 11px;
+  color: #6c757d;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* =============================================
+   Modal de Assinatura - Design Premium
+   ============================================= */
+
+/* Override do Bootstrap Modal */
+.modal-content {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: none;
+  padding: 28px 32px;
+}
+
+.modal-header .modal-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  padding: 32px;
+  background: #fff;
+}
+
+.modal-footer {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 20px 32px;
+  gap: 12px;
+}
+
+.modal-footer .btn-outline-secondary {
+  border-color: #cbd5e1;
+  color: #64748b;
+  padding: 12px 24px;
+  font-weight: 500;
+  border-radius: 10px;
+}
+
+.modal-footer .btn-outline-secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.modal-footer .btn-dark {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: none;
+  padding: 12px 28px;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.modal-footer .btn-dark:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
+}
+
+/* Selected Plan Info */
+.selected-plan-info {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.selected-plan-info h5 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.selected-plan-info p {
+  color: #64748b;
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Period Selector - Redesigned */
+.period-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.period-option {
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  background: #fff;
+}
+
+.period-option:hover {
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.period-option.selected {
+  border-color: #0f172a;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
+}
+
+.discount-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+  white-space: nowrap;
+}
+
+.period-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 12px;
+  letter-spacing: -0.2px;
+}
+
+.period-price {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.period-price .total {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  display: block;
+  letter-spacing: -0.5px;
+}
+
+.period-price .monthly {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.period-price .free-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.savings {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 600;
+  background: #ecfdf5;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+/* Order Summary - Premium */
+.order-summary {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.order-summary h6 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #475569;
+  padding: 8px 0;
+}
+
+.summary-row.discount {
+  color: #059669;
+  font-weight: 500;
+}
+
+.summary-row.total {
+  border-top: 2px solid #e2e8f0;
+  margin-top: 12px;
+  padding-top: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+/* Alert Info */
+.modal-body .alert-secondary {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #475569;
+}
+
+.modal-body .alert-secondary small {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+/* Payment Options */
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.payment-option {
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-option:hover {
+  border-color: #dee2e6;
+}
+
+.payment-option.selected {
+  border-color: #212529;
+  background: #f8f9fa;
+}
+
+.payment-option .anticon {
+  font-size: 20px;
+  color: #6c757d;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.payment-option strong {
+  display: block;
+  font-size: 14px;
+  color: #212529;
+}
+
+.payment-option small {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+/* PIX/Boleto Modal */
+.pix-payment-modal,
+.boleto-payment-modal {
+  text-align: center;
+}
+
+.pix-payment-modal h5,
+.boleto-payment-modal h5 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 8px;
+}
+
+.pix-payment-modal p,
+.boleto-payment-modal p {
+  color: #6c757d;
+  margin-bottom: 16px;
+}
+
+.qr-code-container {
+  margin: 20px 0;
+}
+
+.qr-code-container img {
+  max-width: 180px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pix-code-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.pix-code-container code {
+  flex: 1;
+  font-size: 12px;
+  color: #495057;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .period-selector {
+    grid-template-columns: 1fr;
+  }
+  
+  .payment-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .meu-plano-container {
+    padding: 16px;
+  }
+
+  .payment-alert .alert-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .plan-card {
+    margin-bottom: 16px;
+  }
+}

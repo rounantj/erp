@@ -52,24 +52,30 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import AdminLayout from "layouts/Admin.js";
 import { UserProvider } from "context/UserContext";
 import { CompanyProvider } from "context/CompanyContext";
+import { SubscriptionProvider } from "context/SubscriptionContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
   <UserProvider>
     <CompanyProvider>
-      <BrowserRouter>
-        <Switch>
-          <Route path="/admin" render={(props) => <AdminLayout {...props} />} />
-          <Redirect from="/" to="/admin/login-register" />
-          <Redirect from="/produtos" to="/admin/produtos" />
-          <Redirect from="/vendas" to="/admin/vendas" />
-          <Redirect from="/dashboard" to="/admin/dashboard" />
-          <Redirect from="/recursos" to="/admin/recursos" />
-          <Redirect from="/setup" to="/admin/setup" />
-          <Redirect from="/checkout" to="/admin/checkout" />
-        </Switch>
-      </BrowserRouter>
+      <SubscriptionProvider>
+        <BrowserRouter>
+          <Switch>
+            <Route
+              path="/admin"
+              render={(props) => <AdminLayout {...props} />}
+            />
+            <Redirect from="/" to="/admin/login-register" />
+            <Redirect from="/produtos" to="/admin/produtos" />
+            <Redirect from="/vendas" to="/admin/vendas" />
+            <Redirect from="/dashboard" to="/admin/dashboard" />
+            <Redirect from="/recursos" to="/admin/recursos" />
+            <Redirect from="/setup" to="/admin/setup" />
+            <Redirect from="/checkout" to="/admin/checkout" />
+          </Switch>
+        </BrowserRouter>
+      </SubscriptionProvider>
     </CompanyProvider>
   </UserProvider>
 );
