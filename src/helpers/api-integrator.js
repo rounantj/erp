@@ -549,7 +549,7 @@ export const getCompanySetup = async (companyId) => {
 
   try {
     const setup = await axios.get(
-      `${urlBase}/companies/setup?id=` + companyId,
+      `${urlBase}/companies/setup/get?companyId=` + companyId,
       { headers }
     );
     console.log({ setup });
@@ -855,6 +855,65 @@ export const createUserForCompany = async (companyId, userData) => {
     return {
       success: false,
       message: error.response?.data?.message || "Erro ao criar usuário",
+    };
+  }
+};
+
+// Upload de logo da empresa
+export const uploadCompanyLogo = async (companyId, base64Image) => {
+  try {
+    const response = await api.post("/companies/upload-logo", {
+      companyId,
+      base64: base64Image,
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao fazer upload da logo:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao fazer upload da logo",
+    };
+  }
+};
+
+// Completar onboarding da empresa
+export const completeOnboarding = async () => {
+  try {
+    const response = await api.post("/companies/complete-onboarding");
+    return {
+      success: true,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao completar onboarding:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Erro ao completar onboarding",
+    };
+  }
+};
+
+// Upload de imagem do produto
+export const uploadProductImage = async (productId, base64Image) => {
+  try {
+    const response = await api.post(`/produtos/${productId}/upload-image`, {
+      base64: base64Image,
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error("Erro ao fazer upload da imagem:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Erro ao fazer upload da imagem",
     };
   }
 };

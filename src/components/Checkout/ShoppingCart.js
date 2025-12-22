@@ -18,6 +18,7 @@ import {
   DeleteOutlined,
   ShoppingCartOutlined,
   DollarOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -42,14 +43,16 @@ const ShoppingCart = ({
   // ========== MOBILE RENDER ==========
   if (isMobile) {
     return (
-      <div style={{ 
-        height: "100%", 
-        display: "flex", 
-        flexDirection: "column",
-        overflow: "hidden",
-        maxWidth: "100%",
-        boxSizing: "border-box",
-      }}>
+      <div
+        style={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Cart Header Mobile */}
         {venda.length > 0 && (
           <div
@@ -65,15 +68,32 @@ const ShoppingCart = ({
               boxSizing: "border-box",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>
+                <Text
+                  style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px" }}
+                >
                   Total da Venda
                 </Text>
-                <div style={{ fontSize: "22px", fontWeight: "700", lineHeight: 1.2 }}>
+                <div
+                  style={{
+                    fontSize: "22px",
+                    fontWeight: "700",
+                    lineHeight: 1.2,
+                  }}
+                >
                   {formatCurrency(totalVendaAtual)}
                 </div>
-                <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>
+                <Text
+                  style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px" }}
+                >
                   {venda.length} {venda.length === 1 ? "item" : "itens"}
                 </Text>
               </div>
@@ -103,14 +123,16 @@ const ShoppingCart = ({
         )}
 
         {/* Cart Items Mobile */}
-        <div style={{ 
-          flex: 1, 
-          overflow: "auto",
-          minHeight: 0,
-          WebkitOverflowScrolling: "touch",
-          maxWidth: "100%",
-          boxSizing: "border-box",
-        }}>
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            minHeight: 0,
+            WebkitOverflowScrolling: "touch",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+          }}
+        >
           {venda.length === 0 ? (
             <div
               style={{
@@ -127,14 +149,17 @@ const ShoppingCart = ({
                   width: "80px",
                   height: "80px",
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #667eea20 0%, #764ba220 100%)",
+                  background:
+                    "linear-gradient(135deg, #667eea20 0%, #764ba220 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: "16px",
                 }}
               >
-                <ShoppingCartOutlined style={{ fontSize: "36px", color: "#667eea" }} />
+                <ShoppingCartOutlined
+                  style={{ fontSize: "36px", color: "#667eea" }}
+                />
               </div>
               <Text strong style={{ fontSize: "16px", marginBottom: "4px" }}>
                 Carrinho vazio
@@ -144,16 +169,19 @@ const ShoppingCart = ({
               </Text>
             </div>
           ) : (
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
+              }}
+            >
               {venda.map((item, index) => {
-                const valorUnitario = parseFloat(item.valorEditado ?? item.valor) || 0;
+                const valorUnitario =
+                  parseFloat(item.valorEditado ?? item.valor) || 0;
                 const quantidade = parseInt(item.qtd) || 0;
                 const totalItem = valorUnitario * quantidade;
 
@@ -171,7 +199,46 @@ const ShoppingCart = ({
                       overflow: "hidden",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {/* Miniatura do Produto */}
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          background: item.imageUrl ? "#fff" : "#f5f5f5",
+                          border: "1px solid #e8e8e8",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginRight: 10,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.descricao}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <PictureOutlined
+                            style={{ fontSize: 14, color: "#bfbfbf" }}
+                          />
+                        )}
+                      </div>
+
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                         <Text
                           strong
@@ -198,12 +265,26 @@ const ShoppingCart = ({
                         style={{ padding: "4px", flexShrink: 0 }}
                       />
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
                         <Button
                           size="small"
                           icon={<MinusOutlined />}
-                          onClick={() => updateQuantity(item.id, Math.max(1, quantidade - 1))}
+                          onClick={() =>
+                            updateQuantity(item.id, Math.max(1, quantidade - 1))
+                          }
                           disabled={quantidade <= 1}
                           style={{
                             borderRadius: "8px",
@@ -211,13 +292,22 @@ const ShoppingCart = ({
                             height: "28px",
                           }}
                         />
-                        <Text strong style={{ fontSize: "14px", minWidth: "20px", textAlign: "center" }}>
+                        <Text
+                          strong
+                          style={{
+                            fontSize: "14px",
+                            minWidth: "20px",
+                            textAlign: "center",
+                          }}
+                        >
                           {quantidade}
                         </Text>
                         <Button
                           size="small"
                           icon={<PlusOutlined />}
-                          onClick={() => updateQuantity(item.id, quantidade + 1)}
+                          onClick={() =>
+                            updateQuantity(item.id, quantidade + 1)
+                          }
                           style={{
                             borderRadius: "8px",
                             width: "28px",
@@ -266,31 +356,96 @@ const ShoppingCart = ({
         <div style={{ width: "100%" }}>
           <Row gutter={[8, 6]} align="middle">
             <Col sm={12} md={10}>
-              <div>
-                <Text strong style={{ fontSize: "12px", display: "block", marginBottom: "2px" }}>
-                  {item.descricao?.toUpperCase()}
-                </Text>
-                <Space size="small" wrap>
-                  <Tag color={item.categoria === "serviço" ? "green" : "blue"} size="small">
-                    {item.categoria?.toUpperCase()}
-                  </Tag>
-                  <Text code style={{ fontSize: "9px" }}>#{item.id}</Text>
-                </Space>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                {/* Miniatura do Produto */}
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    background: item.imageUrl ? "#fff" : "#f5f5f5",
+                    border: "1px solid #e8e8e8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 8,
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.descricao}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <PictureOutlined
+                      style={{ fontSize: 12, color: "#bfbfbf" }}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <Text
+                    strong
+                    style={{
+                      fontSize: "12px",
+                      display: "block",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {item.descricao?.toUpperCase()}
+                  </Text>
+                  <Space size="small" wrap>
+                    <Tag
+                      color={item.categoria === "serviço" ? "green" : "blue"}
+                      size="small"
+                    >
+                      {item.categoria?.toUpperCase()}
+                    </Tag>
+                    <Text code style={{ fontSize: "9px" }}>
+                      #{item.id}
+                    </Text>
+                  </Space>
+                </div>
               </div>
             </Col>
 
             <Col sm={6} md={4}>
               <div style={{ textAlign: "center" }}>
-                <Text type="secondary" style={{ fontSize: "9px", display: "block", marginBottom: "1px" }}>Qtd</Text>
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: "9px",
+                    display: "block",
+                    marginBottom: "1px",
+                  }}
+                >
+                  Qtd
+                </Text>
                 <Space size="small">
                   <Button
                     size="small"
                     icon={<MinusOutlined />}
-                    onClick={() => updateQuantity(item.id, Math.max(1, quantidade - 1))}
+                    onClick={() =>
+                      updateQuantity(item.id, Math.max(1, quantidade - 1))
+                    }
                     disabled={quantidade <= 1}
                     style={{ minWidth: "22px", height: "22px", padding: 0 }}
                   />
-                  <Text strong style={{ minWidth: "14px", textAlign: "center", fontSize: "11px" }}>
+                  <Text
+                    strong
+                    style={{
+                      minWidth: "14px",
+                      textAlign: "center",
+                      fontSize: "11px",
+                    }}
+                  >
                     {quantidade}
                   </Text>
                   <Button
@@ -305,7 +460,16 @@ const ShoppingCart = ({
 
             <Col sm={6} md={4}>
               <div style={{ textAlign: "center" }}>
-                <Text type="secondary" style={{ fontSize: "9px", display: "block", marginBottom: "1px" }}>Preço</Text>
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: "9px",
+                    display: "block",
+                    marginBottom: "1px",
+                  }}
+                >
+                  Preço
+                </Text>
                 <Tooltip title="Clique para editar">
                   <InputNumber
                     size="small"
@@ -322,7 +486,16 @@ const ShoppingCart = ({
 
             <Col sm={6} md={4}>
               <div style={{ textAlign: "center" }}>
-                <Text type="secondary" style={{ fontSize: "9px", display: "block", marginBottom: "1px" }}>Total</Text>
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: "9px",
+                    display: "block",
+                    marginBottom: "1px",
+                  }}
+                >
+                  Total
+                </Text>
                 <Text strong style={{ color: "#1890ff", fontSize: "12px" }}>
                   {formatCurrency(totalItem)}
                 </Text>
@@ -352,9 +525,18 @@ const ShoppingCart = ({
   return (
     <Card
       title={
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "4px 0",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center" }}>
-            <ShoppingCartOutlined style={{ marginRight: 4, fontSize: "13px" }} />
+            <ShoppingCartOutlined
+              style={{ marginRight: 4, fontSize: "13px" }}
+            />
             <span style={{ fontSize: "13px" }}>Carrinho</span>
           </div>
           {venda.length > 0 && (
@@ -394,17 +576,30 @@ const ShoppingCart = ({
         >
           <Row gutter={[12, 6]} align="middle">
             <Col sm={16} md={18}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
                 <div>
-                  <Text type="secondary" style={{ fontSize: "10px" }}>Total da Venda</Text>
+                  <Text type="secondary" style={{ fontSize: "10px" }}>
+                    Total da Venda
+                  </Text>
                   <div>
-                    <Text strong style={{ fontSize: "16px", color: "#cf1322", lineHeight: 1.2 }}>
+                    <Text
+                      strong
+                      style={{
+                        fontSize: "16px",
+                        color: "#cf1322",
+                        lineHeight: 1.2,
+                      }}
+                    >
                       {formatCurrency(totalVendaAtual)}
                     </Text>
                   </div>
                 </div>
                 <div>
-                  <Text type="secondary" style={{ fontSize: "10px" }}>Itens</Text>
+                  <Text type="secondary" style={{ fontSize: "10px" }}>
+                    Itens
+                  </Text>
                   <div>
                     <Text strong style={{ fontSize: "14px", color: "#1890ff" }}>
                       {venda.length}
@@ -421,7 +616,13 @@ const ShoppingCart = ({
                 onClick={onFinalizarVenda}
                 disabled={venda.length === 0 || !caixaAberto}
                 loading={loading}
-                style={{ width: "100%", height: "28px", fontSize: "10px", fontWeight: "bold", borderRadius: "4px" }}
+                style={{
+                  width: "100%",
+                  height: "28px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  borderRadius: "4px",
+                }}
               >
                 Finalizar Venda
               </Button>

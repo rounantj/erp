@@ -27,6 +27,8 @@ import {
   Popconfirm,
   List,
   Select,
+  Tooltip,
+  Space,
 } from "antd";
 import {
   PlusOutlined,
@@ -934,21 +936,20 @@ function Empresas() {
                 Cadastre e gerencie as empresas do sistema (Acesso exclusivo
                 Super Admin)
               </p>
-              <Button
-                variant="primary"
+              <AntButton
+                type="primary"
+                icon={<PlusOutlined />}
                 onClick={() => handleOpenModal()}
-                className="float-right"
-                style={{ marginTop: "-40px" }}
+                style={{ float: "right", marginTop: "-40px" }}
+                size="large"
               >
-                <i className="nc-icon nc-simple-add"></i> Nova Empresa
-              </Button>
+                Nova Empresa
+              </AntButton>
             </Card.Header>
             <Card.Body className="table-full-width table-responsive px-0">
               {loading ? (
                 <div className="text-center py-5">
-                  <Spinner animation="border" role="status">
-                    <span className="visually-hidden">Carregando...</span>
-                  </Spinner>
+                  <Spin size="large" tip="Carregando empresas..." />
                 </div>
               ) : (
                 <Table className="table-hover table-striped">
@@ -993,45 +994,44 @@ function Empresas() {
                             </Badge>
                           </td>
                           <td>
-                            <Button
-                              variant="info"
-                              size="sm"
-                              className="me-2"
-                              onClick={() => handleViewUsers(company)}
-                              title="Ver usuários"
-                            >
-                              <i className="nc-icon nc-single-02"></i>
-                            </Button>
-                            <Button
-                              variant="success"
-                              size="sm"
-                              className="me-2"
-                              onClick={() => handleOpenCreateUserModal(company)}
-                              title="Criar usuário"
-                            >
-                              <i className="nc-icon nc-simple-add"></i>
-                            </Button>
-                            <Button
-                              variant="warning"
-                              size="sm"
-                              className="me-2"
-                              onClick={() => handleOpenModal(company)}
-                              title="Editar"
-                            >
-                              <i className="nc-icon nc-ruler-pencil"></i>
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCompany(company);
-                                setShowDeleteModal(true);
-                              }}
-                              title="Excluir"
-                              disabled={currentUser?.companyId === company.id}
-                            >
-                              <i className="nc-icon nc-simple-remove"></i>
-                            </Button>
+                            <Space size="small">
+                              <Tooltip title="Ver usuários">
+                                <AntButton
+                                  type="primary"
+                                  icon={<TeamOutlined />}
+                                  onClick={() => handleViewUsers(company)}
+                                  style={{ background: "#17a2b8", borderColor: "#17a2b8" }}
+                                />
+                              </Tooltip>
+                              <Tooltip title="Criar usuário">
+                                <AntButton
+                                  type="primary"
+                                  icon={<UserAddOutlined />}
+                                  onClick={() => handleOpenCreateUserModal(company)}
+                                  style={{ background: "#28a745", borderColor: "#28a745" }}
+                                />
+                              </Tooltip>
+                              <Tooltip title="Editar empresa">
+                                <AntButton
+                                  type="primary"
+                                  icon={<EditOutlined />}
+                                  onClick={() => handleOpenModal(company)}
+                                  style={{ background: "#ffc107", borderColor: "#ffc107", color: "#000" }}
+                                />
+                              </Tooltip>
+                              <Tooltip title="Excluir empresa">
+                                <AntButton
+                                  type="primary"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => {
+                                    setSelectedCompany(company);
+                                    setShowDeleteModal(true);
+                                  }}
+                                  disabled={currentUser?.companyId === company.id}
+                                />
+                              </Tooltip>
+                            </Space>
                           </td>
                         </tr>
                       ))

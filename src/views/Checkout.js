@@ -26,12 +26,14 @@ const { Text } = Typography;
 import { findProductByCode } from "helpers/api-integrator";
 import { openCaixa } from "helpers/caixa.adapter";
 import { UserContext } from "context/UserContext";
+import { useCompany } from "context/CompanyContext";
 import { getCaixaEmAberto } from "helpers/caixa.adapter";
 import { vendaFinaliza } from "helpers/caixa.adapter";
 import { getResumoVendas } from "helpers/caixa.adapter";
 import { fechaCaixa } from "helpers/caixa.adapter";
 import { getSells } from "helpers/api-integrator";
 import moment from "moment";
+import { toSaoPauloTime } from "helpers/formatters";
 import { calcularTotalItens } from "./Vendas";
 import { useCupomGenerator } from "components/cupomGenerator";
 
@@ -154,10 +156,29 @@ const mobileStyles = {
   },
 };
 
+// Função para ajustar cor (escurecer)
+const adjustColor = (hex, percent) => {
+  if (!hex || !hex.startsWith("#")) return hex;
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+  r = Math.max(0, Math.min(255, r + percent));
+  g = Math.max(0, Math.min(255, g + percent));
+  b = Math.max(0, Math.min(255, b + percent));
+  return `#${r.toString(16).padStart(2, "0")}${g
+    .toString(16)
+    .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+};
+
 const Checkout = () => {
   const { user } = useContext(UserContext);
-  const { gerarCupomComPreview } = useCupomGenerator();
+  const { sidebarColor, companySetup } = useCompany();
+  const { gerarCupomComPreview } = useCupomGenerator(companySetup);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Cor primária da empresa
+  const primaryColor = sidebarColor || "#667eea";
+  const gradientColor = adjustColor(primaryColor, -30);
   const [loading, setLoading] = useState(false);
   const [venda, setVenda] = useState([]);
   const [caixa, setCaixa] = useState(null);
@@ -240,7 +261,9 @@ const Checkout = () => {
       if (cx) {
         setCaixa(cx);
         setCaixaAberto(true);
-        setHoraAbertura(moment(cx.createdAt).format("DD/MM/YYYY HH:mm"));
+        setHoraAbertura(
+          toSaoPauloTime(cx.createdAt).format("DD/MM/YYYY HH:mm")
+        );
         setValorAbertura(cx.saldoInicial || 0);
         await getResumoCaixa(cx.id);
         await getVendas();
@@ -388,15 +411,32 @@ const Checkout = () => {
   const toggleFormaPagamento = useCallback(
     (forma) => {
       if (formaPagamento.includes(forma)) {
+        // Removendo forma de pagamento
         setFormaPagamento(formaPagamento.filter((f) => f !== forma));
         const novosValores = { ...valoresPorForma };
         delete novosValores[forma];
         setValoresPorForma(novosValores);
       } else {
         if (formaPagamento.length < 2) {
-          setFormaPagamento([...formaPagamento, forma]);
-          if (formaPagamento.length === 0) {
-            setValoresPorForma({ [forma]: totalVendaAtual });
+          const novasFormas = [...formaPagamento, forma];
+          setFormaPagamento(novasFormas);
+
+          // Calcula o valor já preenchido nas outras formas
+          const valorJaPreenchido = Object.values(valoresPorForma).reduce(
+            (acc, val) => acc + (val || 0),
+            0
+          );
+
+          // Preenche automaticamente com o valor restante
+          const valorRestante = Math.max(
+            0,
+            totalVendaAtual - valorJaPreenchido
+          );
+          setValoresPorForma({ ...valoresPorForma, [forma]: valorRestante });
+
+          // Se for dinheiro, também preenche o valor recebido
+          if (forma === "dinheiro") {
+            setValorRecebido(valorRestante);
           }
         }
       }
@@ -606,12 +646,17 @@ const Checkout = () => {
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: "#667eea",
+            colorPrimary: primaryColor,
             borderRadius: 12,
           },
         }}
       >
-        <div style={mobileStyles.container}>
+        <div
+          style={{
+            ...mobileStyles.container,
+            background: `linear-gradient(135deg, ${primaryColor} 0%, ${gradientColor} 100%)`,
+          }}
+        >
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             {/* Botão Menu */}
@@ -731,6 +776,7 @@ const Checkout = () => {
                     setSelectedCliente(cliente);
                     if (cliente?.cpf_cnpj) setCupomCnpj(cliente.cpf_cnpj);
                   }}
+                  isMobile={true}
                 />
                 <ShoppingCart
                   venda={venda}
@@ -772,7 +818,12 @@ const Checkout = () => {
             <div
               style={{
                 ...mobileStyles.navItem,
-                ...(activeTab === "produtos" ? mobileStyles.navItemActive : {}),
+                ...(activeTab === "produtos"
+                  ? {
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${gradientColor} 100%)`,
+                      color: "#fff",
+                    }
+                  : {}),
               }}
               onClick={() => setActiveTab("produtos")}
             >
@@ -795,12 +846,12 @@ const Checkout = () => {
             <div
               style={{
                 ...mobileStyles.navItem,
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: `linear-gradient(135deg, ${primaryColor} 0%, ${gradientColor} 100%)`,
                 width: "56px",
                 height: "56px",
                 borderRadius: "50%",
                 marginTop: "-30px",
-                boxShadow: "0 4px 15px rgba(102,126,234,0.4)",
+                boxShadow: `0 4px 15px ${primaryColor}66`,
               }}
               onClick={handleOpenScanner}
             >
@@ -810,7 +861,12 @@ const Checkout = () => {
             <div
               style={{
                 ...mobileStyles.navItem,
-                ...(activeTab === "carrinho" ? mobileStyles.navItemActive : {}),
+                ...(activeTab === "carrinho"
+                  ? {
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${gradientColor} 100%)`,
+                      color: "#fff",
+                    }
+                  : {}),
               }}
               onClick={() => setActiveTab("carrinho")}
             >
@@ -965,6 +1021,7 @@ const Checkout = () => {
                   setSelectedCliente(cliente);
                   if (cliente?.cpf_cnpj) setCupomCnpj(cliente.cpf_cnpj);
                 }}
+                isMobile={false}
               />
               <ShoppingCart
                 venda={venda}

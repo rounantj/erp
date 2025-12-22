@@ -1,5 +1,10 @@
 import { getSells } from "helpers/api-integrator";
-import { toDateFormat, toMoneyFormat } from "helpers/formatters";
+import {
+  toDateFormat,
+  toMoneyFormat,
+  toSaoPauloTime,
+  nowSaoPaulo,
+} from "helpers/formatters";
 import React, { useEffect, useState, useRef, useContext } from "react";
 import * as XLSX from "xlsx";
 import ptBR from "antd/lib/locale/pt_BR";
@@ -367,8 +372,10 @@ function Vendas() {
       // Calcular o total com desconto
       const totalComDesconto = calcularTotal(venda.total, venda.desconto);
 
-      // Formatar a data
-      const dataFormatada = moment(venda.createdAt).format("DD/MM/YYYY HH:mm");
+      // Formatar a data (horário de São Paulo)
+      const dataFormatada = toSaoPauloTime(venda.createdAt).format(
+        "DD/MM/YYYY HH:mm"
+      );
 
       // Status de exclusão
       let statusExclusao = "Normal";
@@ -1108,7 +1115,9 @@ function Vendas() {
                               display: "block",
                             }}
                           >
-                            {moment(venda.createdAt).format("DD/MM HH:mm")}
+                            {toSaoPauloTime(venda.createdAt).format(
+                              "DD/MM HH:mm"
+                            )}
                           </Text>
                           {venda.nome_cliente && (
                             <Text style={{ fontSize: "11px", color: "#666" }}>

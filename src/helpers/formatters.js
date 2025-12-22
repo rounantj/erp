@@ -1,4 +1,21 @@
 import moment from "moment";
+import "moment/locale/pt-br";
+
+// Configurar moment para português brasileiro
+moment.locale("pt-br");
+
+// Helper para converter data para horário de São Paulo (UTC-3)
+// As datas do banco vêm em UTC, precisamos adicionar 3 horas para São Paulo
+export const toSaoPauloTime = (date) => {
+  if (!date) return moment();
+  // Adiciona 3 horas para compensar o fuso horário de São Paulo
+  return moment(date).add(3, "hours");
+};
+
+// Helper para obter momento atual
+export const nowSaoPaulo = () => {
+  return moment();
+};
 
 export const toMoneyFormat = (value) => {
   // Se o valor for falsy (0, null, undefined, etc.)
@@ -22,9 +39,11 @@ export const toMoneyFormat = (value) => {
 };
 
 export const toDateFormat = (date, full) => {
+  // Usa o horário de São Paulo para exibição
+  const saoPauloDate = toSaoPauloTime(date);
   return full
-    ? moment(date).format("DD/MM/YYYY HH:mm:ss")
-    : moment(date).format("DD/MM/YYYY");
+    ? saoPauloDate.format("DD/MM/YYYY HH:mm:ss")
+    : saoPauloDate.format("DD/MM/YYYY");
 };
 
 export const moneyToDecimal = (value) => {

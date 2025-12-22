@@ -15,56 +15,80 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React, { Component } from "react";
+import React from "react";
 import { useLocation, NavLink } from "react-router-dom";
-
 import { Nav } from "react-bootstrap";
+import { useCompany } from "context/CompanyContext";
 
-import logo from "assets/img/logo.png";
+// Logo padrão como fallback
+import defaultLogo from "assets/img/logo.png";
 
 function Sidebar({ color, image, routes }) {
   const location = useLocation();
+  const { logoUrl } = useCompany();
+
+  // A cor do sidebar é controlada pelo CSS dinâmico injetado no Admin.js
+
   const activeRoute = (routeName) => {
     return location.pathname.indexOf(routeName) > -1 ? "active" : "";
   };
+
+  // Usar logo da empresa ou fallback para a logo padrão
+  const displayLogo = logoUrl || defaultLogo;
+
   return (
     <div className="sidebar" data-image={image} data-color={color}>
       <div
         className="sidebar-background"
         style={{
-          backgroundImage: "url(" + image + ")"
+          backgroundImage: image ? `url(${image})` : "none",
+          opacity: image ? 0.3 : 0,
         }}
       />
       <div className="sidebar-wrapper">
         <div className="logo d-flex align-items-center justify-content-start">
-
-          <img style={{ maxWidth: "150px", margin: "auto" }} src={require("assets/img/logo.png")} alt="..." />
-
+          <img
+            style={{
+              maxWidth: "150px",
+              maxHeight: "80px",
+              margin: "auto",
+              objectFit: "contain",
+              borderRadius: "8px",
+            }}
+            src={displayLogo}
+            alt="Logo da empresa"
+            onError={(e) => {
+              // Fallback para logo padrão se a imagem falhar
+              e.target.src = defaultLogo;
+            }}
+          />
         </div>
         <Nav>
-          {routes.filter(item => item.path != '/login-register').map((prop, key) => {
-            if (!prop.redirect)
-              return (
-                <li
-                  className={
-                    prop.upgrade
-                      ? "active active-pro"
-                      : activeRoute(prop.layout + prop.path)
-                  }
-                  key={key}
-                >
-                  <NavLink
-                    to={prop.layout + prop.path}
-                    className="nav-link"
-                    activeClassName="active"
+          {routes
+            .filter((item) => item.path !== "/login-register")
+            .map((prop, key) => {
+              if (!prop.redirect)
+                return (
+                  <li
+                    className={
+                      prop.upgrade
+                        ? "active active-pro"
+                        : activeRoute(prop.layout + prop.path)
+                    }
+                    key={key}
                   >
-                    <i className={prop.icon} />
-                    <p>{prop.name}</p>
-                  </NavLink>
-                </li>
-              );
-            return null;
-          })}
+                    <NavLink
+                      to={prop.layout + prop.path}
+                      className="nav-link"
+                      activeClassName="active"
+                    >
+                      <i className={prop.icon} />
+                      <p>{prop.name}</p>
+                    </NavLink>
+                  </li>
+                );
+              return null;
+            })}
         </Nav>
       </div>
     </div>

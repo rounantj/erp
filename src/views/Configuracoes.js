@@ -20,6 +20,9 @@ import {
   Spin,
   Empty,
   Segmented,
+  Upload,
+  message,
+  Avatar,
 } from "antd";
 import {
   SaveOutlined,
@@ -33,19 +36,31 @@ import {
   ReloadOutlined,
   ShopOutlined,
   MenuOutlined,
+  PictureOutlined,
+  BgColorsOutlined,
+  UploadOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  HomeOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 
 import { UserContext } from "context/UserContext";
+import { useCompany } from "context/CompanyContext";
 import {
   getCompanySetup,
   getUsers,
   updateUserRole,
   updateSetup,
+  uploadCompanyLogo,
 } from "helpers/api-integrator";
+
+// Logo padrão
+import defaultLogo from "assets/img/logo.png";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
+const { TextArea } = Input;
 
 // Estilos para mobile
 const mobileStyles = {
@@ -143,12 +158,18 @@ const roleTitles = {
 
 function Configuracoes() {
   const { user } = useContext(UserContext);
+  const { companySetup, updateCompanySetup, refreshSetup } = useCompany();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [usersList, setUsersList] = useState([]);
   const [activeTab, setActiveTab] = useState("1");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [mobileTab, setMobileTab] = useState("empresa");
+  const [mobileTab, setMobileTab] = useState("visual");
+
+  // Estado para preview da logo
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [selectedColor, setSelectedColor] = useState("#667eea");
 
   // Detectar mobile
   useEffect(() => {
@@ -161,9 +182,16 @@ function Configuracoes() {
 
   const [company, setCompany] = useState({
     id: "",
+    companyId: "",
     companyName: "",
     companyCNPJ: "",
     companyNCM: "",
+    companyAddress: "",
+    companyPhone: "",
+    companyEmail: "",
+    receiptFooter: "",
+    logoUrl: "",
+    sidebarColor: "#667eea",
     companyIntegration: {
       sefazCode: "",
       sefazId: "",
@@ -174,19 +202,25 @@ function Configuracoes() {
   const fetchCompanySetup = async () => {
     try {
       setLoading(true);
-      const companyId = 1; // ID fixo conforme código original
+      const companyId = user?.user?.companyId || 1;
       const response = await getCompanySetup(companyId);
 
       if (response.data && response.data[0]) {
-        setCompany(response.data[0]);
+        const data = response.data[0];
+        setCompany(data);
+        setLogoPreview(data.logoUrl);
+        setSelectedColor(data.sidebarColor || "#667eea");
 
-        // Atualiza o formulário com os dados recebidos
         form.setFieldsValue({
-          companyName: response.data[0].companyName,
-          companyCNPJ: response.data[0].companyCNPJ,
-          companyNCM: response.data[0].companyNCM,
-          sefazCode: response.data[0].companyIntegration.sefazCode,
-          sefazId: response.data[0].companyIntegration.sefazId,
+          companyName: data.companyName,
+          companyCNPJ: data.companyCNPJ,
+          companyNCM: data.companyNCM,
+          companyAddress: data.companyAddress,
+          companyPhone: data.companyPhone,
+          companyEmail: data.companyEmail,
+          receiptFooter: data.receiptFooter,
+          sefazCode: data.companyIntegration?.sefazCode,
+          sefazId: data.companyIntegration?.sefazId,
         });
       }
     } catch (error) {
@@ -204,18 +238,16 @@ function Configuracoes() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const companyId = 1; // ID fixo conforme código original
+      const companyId = user?.user?.companyId || 1;
       const response = await getUsers(companyId);
 
       if (response.data && Array.isArray(response.data)) {
-        // Prepara dados para a tabela
-        const formattedUsers = response.data.map((user) => ({
-          key: user.id || user.username,
-          id: user.id,
-          username: user.username,
-          role: user.role,
+        const formattedUsers = response.data.map((u) => ({
+          key: u.id || u.username,
+          id: u.id,
+          username: u.username,
+          role: u.role,
         }));
-
         setUsersList(formattedUsers);
       }
     } catch (error) {
@@ -223,7 +255,6 @@ function Configuracoes() {
         message: "Erro ao carregar usuários",
         description: "Não foi possível buscar a lista de usuários.",
       });
-      console.error("Erro ao buscar usuários:", error);
     } finally {
       setLoading(false);
     }
@@ -233,25 +264,75 @@ function Configuracoes() {
   const handleRoleChange = async (username, newRole) => {
     try {
       setLoading(true);
-      const companyId = 1; // ID fixo conforme código original
+      const companyId = user?.user?.companyId || 1;
       await updateUserRole(companyId, username, newRole);
 
       notification.success({
         message: "Função atualizada",
         description: `Função do usuário ${username} atualizada com sucesso.`,
       });
-
-      // Recarrega usuários após atualização
       await fetchUsers();
     } catch (error) {
       notification.error({
         message: "Erro ao atualizar função",
         description: `Não foi possível atualizar a função do usuário ${username}.`,
       });
-      console.error("Erro ao atualizar papel do usuário:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Upload de logo
+  const handleLogoUpload = async (file) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("Apenas imagens são permitidas!");
+      return false;
+    }
+
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error("A imagem deve ter menos de 2MB!");
+      return false;
+    }
+
+    // Converter para base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+      setLogoPreview(base64);
+
+      // Upload para o servidor
+      try {
+        setUploadLoading(true);
+        const companyId = user?.user?.companyId || company.companyId;
+        const result = await uploadCompanyLogo(companyId, base64);
+
+        if (result.success) {
+          notification.success({
+            message: "Logo atualizada!",
+            description: "A logo da empresa foi atualizada com sucesso.",
+          });
+          setLogoPreview(result.data.logoUrl);
+          updateCompanySetup({ logoUrl: result.data.logoUrl });
+          refreshSetup();
+        } else {
+          notification.error({
+            message: "Erro ao enviar logo",
+            description: result.message,
+          });
+        }
+      } catch (error) {
+        notification.error({
+          message: "Erro ao enviar logo",
+          description: "Não foi possível fazer upload da logo.",
+        });
+      } finally {
+        setUploadLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // Previne upload automático
   };
 
   // Salva configurações da empresa
@@ -259,12 +340,16 @@ function Configuracoes() {
     try {
       setLoading(true);
 
-      // Prepara objeto para envio conforme estrutura original
       const updatedCompany = {
         ...company,
         companyName: values.companyName,
         companyCNPJ: values.companyCNPJ,
         companyNCM: values.companyNCM,
+        companyAddress: values.companyAddress,
+        companyPhone: values.companyPhone,
+        companyEmail: values.companyEmail,
+        receiptFooter: values.receiptFooter,
+        sidebarColor: selectedColor,
         companyIntegration: {
           sefazCode: values.sefazCode,
           sefazId: values.sefazId,
@@ -279,14 +364,18 @@ function Configuracoes() {
           "As configurações da empresa foram atualizadas com sucesso.",
       });
 
-      // Recarrega configurações após salvar
+      // Atualizar o contexto
+      updateCompanySetup({
+        sidebarColor: selectedColor,
+        companyName: values.companyName,
+      });
+
       await fetchCompanySetup();
     } catch (error) {
       notification.error({
         message: "Erro ao salvar configurações",
         description: "Não foi possível salvar as configurações da empresa.",
       });
-      console.error("Erro ao salvar configurações:", error);
     } finally {
       setLoading(false);
     }
@@ -298,7 +387,17 @@ function Configuracoes() {
     fetchUsers();
   }, []);
 
-  // Definição das colunas da tabela de usuários
+  // Atualiza preview da cor quando companySetup muda
+  useEffect(() => {
+    if (companySetup.sidebarColor) {
+      setSelectedColor(companySetup.sidebarColor);
+    }
+    if (companySetup.logoUrl) {
+      setLogoPreview(companySetup.logoUrl);
+    }
+  }, [companySetup]);
+
+  // Colunas da tabela de usuários
   const userColumns = [
     {
       title: "Usuário",
@@ -348,6 +447,71 @@ function Configuracoes() {
     },
   ];
 
+  // Componente de preview do sidebar
+  const SidebarPreview = () => (
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "200px",
+        height: "200px",
+        background: `linear-gradient(135deg, ${selectedColor} 0%, ${adjustColor(
+          selectedColor,
+          -30
+        )} 100%)`,
+        borderRadius: "12px",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      }}
+    >
+      <img
+        src={logoPreview || defaultLogo}
+        alt="Logo preview"
+        style={{
+          maxWidth: "80px",
+          maxHeight: "60px",
+          objectFit: "contain",
+          marginBottom: "12px",
+          borderRadius: "4px",
+          background: "#fff",
+          padding: "4px",
+        }}
+        onError={(e) => {
+          e.target.src = defaultLogo;
+        }}
+      />
+      <div style={{ width: "100%" }}>
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              height: "24px",
+              borderRadius: "6px",
+              marginBottom: "8px",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  // Função para ajustar cor
+  const adjustColor = (hex, percent) => {
+    if (!hex || !hex.startsWith("#")) return hex;
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.max(0, Math.min(255, r + percent));
+    g = Math.max(0, Math.min(255, g + percent));
+    b = Math.max(0, Math.min(255, b + percent));
+    return `#${r.toString(16).padStart(2, "0")}${g
+      .toString(16)
+      .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  };
+
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
@@ -360,25 +524,45 @@ function Configuracoes() {
         }}
       >
         <div style={mobileStyles.container}>
-          {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                {/* Botão Menu */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
                 <div
                   onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    const isOpen =
+                      document.documentElement.classList.contains("nav-open");
                     if (isOpen) {
                       document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                     } else {
                       document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                       var node = document.createElement("div");
                       node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.style.cssText =
+                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                       node.onclick = function () {
                         this.parentElement.removeChild(this);
                         document.documentElement.classList.remove("nav-open");
@@ -391,9 +575,6 @@ function Configuracoes() {
                     borderRadius: "10px",
                     padding: "8px 10px",
                     cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                   }}
                 >
                   <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
@@ -404,15 +585,17 @@ function Configuracoes() {
                     Configurações
                   </h1>
                   <Text style={mobileStyles.headerSubtitle}>
-                    Gerenciar empresa e usuários
+                    Personalize sua empresa
                   </Text>
                 </div>
               </div>
               <div
-                onClick={() => { fetchCompanySetup(); fetchUsers(); }}
+                onClick={() => {
+                  fetchCompanySetup();
+                  fetchUsers();
+                }}
                 style={{
                   background: "rgba(255,255,255,0.2)",
-                  border: "none",
                   borderRadius: "10px",
                   padding: "8px 12px",
                   cursor: "pointer",
@@ -422,181 +605,202 @@ function Configuracoes() {
               </div>
             </div>
 
-            {/* Tab Switcher */}
             <div style={{ marginTop: "16px" }}>
               <Segmented
                 block
                 value={mobileTab}
                 onChange={setMobileTab}
                 options={[
-                  { label: "Empresa", value: "empresa", icon: <ShopOutlined /> },
-                  { label: "Usuários", value: "usuarios", icon: <TeamOutlined /> },
+                  {
+                    label: "Visual",
+                    value: "visual",
+                    icon: <PictureOutlined />,
+                  },
+                  {
+                    label: "Empresa",
+                    value: "empresa",
+                    icon: <ShopOutlined />,
+                  },
+                  {
+                    label: "Usuários",
+                    value: "usuarios",
+                    icon: <TeamOutlined />,
+                  },
                 ]}
-                style={{ 
-                  background: "rgba(255,255,255,0.2)",
-                  padding: "4px",
-                }}
+                style={{ background: "rgba(255,255,255,0.2)", padding: "4px" }}
               />
             </div>
           </div>
 
-          {/* Content Area */}
           <div style={mobileStyles.content}>
             {loading ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
                 <Spin size="large" />
-                <div style={{ marginTop: "12px" }}>
-                  <Text type="secondary">Carregando...</Text>
+              </div>
+            ) : mobileTab === "visual" ? (
+              <div style={{ flex: 1, overflow: "auto" }}>
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>
+                    <PictureOutlined /> Logo da Empresa
+                  </div>
+                  <div style={{ textAlign: "center", marginBottom: "16px" }}>
+                    <Avatar
+                      src={logoPreview || defaultLogo}
+                      size={100}
+                      style={{ marginBottom: "12px" }}
+                    />
+                  </div>
+                  <Upload
+                    beforeUpload={handleLogoUpload}
+                    showUploadList={false}
+                    accept="image/*"
+                  >
+                    <Button
+                      icon={<UploadOutlined />}
+                      loading={uploadLoading}
+                      block
+                      size="large"
+                    >
+                      Enviar Logo
+                    </Button>
+                  </Upload>
+                </div>
+
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>
+                    <BgColorsOutlined /> Cor do Menu
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <input
+                      type="color"
+                      value={selectedColor}
+                      onChange={(e) => setSelectedColor(e.target.value)}
+                      style={{
+                        width: "50px",
+                        height: "40px",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                      }}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={() => handleSaveSetup(form.getFieldsValue())}
+                      loading={loading}
+                    >
+                      Aplicar Cor
+                    </Button>
+                  </div>
+                </div>
+
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>Preview</div>
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <SidebarPreview />
+                  </div>
                 </div>
               </div>
             ) : mobileTab === "empresa" ? (
-              // Configurações da Empresa
-              <div style={{ 
-                flex: 1, 
-                overflow: "auto",
-                minHeight: 0,
-                WebkitOverflowScrolling: "touch",
-              }}>
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={handleSaveSetup}
-                >
-                  <div style={mobileStyles.sectionCard}>
-                    <div style={mobileStyles.sectionTitle}>
-                      <IdcardOutlined />
-                      Informações Básicas
-                    </div>
-                    
-                    <Form.Item
-                      name="companyName"
-                      label="Nome da Empresa"
-                      rules={[{ required: true, message: "Obrigatório" }]}
-                    >
-                      <Input placeholder="Nome da empresa" size="large" />
-                    </Form.Item>
-
-                    <Form.Item
-                      name="companyCNPJ"
-                      label="CNPJ"
-                      rules={[{ required: true, message: "Obrigatório" }]}
-                    >
-                      <Input placeholder="00.000.000/0000-00" size="large" />
-                    </Form.Item>
+              <Form form={form} layout="vertical" onFinish={handleSaveSetup}>
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>
+                    <IdcardOutlined /> Dados da Empresa
                   </div>
-
-                  <div style={mobileStyles.sectionCard}>
-                    <div style={mobileStyles.sectionTitle}>
-                      <BarcodeOutlined />
-                      Informações Fiscais
-                    </div>
-                    
-                    <Form.Item
-                      name="companyNCM"
-                      label="NCM"
-                      rules={[{ required: true, message: "Obrigatório" }]}
-                    >
-                      <Input placeholder="Código NCM" size="large" />
-                    </Form.Item>
-
-                    <Row gutter={12}>
-                      <Col span={12}>
-                        <Form.Item name="sefazCode" label="Código Sefaz">
-                          <Input placeholder="Código" size="large" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="sefazId" label="ID Sefaz">
-                          <Input placeholder="ID" size="large" />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  </div>
-
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    block
-                    size="large"
-                    icon={<SaveOutlined />}
-                    loading={loading}
-                    style={{ height: "48px", borderRadius: "12px" }}
+                  <Form.Item
+                    name="companyName"
+                    label="Nome"
+                    rules={[{ required: true }]}
                   >
-                    Salvar Configurações
-                  </Button>
-                </Form>
-              </div>
+                    <Input size="large" />
+                  </Form.Item>
+                  <Form.Item name="companyCNPJ" label="CNPJ">
+                    <Input size="large" />
+                  </Form.Item>
+                  <Form.Item name="companyAddress" label="Endereço">
+                    <Input size="large" prefix={<HomeOutlined />} />
+                  </Form.Item>
+                  <Row gutter={12}>
+                    <Col span={12}>
+                      <Form.Item name="companyPhone" label="Telefone">
+                        <Input size="large" prefix={<PhoneOutlined />} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="companyEmail" label="Email">
+                        <Input size="large" prefix={<MailOutlined />} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </div>
+
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>
+                    <FileTextOutlined /> Rodapé do Cupom
+                  </div>
+                  <Form.Item name="receiptFooter">
+                    <TextArea
+                      rows={3}
+                      placeholder="Texto que aparecerá no cupom"
+                    />
+                  </Form.Item>
+                </div>
+
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  size="large"
+                  icon={<SaveOutlined />}
+                  loading={loading}
+                  style={{ height: "48px", borderRadius: "12px" }}
+                >
+                  Salvar
+                </Button>
+              </Form>
             ) : (
-              // Gerenciamento de Usuários
-              <div style={{ 
-                flex: 1, 
-                overflow: "auto",
-                minHeight: 0,
-                WebkitOverflowScrolling: "touch",
-              }}>
+              <div style={{ flex: 1, overflow: "auto" }}>
                 {usersList.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Nenhum usuário encontrado"
-                    style={{ marginTop: "40px" }}
-                  />
+                  <Empty description="Nenhum usuário" />
                 ) : (
                   usersList.map((userItem) => (
                     <div key={userItem.key} style={mobileStyles.userCard}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
                         <div>
                           <div style={mobileStyles.userName}>
                             <UserOutlined style={{ marginRight: "8px" }} />
                             {userItem.username}
                           </div>
-                          <Text type="secondary" style={{ fontSize: "11px" }}>
-                            ID: {userItem.id}
-                          </Text>
                         </div>
-                        <Tag color={roleColors[userItem.role] || "default"}>
-                          {roleTitles[userItem.role] || "Desconhecido"}
+                        <Tag color={roleColors[userItem.role]}>
+                          {roleTitles[userItem.role]}
                         </Tag>
                       </div>
-                      
-                      <div style={{ marginTop: "12px" }}>
-                        <Text style={{ fontSize: "12px", marginBottom: "4px", display: "block" }}>
-                          Alterar função:
-                        </Text>
-                        <Select
-                          value={userItem.role}
-                          style={{ width: "100%" }}
-                          onChange={(value) => handleRoleChange(userItem.username, value)}
-                          size="large"
-                        >
-                          <Option value="visitante">
-                            <Tag color={roleColors.visitante}>Visitante</Tag>
+                      <Select
+                        value={userItem.role}
+                        style={{ width: "100%", marginTop: "8px" }}
+                        onChange={(value) =>
+                          handleRoleChange(userItem.username, value)
+                        }
+                      >
+                        {Object.entries(roleTitles).map(([key, title]) => (
+                          <Option key={key} value={key}>
+                            <Tag color={roleColors[key]}>{title}</Tag>
                           </Option>
-                          <Option value="atendente">
-                            <Tag color={roleColors.atendente}>Atendente</Tag>
-                          </Option>
-                          <Option value="supervisor">
-                            <Tag color={roleColors.supervisor}>Supervisor</Tag>
-                          </Option>
-                          <Option value="admin">
-                            <Tag color={roleColors.admin}>Administrador</Tag>
-                          </Option>
-                        </Select>
-                      </div>
+                        ))}
+                      </Select>
                     </div>
                   ))
-                )}
-
-                {/* Results count */}
-                {usersList.length > 0 && (
-                  <div style={{ 
-                    textAlign: "center", 
-                    padding: "8px 0",
-                    flexShrink: 0,
-                  }}>
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                      {usersList.length} {usersList.length === 1 ? "usuário" : "usuários"}
-                    </Text>
-                  </div>
                 )}
               </div>
             )}
@@ -615,58 +819,182 @@ function Configuracoes() {
         type="card"
         tabBarStyle={{ marginBottom: 24 }}
       >
-        <TabPane
+        <Tabs.TabPane
           tab={
             <span>
-              <SettingOutlined /> Configurações da Empresa
+              <PictureOutlined /> Identidade Visual
             </span>
           }
           key="1"
         >
-          <Card
-            title={
-              <Space>
-                <SettingOutlined />
-                <span> Configurações de Loja</span>
-              </Space>
-            }
-            extra={
-              <Tooltip title="Salvar Configurações">
+          <Row gutter={24}>
+            <Col xs={24} lg={12}>
+              <Card
+                title={
+                  <Space>
+                    <PictureOutlined />
+                    <span>Logo da Empresa</span>
+                  </Space>
+                }
+                style={{ marginBottom: "24px" }}
+              >
+                <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                  <div
+                    style={{
+                      width: "200px",
+                      height: "120px",
+                      margin: "0 auto 16px",
+                      border: "2px dashed #d9d9d9",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#fafafa",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={logoPreview || defaultLogo}
+                      alt="Logo"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                      }}
+                      onError={(e) => {
+                        e.target.src = defaultLogo;
+                      }}
+                    />
+                  </div>
+                  <Upload
+                    beforeUpload={handleLogoUpload}
+                    showUploadList={false}
+                    accept="image/*"
+                  >
+                    <Button
+                      icon={<UploadOutlined />}
+                      loading={uploadLoading}
+                      type="primary"
+                    >
+                      {logoPreview ? "Trocar Logo" : "Enviar Logo"}
+                    </Button>
+                  </Upload>
+                  <Text
+                    type="secondary"
+                    style={{ display: "block", marginTop: "8px" }}
+                  >
+                    Formatos: PNG, JPG, GIF. Máximo 2MB.
+                  </Text>
+                </div>
+              </Card>
+
+              <Card
+                title={
+                  <Space>
+                    <BgColorsOutlined />
+                    <span>Cor do Menu Lateral</span>
+                  </Space>
+                }
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={selectedColor}
+                    onChange={(e) => setSelectedColor(e.target.value)}
+                    style={{
+                      width: "60px",
+                      height: "45px",
+                      border: "2px solid #d9d9d9",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      padding: "2px",
+                    }}
+                  />
+                  <Text>
+                    Cor selecionada: <strong>{selectedColor}</strong>
+                  </Text>
+                </div>
+                <Text type="secondary">
+                  Escolha a cor principal do menu lateral do sistema.
+                </Text>
+              </Card>
+            </Col>
+
+            <Col xs={24} lg={12}>
+              <Card
+                title={
+                  <Space>
+                    <SettingOutlined />
+                    <span>Preview do Menu</span>
+                  </Space>
+                }
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    padding: "20px",
+                  }}
+                >
+                  <SidebarPreview />
+                </div>
+                <Divider />
                 <Button
                   type="primary"
                   icon={<SaveOutlined />}
-                  onClick={() => form.submit()}
+                  onClick={() => handleSaveSetup(form.getFieldsValue())}
                   loading={loading}
+                  block
+                  size="large"
                 >
-                  Salvar
+                  Salvar Identidade Visual
                 </Button>
-              </Tooltip>
+              </Card>
+            </Col>
+          </Row>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          tab={
+            <span>
+              <ShopOutlined /> Dados da Empresa
+            </span>
+          }
+          key="2"
+        >
+          <Card
+            title={
+              <Space>
+                <ShopOutlined />
+                <span>Informações da Empresa</span>
+              </Space>
+            }
+            extra={
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={() => form.submit()}
+                loading={loading}
+              >
+                Salvar
+              </Button>
             }
           >
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSaveSetup}
-              initialValues={{
-                companyName: company.companyName,
-                companyCNPJ: company.companyCNPJ,
-                companyNCM: company.companyNCM,
-                sefazCode: company.companyIntegration.sefazCode,
-                sefazId: company.companyIntegration.sefazId,
-              }}
-            >
-              <Title level={5}>Informações Básicas</Title>
+            <Form form={form} layout="vertical" onFinish={handleSaveSetup}>
+              <Title level={5}>Dados Básicos</Title>
               <Row gutter={24}>
                 <Col xs={24} md={12}>
                   <Form.Item
                     name="companyName"
                     label="Nome da Empresa"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Por favor, informe o nome da empresa",
-                      },
-                    ]}
+                    rules={[{ required: true, message: "Obrigatório" }]}
                   >
                     <Input
                       prefix={<IdcardOutlined />}
@@ -675,20 +1003,40 @@ function Configuracoes() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item
-                    name="companyCNPJ"
-                    label="CNPJ"
-                    rules={[
-                      { required: true, message: "Por favor, informe o CNPJ" },
-                      {
-                        pattern: /^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$/,
-                        message: "CNPJ inválido (formato: 00.000.000/0000-00)",
-                      },
-                    ]}
-                  >
+                  <Form.Item name="companyCNPJ" label="CNPJ">
                     <Input
                       prefix={<NumberOutlined />}
                       placeholder="00.000.000/0000-00"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={24}>
+                <Col xs={24}>
+                  <Form.Item name="companyAddress" label="Endereço">
+                    <Input
+                      prefix={<HomeOutlined />}
+                      placeholder="Endereço completo"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={24}>
+                <Col xs={24} md={12}>
+                  <Form.Item name="companyPhone" label="Telefone">
+                    <Input
+                      prefix={<PhoneOutlined />}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="companyEmail" label="Email">
+                    <Input
+                      prefix={<MailOutlined />}
+                      placeholder="contato@empresa.com"
                     />
                   </Form.Item>
                 </Col>
@@ -699,13 +1047,7 @@ function Configuracoes() {
 
               <Row gutter={24}>
                 <Col xs={24} md={8}>
-                  <Form.Item
-                    name="companyNCM"
-                    label="NCM"
-                    rules={[
-                      { required: true, message: "Por favor, informe o NCM" },
-                    ]}
-                  >
+                  <Form.Item name="companyNCM" label="NCM Padrão">
                     <Input
                       prefix={<BarcodeOutlined />}
                       placeholder="Código NCM"
@@ -714,29 +1056,36 @@ function Configuracoes() {
                 </Col>
                 <Col xs={24} md={8}>
                   <Form.Item name="sefazCode" label="Código Sefaz">
-                    <Input
-                      prefix={<KeyOutlined />}
-                      placeholder="Código Sefaz"
-                    />
+                    <Input prefix={<KeyOutlined />} placeholder="Código" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
                   <Form.Item name="sefazId" label="ID Sefaz">
-                    <Input prefix={<KeyOutlined />} placeholder="ID Sefaz" />
+                    <Input prefix={<KeyOutlined />} placeholder="ID" />
                   </Form.Item>
                 </Col>
               </Row>
+
+              <Divider />
+              <Title level={5}>Cupom Não Fiscal</Title>
+
+              <Form.Item name="receiptFooter" label="Texto do Rodapé do Cupom">
+                <TextArea
+                  rows={3}
+                  placeholder="Texto que aparecerá no rodapé do cupom não fiscal..."
+                />
+              </Form.Item>
             </Form>
           </Card>
-        </TabPane>
+        </Tabs.TabPane>
 
-        <TabPane
+        <Tabs.TabPane
           tab={
             <span>
-              <TeamOutlined /> Gerenciamento de Usuários
+              <TeamOutlined /> Usuários
             </span>
           }
-          key="2"
+          key="3"
         >
           <Card
             title={
@@ -746,11 +1095,9 @@ function Configuracoes() {
               </Space>
             }
             extra={
-              <Space>
-                <Button type="dashed" onClick={fetchUsers} loading={loading}>
-                  Atualizar
-                </Button>
-              </Space>
+              <Button type="dashed" onClick={fetchUsers} loading={loading}>
+                Atualizar
+              </Button>
             }
           >
             <Table
@@ -759,18 +1106,9 @@ function Configuracoes() {
               loading={loading}
               pagination={{ pageSize: 10 }}
               rowKey="key"
-              expandable={{
-                expandedRowRender: (record) => (
-                  <div style={{ margin: 0 }}>
-                    <Text type="secondary">ID: {record.id}</Text>
-                    <Divider type="vertical" />
-                    <Text type="secondary">Permissões: {record.role}</Text>
-                  </div>
-                ),
-              }}
             />
           </Card>
-        </TabPane>
+        </Tabs.TabPane>
       </Tabs>
     </Layout>
   );

@@ -13,20 +13,22 @@ const CupomGenerator = ({
   onSuccess,
   showPreview = true,
   autoDownload = false,
+  companySetup = null,
 }) => {
   // Função auxiliar para formatação de dinheiro
   const money = (valor) =>
     valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
-  // Configurações da empresa (você pode externalizar isso como props)
+  // Configurações da empresa - usa companySetup se disponível, senão fallback
   const empresaConfig = {
-    nome: "FOFA PAPELARIA",
-    endereco: "RUA ORLINDO BORGES - BARRA DO SAHY",
-    cidade: "ARACRUZ - ES",
-    cnpj: "CNPJ: 54.007.957/0001-99",
-    ie: "IE: 084231440",
-    im: "IM: ISENTO",
-    uf: "UF: ES",
+    nome: companySetup?.companyName || "FOFA PAPELARIA",
+    endereco: companySetup?.companyAddress || "RUA ORLINDO BORGES - BARRA DO SAHY",
+    cidade: companySetup?.companyCity || "ARACRUZ - ES",
+    cnpj: companySetup?.companyCNPJ ? `CNPJ: ${companySetup.companyCNPJ}` : "CNPJ: 54.007.957/0001-99",
+    ie: companySetup?.companyIE ? `IE: ${companySetup.companyIE}` : "IE: 084231440",
+    im: companySetup?.companyIM ? `IM: ${companySetup.companyIM}` : "IM: ISENTO",
+    uf: companySetup?.companyUF ? `UF: ${companySetup.companyUF}` : "UF: ES",
+    receiptFooter: companySetup?.receiptFooter || "",
   };
 
   const gerarCupom = async () => {
@@ -219,11 +221,23 @@ const CupomGenerator = ({
       }
 
       // Rodapé
-      y = centerText("Volte Sempre!!", y, 9);
-      y = centerText("Agradecemos sua preferência", y, 8);
+      // Usa o texto configurado ou fallback para o padrão
+      if (empresaConfig.receiptFooter && empresaConfig.receiptFooter.trim()) {
+        // Divide o texto em linhas para suportar múltiplas linhas
+        const footerLines = empresaConfig.receiptFooter.split('\n');
+        footerLines.forEach((line) => {
+          if (line.trim()) {
+            y = centerText(line.trim(), y, 8);
+          }
+        });
+      } else {
+        // Fallback padrão
+        y = centerText("Volte Sempre!!", y, 9);
+        y = centerText("Agradecemos sua preferência", y, 8);
+      }
       y = centerText(dayjs().format("DD/MM/YYYY - HH:mm:ss"), y + 2, 7);
       y = addSeparator(y, 4, 5);
-      y = centerText("FOFA PAPELARIA", y, 8);
+      y = centerText(empresaConfig.nome, y, 8);
       y = addSeparator(y, 2, 5);
 
       // Configurar para impressão automática
@@ -298,7 +312,7 @@ export const CupomPreviewModal = ({
 };
 
 // Hook personalizado para usar o gerador de cupom
-export const useCupomGenerator = (empresaConfig = null) => {
+export const useCupomGenerator = (companySetup = null) => {
   const [previewVisible, setPreviewVisible] = React.useState(false);
 
   const gerarCupomComPreview = React.useCallback((saleData) => {
@@ -307,20 +321,22 @@ export const useCupomGenerator = (empresaConfig = null) => {
       onSuccess: () => setPreviewVisible(true),
       showPreview: true,
       autoDownload: true,
+      companySetup,
     });
 
     return generator.gerarCupom();
-  }, []);
+  }, [companySetup]);
 
   const gerarCupomSemPreview = React.useCallback((saleData) => {
     const generator = CupomGenerator({
       saleData,
       showPreview: false,
       autoDownload: true,
+      companySetup,
     });
 
     return generator.gerarCupom();
-  }, []);
+  }, [companySetup]);
 
   return {
     gerarCupomComPreview,

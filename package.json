@@ -22,6 +22,7 @@
     "react-currency-input-field": "^3.8.0",
     "react-dom": ">=16.8.0",
     "react-feather": "^2.0.10",
+    "react-joyride": "^2.9.3",
     "react-notification-alert": "0.0.13",
     "react-number-format": "^5.4.0",
     "react-router": "5.2.0",

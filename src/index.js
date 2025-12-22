@@ -32,7 +32,11 @@ window.addEventListener("error", resizeObserverErr);
 // Também suprimir no console
 const originalError = console.error;
 console.error = (...args) => {
-  if (args[0] && typeof args[0] === "string" && args[0].includes("ResizeObserver")) {
+  if (
+    args[0] &&
+    typeof args[0] === "string" &&
+    args[0].includes("ResizeObserver")
+  ) {
     return;
   }
   originalError(...args);
@@ -46,23 +50,26 @@ import "./assets/css/global-styles.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 import AdminLayout from "layouts/Admin.js";
-import { UserProvider } from "context/UserContext"; // Import UserProvider
+import { UserProvider } from "context/UserContext";
+import { CompanyProvider } from "context/CompanyContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
   <UserProvider>
-    <BrowserRouter>
-      <Switch>
-        <Route path="/admin" render={(props) => <AdminLayout {...props} />} />
-        <Redirect from="/" to="/admin/login-register" />
-        <Redirect from="/produtos" to="/admin/produtos" />
-        <Redirect from="/vendas" to="/admin/vendas" />
-        <Redirect from="/dashboard" to="/admin/dashboard" />
-        <Redirect from="/recursos" to="/admin/recursos" />
-        <Redirect from="/setup" to="/admin/setup" />
-        <Redirect from="/checkout" to="/admin/checkout" />
-      </Switch>
-    </BrowserRouter>
+    <CompanyProvider>
+      <BrowserRouter>
+        <Switch>
+          <Route path="/admin" render={(props) => <AdminLayout {...props} />} />
+          <Redirect from="/" to="/admin/login-register" />
+          <Redirect from="/produtos" to="/admin/produtos" />
+          <Redirect from="/vendas" to="/admin/vendas" />
+          <Redirect from="/dashboard" to="/admin/dashboard" />
+          <Redirect from="/recursos" to="/admin/recursos" />
+          <Redirect from="/setup" to="/admin/setup" />
+          <Redirect from="/checkout" to="/admin/checkout" />
+        </Switch>
+      </BrowserRouter>
+    </CompanyProvider>
   </UserProvider>
 );

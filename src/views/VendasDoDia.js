@@ -44,8 +44,12 @@ import { UserContext } from "context/UserContext";
 import { getResumoVendas } from "helpers/caixa.adapter";
 import { getCaixaEmAberto } from "helpers/caixa.adapter";
 import { calcularTotal } from "./Vendas";
-import { toMoneyFormat } from "helpers/formatters";
-import { toDateFormat } from "helpers/formatters";
+import {
+  toMoneyFormat,
+  toDateFormat,
+  toSaoPauloTime,
+  nowSaoPaulo,
+} from "helpers/formatters";
 import { solicitaExclusaoVenda } from "helpers/api-integrator";
 import {
   aprovaExclusaoVenda,
@@ -336,8 +340,8 @@ const VendasDoDia = () => {
   const getVendas = async () => {
     try {
       setLoadingVendas(true);
-      const formattedStart = moment().format("YYYY-MM-DD 00:00:00");
-      const formattedEnd = moment().format("YYYY-MM-DD 23:59:59");
+      const formattedStart = nowSaoPaulo().format("YYYY-MM-DD 00:00:00");
+      const formattedEnd = nowSaoPaulo().format("YYYY-MM-DD 23:59:59");
       const items = await getSells(formattedStart, formattedEnd);
 
       if (items.success) {
@@ -412,7 +416,9 @@ const VendasDoDia = () => {
       if (cx) {
         setCaixa(cx);
         setCaixaAberto(true);
-        setHoraAbertura(moment(cx.createdAt).format("DD/MM/YYYY HH:mm"));
+        setHoraAbertura(
+          toSaoPauloTime(cx.createdAt).format("DD/MM/YYYY HH:mm")
+        );
         setValorAbertura(cx.saldoInicial || 0);
         await getResumoCaixa(cx.id);
         await getVendas();
@@ -421,7 +427,9 @@ const VendasDoDia = () => {
       console.error("Erro ao verificar caixa:", error);
       notification.error({
         message: "Erro",
-        description: "Não foi possível verificar o caixa: " + (error?.message || "Erro desconhecido"),
+        description:
+          "Não foi possível verificar o caixa: " +
+          (error?.message || "Erro desconhecido"),
       });
     } finally {
       setLoading(false);
@@ -493,19 +501,31 @@ const VendasDoDia = () => {
 
     if (venda.exclusionStatus === "pending") {
       return (
-        <Tag icon={<ClockCircleOutlined />} color="warning" style={{ fontSize: "10px" }}>
+        <Tag
+          icon={<ClockCircleOutlined />}
+          color="warning"
+          style={{ fontSize: "10px" }}
+        >
           Aguardando
         </Tag>
       );
     } else if (venda.exclusionStatus === "approved") {
       return (
-        <Tag icon={<CheckCircleOutlined />} color="success" style={{ fontSize: "10px" }}>
+        <Tag
+          icon={<CheckCircleOutlined />}
+          color="success"
+          style={{ fontSize: "10px" }}
+        >
           Aprovada
         </Tag>
       );
     } else if (venda.exclusionStatus === "rejected") {
       return (
-        <Tag icon={<CloseCircleOutlined />} color="error" style={{ fontSize: "10px" }}>
+        <Tag
+          icon={<CloseCircleOutlined />}
+          color="error"
+          style={{ fontSize: "10px" }}
+        >
           Negada
         </Tag>
       );
@@ -539,9 +559,13 @@ const VendasDoDia = () => {
     const searchLower = searchFilter.toLowerCase();
     return (
       venda.id.toString().includes(searchFilter) ||
-      (venda.nome_cliente && venda.nome_cliente.toLowerCase().includes(searchLower)) ||
-      (venda.metodoPagamento && venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
-      calcularTotal(venda.total, venda.desconto).toFixed(2).includes(searchFilter)
+      (venda.nome_cliente &&
+        venda.nome_cliente.toLowerCase().includes(searchLower)) ||
+      (venda.metodoPagamento &&
+        venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
+      calcularTotal(venda.total, venda.desconto)
+        .toFixed(2)
+        .includes(searchFilter)
     );
   });
 
@@ -633,11 +657,7 @@ const VendasDoDia = () => {
           ) {
             buttons.push(
               <Tooltip title="Solicitação de exclusão pendente" key="pending">
-                <Button
-                  icon={<DeleteOutlined />}
-                  disabled
-                  size="middle"
-                />
+                <Button icon={<DeleteOutlined />} disabled size="middle" />
               </Tooltip>
             );
             return buttons;
@@ -646,11 +666,7 @@ const VendasDoDia = () => {
           if (record.exclusionStatus === "approved") {
             buttons.push(
               <Tooltip title="Exclusão aprovada" key="approved">
-                <Button
-                  icon={<DeleteOutlined />}
-                  disabled
-                  size="middle"
-                />
+                <Button icon={<DeleteOutlined />} disabled size="middle" />
               </Tooltip>
             );
             return buttons;
@@ -675,11 +691,7 @@ const VendasDoDia = () => {
           return buttons;
         };
 
-        return (
-          <Space size="small">
-            {renderActionButtons()}
-          </Space>
-        );
+        return <Space size="small">{renderActionButtons()}</Space>;
       },
     },
   ];
@@ -698,23 +710,45 @@ const VendasDoDia = () => {
         <div style={mobileStyles.container}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
                 {/* Botão Menu */}
                 <div
                   onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    const isOpen =
+                      document.documentElement.classList.contains("nav-open");
                     if (isOpen) {
                       document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                     } else {
                       document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                       var node = document.createElement("div");
                       node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.style.cssText =
+                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                       node.onclick = function () {
                         this.parentElement.removeChild(this);
                         document.documentElement.classList.remove("nav-open");
@@ -740,14 +774,18 @@ const VendasDoDia = () => {
                     Resumo do Dia
                   </h1>
                   <Text style={mobileStyles.headerSubtitle}>
-                    {moment().format("DD/MM/YYYY")} • {vendas.length} vendas
+                    {nowSaoPaulo().format("DD/MM/YYYY")} • {vendas.length}{" "}
+                    vendas
                   </Text>
                 </div>
               </div>
               <Button
                 type="primary"
                 icon={<ReloadOutlined />}
-                onClick={() => { caixaEmAberto(); getVendas(); }}
+                onClick={() => {
+                  caixaEmAberto();
+                  getVendas();
+                }}
                 loading={loading || loadingVendas}
                 style={{
                   background: "rgba(255,255,255,0.2)",
@@ -762,28 +800,48 @@ const VendasDoDia = () => {
               <>
                 <div style={mobileStyles.summaryGrid}>
                   <div style={mobileStyles.summaryCard}>
-                    <WalletOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <WalletOutlined
+                      style={{
+                        color: "rgba(255,255,255,0.8)",
+                        marginBottom: "4px",
+                      }}
+                    />
                     <span style={mobileStyles.summaryValue}>
                       {formatCurrency(resumoVendas.dinheiro).replace("R$ ", "")}
                     </span>
                     <span style={mobileStyles.summaryLabel}>Dinheiro</span>
                   </div>
                   <div style={mobileStyles.summaryCard}>
-                    <BankOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <BankOutlined
+                      style={{
+                        color: "rgba(255,255,255,0.8)",
+                        marginBottom: "4px",
+                      }}
+                    />
                     <span style={mobileStyles.summaryValue}>
                       {formatCurrency(resumoVendas.pix).replace("R$ ", "")}
                     </span>
                     <span style={mobileStyles.summaryLabel}>PIX</span>
                   </div>
                   <div style={mobileStyles.summaryCard}>
-                    <CreditCardOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <CreditCardOutlined
+                      style={{
+                        color: "rgba(255,255,255,0.8)",
+                        marginBottom: "4px",
+                      }}
+                    />
                     <span style={mobileStyles.summaryValue}>
                       {formatCurrency(resumoVendas.credito).replace("R$ ", "")}
                     </span>
                     <span style={mobileStyles.summaryLabel}>Crédito</span>
                   </div>
                   <div style={mobileStyles.summaryCard}>
-                    <CreditCardOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                    <CreditCardOutlined
+                      style={{
+                        color: "rgba(255,255,255,0.8)",
+                        marginBottom: "4px",
+                      }}
+                    />
                     <span style={mobileStyles.summaryValue}>
                       {formatCurrency(resumoVendas.debito).replace("R$ ", "")}
                     </span>
@@ -816,7 +874,14 @@ const VendasDoDia = () => {
                   size="middle"
                 />
                 {searchFilter && (
-                  <Text type="secondary" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "11px",
+                      marginTop: "4px",
+                      display: "block",
+                    }}
+                  >
                     {filteredVendas.length} de {vendas.length} vendas
                   </Text>
                 )}
@@ -840,16 +905,22 @@ const VendasDoDia = () => {
             ) : filteredVendas.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={searchFilter ? "Nenhuma venda encontrada" : "Nenhuma venda realizada hoje"}
+                description={
+                  searchFilter
+                    ? "Nenhuma venda encontrada"
+                    : "Nenhuma venda realizada hoje"
+                }
                 style={{ marginTop: "40px" }}
               />
             ) : (
-              <div style={{ 
-                flex: 1, 
-                overflow: "auto",
-                minHeight: 0,
-                WebkitOverflowScrolling: "touch",
-              }}>
+              <div
+                style={{
+                  flex: 1,
+                  overflow: "auto",
+                  minHeight: 0,
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
                 {filteredVendas.map((venda) => {
                   const total = calcularTotal(venda.total, venda.desconto);
                   return (
@@ -859,8 +930,13 @@ const VendasDoDia = () => {
                           <Text style={mobileStyles.saleId}>
                             Venda #{venda.id}
                           </Text>
-                          <Text style={{ ...mobileStyles.saleTime, display: "block" }}>
-                            {moment(venda.createdAt).format("HH:mm")}
+                          <Text
+                            style={{
+                              ...mobileStyles.saleTime,
+                              display: "block",
+                            }}
+                          >
+                            {toSaoPauloTime(venda.createdAt).format("HH:mm")}
                           </Text>
                         </div>
                         <div style={{ textAlign: "right" }}>
@@ -870,7 +946,14 @@ const VendasDoDia = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <Tag
                           color={getPaymentColor(venda.metodoPagamento)}
                           style={{ margin: 0, fontSize: "10px" }}
@@ -896,7 +979,9 @@ const VendasDoDia = () => {
                           Ver
                         </Button>
 
-                        {venda.exclusionRequested && venda.exclusionStatus === "pending" && isAdmin ? (
+                        {venda.exclusionRequested &&
+                        venda.exclusionStatus === "pending" &&
+                        isAdmin ? (
                           <Button
                             type="primary"
                             icon={<CheckCircleOutlined />}
@@ -906,7 +991,8 @@ const VendasDoDia = () => {
                           >
                             Revisar
                           </Button>
-                        ) : !venda.exclusionRequested || venda.exclusionStatus === "rejected" ? (
+                        ) : !venda.exclusionRequested ||
+                          venda.exclusionStatus === "rejected" ? (
                           <Button
                             danger
                             icon={<DeleteOutlined />}
@@ -931,7 +1017,10 @@ const VendasDoDia = () => {
             open={exclusionModalVisible}
             onCancel={() => setExclusionModalVisible(false)}
             footer={[
-              <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
+              <Button
+                key="cancel"
+                onClick={() => setExclusionModalVisible(false)}
+              >
                 Cancelar
               </Button>,
               <Button
@@ -948,11 +1037,20 @@ const VendasDoDia = () => {
           >
             <Form form={exclusionForm} layout="vertical">
               {selectedVenda && (
-                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    background: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
                   <Text strong>Venda #{selectedVenda.id}</Text>
                   <br />
                   <Text type="secondary">
-                    {formatCurrency(calcularTotal(selectedVenda.total, selectedVenda.desconto))}
+                    {formatCurrency(
+                      calcularTotal(selectedVenda.total, selectedVenda.desconto)
+                    )}
                   </Text>
                 </div>
               )}
@@ -964,7 +1062,12 @@ const VendasDoDia = () => {
                   { min: 10, message: "Mínimo 10 caracteres" },
                 ]}
               >
-                <TextArea rows={3} placeholder="Descreva o motivo..." maxLength={500} showCount />
+                <TextArea
+                  rows={3}
+                  placeholder="Descreva o motivo..."
+                  maxLength={500}
+                  showCount
+                />
               </Form.Item>
             </Form>
           </Modal>
@@ -978,14 +1081,27 @@ const VendasDoDia = () => {
           >
             <Form form={reviewForm} layout="vertical">
               {selectedVenda && (
-                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    background: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
                   <Text strong>Venda #{selectedVenda.id}</Text>
                   <br />
-                  <Text type="secondary">Motivo: {selectedVenda.exclusionReason}</Text>
+                  <Text type="secondary">
+                    Motivo: {selectedVenda.exclusionReason}
+                  </Text>
                 </div>
               )}
               <Form.Item name="observacoes" label="Observações">
-                <TextArea rows={2} placeholder="Observações..." maxLength={500} />
+                <TextArea
+                  rows={2}
+                  placeholder="Observações..."
+                  maxLength={500}
+                />
               </Form.Item>
               <Row gutter={12}>
                 <Col span={12}>
@@ -1035,7 +1151,9 @@ const VendasDoDia = () => {
                     <Card
                       title={
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <DollarOutlined style={{ marginRight: 8, color: "#1890ff" }} />
+                          <DollarOutlined
+                            style={{ marginRight: 8, color: "#1890ff" }}
+                          />
                           <span>Resumo de Vendas do Dia</span>
                         </div>
                       }
@@ -1105,7 +1223,9 @@ const VendasDoDia = () => {
                   <Card
                     title={
                       <div style={{ display: "flex", alignItems: "center" }}>
-                        <DollarOutlined style={{ marginRight: 8, color: "#1890ff" }} />
+                        <DollarOutlined
+                          style={{ marginRight: 8, color: "#1890ff" }}
+                        />
                         <span>Vendas do Dia</span>
                       </div>
                     }

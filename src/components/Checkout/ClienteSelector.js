@@ -33,12 +33,13 @@ const ClienteSelector = ({
   selectedCliente,
   onClienteSelect,
   onClienteChange,
+  isMobile = false,
 }) => {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(isMobile); // Expandido por padrão no mobile
   const [form] = Form.useForm();
   const [alertInfo, setAlertInfo] = useState({
     show: false,
@@ -263,15 +264,27 @@ const ClienteSelector = ({
               </div>
             </div>
           ) : (
-            <Space style={{ width: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                gap: 8,
+                width: "100%",
+              }}
+            >
               <Select
                 showSearch
-                placeholder="Selecionar cliente..."
-                style={{ width: 250 }}
+                placeholder="Buscar cliente..."
+                style={{ flex: 1, width: isMobile ? "100%" : 250 }}
                 loading={loading}
                 filterOption={false}
                 onSearch={setSearchTerm}
                 onChange={handleClienteSelect}
+                size={isMobile ? "large" : "middle"}
+                dropdownStyle={{ zIndex: 99999, maxHeight: 300 }}
+                popupMatchSelectWidth={true}
+                virtual={false}
+                getPopupContainer={() => document.body}
                 notFoundContent={
                   loading ? <Spin size="small" /> : "Nenhum cliente encontrado"
                 }
@@ -293,10 +306,12 @@ const ClienteSelector = ({
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={openModal}
+                size={isMobile ? "large" : "middle"}
+                style={{ width: isMobile ? "100%" : "auto" }}
               >
-                Novo
+                Novo Cliente
               </Button>
-            </Space>
+            </div>
           )}
         </div>
       )}
@@ -306,15 +321,24 @@ const ClienteSelector = ({
         title={
           <Space>
             <PlusOutlined />
-            <span>Cadastrar Novo Cliente</span>
+            <span>Novo Cliente</span>
           </Space>
         }
         open={modalOpen}
         onCancel={closeModal}
         onOk={handleSubmit}
-        okText="Cadastrar e Selecionar"
+        okText="Cadastrar"
         cancelText="Cancelar"
-        width={600}
+        width={isMobile ? "100%" : 600}
+        centered={isMobile}
+        style={
+          isMobile ? { top: 0, margin: 0, maxWidth: "100vw", padding: 0 } : {}
+        }
+        bodyStyle={
+          isMobile
+            ? { padding: "12px", maxHeight: "70vh", overflowY: "auto" }
+            : {}
+        }
       >
         {alertInfo.show && (
           <Alert
@@ -325,9 +349,13 @@ const ClienteSelector = ({
           />
         )}
 
-        <Form form={form} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
+        <Form
+          form={form}
+          layout="vertical"
+          size={isMobile ? "large" : "middle"}
+        >
+          <Row gutter={[12, 0]}>
+            <Col span={isMobile ? 24 : 12}>
               <Form.Item
                 name="nome"
                 label="Nome"
@@ -336,20 +364,20 @@ const ClienteSelector = ({
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={isMobile ? 24 : 12}>
               <Form.Item name="cpf_cnpj" label="CPF/CNPJ">
-                <Input placeholder="000.000.000-00 ou 00.000.000/0000-00" />
+                <Input placeholder="000.000.000-00" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row gutter={[12, 0]}>
+            <Col span={isMobile ? 24 : 12}>
               <Form.Item name="email" label="Email">
                 <Input type="email" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={isMobile ? 24 : 12}>
               <Form.Item name="telefone" label="Telefone">
                 <Input placeholder="(00) 00000-0000" />
               </Form.Item>
@@ -360,18 +388,18 @@ const ClienteSelector = ({
             <Input placeholder="Rua, número, bairro" />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col span={8}>
+          <Row gutter={[12, 0]}>
+            <Col span={isMobile ? 12 : 8}>
               <Form.Item name="cidade" label="Cidade">
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={8}>
-              <Form.Item name="estado" label="Estado">
+            <Col span={isMobile ? 6 : 8}>
+              <Form.Item name="estado" label="UF">
                 <Input placeholder="UF" maxLength={2} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={isMobile ? 6 : 8}>
               <Form.Item name="cep" label="CEP">
                 <Input placeholder="00000-000" />
               </Form.Item>

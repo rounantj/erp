@@ -10,12 +10,14 @@ import {
   Spin,
   Pagination,
   Segmented,
+  Modal,
 } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
   ShoppingOutlined,
   FireOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import { searchProducts } from "helpers/api-integrator";
 
@@ -54,30 +56,44 @@ const ProductList = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(30);
   const isInitialMount = useRef(true);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [imageModalData, setImageModalData] = useState({ url: null, name: "" });
+
+  // Abrir modal de visualização da imagem
+  const openImageModal = (e, imageUrl, productName) => {
+    e.stopPropagation();
+    if (imageUrl) {
+      setImageModalData({ url: imageUrl, name: productName });
+      setImageModalVisible(true);
+    }
+  };
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Buscar produtos
-  const fetchProducts = useCallback(async (search, category, page) => {
-    setLoading(true);
-    try {
-      const result = await searchProducts({
-        search,
-        category,
-        page,
-        limit: pageSize,
-      });
+  const fetchProducts = useCallback(
+    async (search, category, page) => {
+      setLoading(true);
+      try {
+        const result = await searchProducts({
+          search,
+          category,
+          page,
+          limit: pageSize,
+        });
 
-      if (result.success) {
-        setProducts(result.data || []);
-        setTotal(result.total || 0);
+        if (result.success) {
+          setProducts(result.data || []);
+          setTotal(result.total || 0);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar produtos:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Erro ao buscar produtos:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize]);
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -93,10 +109,13 @@ const ProductList = ({
     }
   }, [debouncedSearchTerm, selectedCategory, fetchProducts]);
 
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-    fetchProducts(debouncedSearchTerm, selectedCategory, page);
-  }, [debouncedSearchTerm, selectedCategory, fetchProducts]);
+  const handlePageChange = useCallback(
+    (page) => {
+      setCurrentPage(page);
+      fetchProducts(debouncedSearchTerm, selectedCategory, page);
+    },
+    [debouncedSearchTerm, selectedCategory, fetchProducts]
+  );
 
   // Handler para busca por código
   const handleSearchSubmit = (value) => {
@@ -128,14 +147,16 @@ const ProductList = ({
   // ========== MOBILE RENDER ==========
   if (isMobile) {
     return (
-      <div style={{ 
-        height: "100%", 
-        display: "flex", 
-        flexDirection: "column",
-        overflow: "hidden",
-        maxWidth: "100%",
-        boxSizing: "border-box",
-      }}>
+      <div
+        style={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Search Bar Mobile */}
         <div style={{ marginBottom: "12px", flexShrink: 0 }}>
           <Search
@@ -147,7 +168,7 @@ const ProductList = ({
             size="large"
             allowClear
             enterButton={<SearchOutlined />}
-            style={{ 
+            style={{
               borderRadius: "12px",
             }}
           />
@@ -173,13 +194,15 @@ const ProductList = ({
         </div>
 
         {/* Products List Mobile */}
-        <div style={{ 
-          flex: 1, 
-          overflow: "auto", 
-          paddingBottom: "16px",
-          minHeight: 0,
-          WebkitOverflowScrolling: "touch",
-        }}>
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            paddingBottom: "16px",
+            minHeight: 0,
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {isLoading ? (
             <div style={{ textAlign: "center", padding: "40px" }}>
               <Spin />
@@ -194,14 +217,16 @@ const ProductList = ({
               style={{ marginTop: "40px" }}
             />
           ) : (
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
+              }}
+            >
               {products.map((product) => (
                 <div
                   key={product.id}
@@ -220,6 +245,43 @@ const ProductList = ({
                   }}
                   onClick={() => onAddProduct(product, 1)}
                 >
+                  {/* Miniatura do Produto */}
+                  <div
+                    onClick={(e) =>
+                      openImageModal(e, product.imageUrl, product.descricao)
+                    }
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      background: product.imageUrl ? "#fff" : "#f5f5f5",
+                      border: "1px solid #e8e8e8",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 10,
+                      flexShrink: 0,
+                      cursor: product.imageUrl ? "pointer" : "default",
+                    }}
+                  >
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.descricao}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <PictureOutlined
+                        style={{ fontSize: 16, color: "#bfbfbf" }}
+                      />
+                    )}
+                  </div>
+
                   <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                     <Text
                       strong
@@ -235,11 +297,22 @@ const ProductList = ({
                     >
                       {product.descricao?.toUpperCase()}
                     </Text>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <Tag
-                        color={product.categoria?.toLowerCase() === "serviço" ? "green" : "blue"}
-                        style={{ 
-                          margin: 0, 
+                        color={
+                          product.categoria?.toLowerCase() === "serviço"
+                            ? "green"
+                            : "blue"
+                        }
+                        style={{
+                          margin: 0,
                           borderRadius: "6px",
                           fontSize: "10px",
                         }}
@@ -251,7 +324,13 @@ const ProductList = ({
                       </Text>
                     </div>
                   </div>
-                  <div style={{ textAlign: "right", marginLeft: "8px", flexShrink: 0 }}>
+                  <div
+                    style={{
+                      textAlign: "right",
+                      marginLeft: "8px",
+                      flexShrink: 0,
+                    }}
+                  >
                     <Text
                       strong
                       style={{
@@ -269,7 +348,8 @@ const ProductList = ({
                       style={{
                         marginTop: "4px",
                         borderRadius: "8px",
-                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        background:
+                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                         border: "none",
                         padding: "0 8px",
                       }}
@@ -289,12 +369,14 @@ const ProductList = ({
 
         {/* Pagination Mobile */}
         {!isLoading && products.length > 0 && total > pageSize && (
-          <div style={{ 
-            padding: "12px 0", 
-            background: "#f8f9fa",
-            borderRadius: "12px",
-            textAlign: "center",
-          }}>
+          <div
+            style={{
+              padding: "12px 0",
+              background: "#f8f9fa",
+              borderRadius: "12px",
+              textAlign: "center",
+            }}
+          >
             <Pagination
               current={currentPage}
               total={total}
@@ -307,6 +389,30 @@ const ProductList = ({
             />
           </div>
         )}
+
+        {/* Modal de Visualização da Imagem - Mobile */}
+        <Modal
+          open={imageModalVisible}
+          onCancel={() => setImageModalVisible(false)}
+          footer={null}
+          width="90%"
+          style={{ maxWidth: 500 }}
+          centered
+          title={imageModalData.name}
+        >
+          <div style={{ textAlign: "center" }}>
+            <img
+              src={imageModalData.url}
+              alt={imageModalData.name}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "60vh",
+                objectFit: "contain",
+                borderRadius: 8,
+              }}
+            />
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -380,7 +486,14 @@ const ProductList = ({
       </div>
 
       {/* Products List Desktop */}
-      <div style={{ flex: 1, overflowY: "auto", paddingRight: "4px", minHeight: 0 }}>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          paddingRight: "4px",
+          minHeight: 0,
+        }}
+      >
         {isLoading ? (
           <div style={{ textAlign: "center", padding: "40px 20px" }}>
             <Spin size="small" />
@@ -413,13 +526,70 @@ const ProductList = ({
                 }}
                 onClick={() => onAddProduct(product, 1)}
               >
-                <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Miniatura do Produto */}
+                  <div
+                    onClick={(e) =>
+                      openImageModal(e, product.imageUrl, product.descricao)
+                    }
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 6,
+                      overflow: "hidden",
+                      background: product.imageUrl ? "#fff" : "#f5f5f5",
+                      border: "1px solid #e8e8e8",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 8,
+                      flexShrink: 0,
+                      cursor: product.imageUrl ? "pointer" : "default",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (product.imageUrl) {
+                        e.currentTarget.style.transform = "scale(1.1)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                    }}
+                  >
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.descricao}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <PictureOutlined
+                        style={{ fontSize: 14, color: "#bfbfbf" }}
+                      />
+                    )}
+                  </div>
+
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Text strong style={{ fontSize: "12px", display: "block" }}>
                       {product.descricao?.toUpperCase()}
                     </Text>
                     <Tag
-                      color={product.categoria?.toLowerCase() === "serviço" ? "green" : "blue"}
+                      color={
+                        product.categoria?.toLowerCase() === "serviço"
+                          ? "green"
+                          : "blue"
+                      }
                       style={{ marginTop: "2px" }}
                     >
                       {product.categoria?.toUpperCase()}
@@ -464,6 +634,29 @@ const ProductList = ({
           />
         </div>
       )}
+
+      {/* Modal de Visualização da Imagem */}
+      <Modal
+        open={imageModalVisible}
+        onCancel={() => setImageModalVisible(false)}
+        footer={null}
+        width={isMobile ? "90%" : 500}
+        centered
+        title={imageModalData.name}
+      >
+        <div style={{ textAlign: "center" }}>
+          <img
+            src={imageModalData.url}
+            alt={imageModalData.name}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "60vh",
+              objectFit: "contain",
+              borderRadius: 8,
+            }}
+          />
+        </div>
+      </Modal>
     </Card>
   );
 };

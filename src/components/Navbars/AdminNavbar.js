@@ -1,35 +1,41 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Layout, Button, Dropdown, Space } from "antd";
-import {
-  MenuOutlined,
-  DownOutlined,
-  UserOutlined,
-  LogoutOutlined,
-} from "@ant-design/icons";
+import { Layout, Button, Space, Avatar, Divider, Tooltip } from "antd";
+import { MenuOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
+import { useCompany } from "context/CompanyContext";
 import routes from "routes.js";
 
 const { Header } = Layout;
 
+// Função para ajustar cor (escurecer)
+const adjustColor = (hex, percent) => {
+  if (!hex || !hex.startsWith("#")) return hex;
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+  r = Math.max(0, Math.min(255, r + percent));
+  g = Math.max(0, Math.min(255, g + percent));
+  b = Math.max(0, Math.min(255, b + percent));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+};
+
 function AdminNavbar() {
   const location = useLocation();
-  // Adicionando estado para detectar dispositivos móveis
   const [isMobile, setIsMobile] = useState(false);
+  const { user, setUser } = useContext(UserContext);
+  const { sidebarColor } = useCompany();
+  
+  // Usar cor da empresa ou fallback
+  const primaryColor = sidebarColor || "#667eea";
+  const gradientColor = adjustColor(primaryColor, -30);
 
-  // Hook para detectar tamanho da tela
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
-    // Verificar tamanho inicial
     checkMobile();
-
-    // Adicionar listener para mudanças de tamanho
     window.addEventListener("resize", checkMobile);
-
-    // Limpar listener
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
@@ -50,7 +56,6 @@ function AdminNavbar() {
       document.body.appendChild(node);
     }
   };
-  const { user, setUser } = useContext(UserContext);
 
   const getBrandText = () => {
     for (let i = 0; i < routes.length; i++) {
@@ -58,128 +63,140 @@ function AdminNavbar() {
         return routes[i].name;
       }
     }
-    return "Brand";
+    return "Dashboard";
   };
 
   const logout = () => {
-    console.log("Saindo...");
     setUser(null);
     localStorage.clear();
     window.location.replace("/");
   };
 
-  // Dropdown items para notificações
-  const notificationItems = [];
-
-  // Menu items para o dropdown do usuário
-  const userMenuItems = [
-    {
-      key: "logout",
-      label: (
-        <span onClick={logout} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <LogoutOutlined style={{ color: "#ff4d4f" }} />
-          <span>Sair</span>
-        </span>
-      ),
-    },
-  ];
+  // Pegar iniciais do email para o avatar
+  const getInitials = () => {
+    const email = user?.user?.email || "";
+    return email.charAt(0).toUpperCase();
+  };
 
   return (
     <Header
       style={{
-        background: "#fff",
-        padding: isMobile ? "0 10px" : "0 20px",
-        boxShadow: "0 1px 4px rgba(0,21,41,.08)",
+        background: `linear-gradient(135deg, ${primaryColor} 0%, ${gradientColor} 100%)`,
+        padding: isMobile ? "0 12px" : "0 24px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        height: "auto",
-        minHeight: "64px",
-        lineHeight: "normal",
+        height: "64px",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}
-      className="responsive-header"
     >
-      <div className="d-flex align-items-center">
+      {/* Lado esquerdo - Menu e Título */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <Button
-          type="default"
-          className="d-flex justify-content-center align-items-center rounded-circle p-2"
+          type="text"
           onClick={mobileSidebarToggle}
-          icon={<MenuOutlined />}
-          shape="circle"
-          style={{ marginRight: "10px" }}
+          icon={<MenuOutlined style={{ fontSize: "18px" }} />}
+          style={{
+            color: "#fff",
+            width: "40px",
+            height: "40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.1)",
+          }}
         />
         <span
           style={{
-            fontSize: isMobile ? "16px" : "18px",
-            fontWeight: "bold",
-            color: "rgba(0, 0, 0, 0.85)",
-            marginLeft: "10px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: isMobile ? "150px" : "auto",
+            fontSize: isMobile ? "16px" : "20px",
+            fontWeight: "600",
+            color: "#fff",
+            letterSpacing: "-0.5px",
           }}
-          className="brand-text"
         >
           {getBrandText()}
         </span>
       </div>
 
-      {/* Área de notificações (opcional) */}
-      {notificationItems.length > 0 ? (
-        <div
-          className={isMobile ? "notification-mobile" : "notification-desktop"}
-        >
-          <Space size={isMobile ? "small" : "large"}>
-            <Dropdown
-              menu={{ items: notificationItems }}
-              placement="bottomRight"
-            >
-              <Button type="text">
-                <i className="nc-icon nc-planet"></i>
-                <span className="notification">5</span>
-                <span className={isMobile ? "d-none" : "d-lg-none ml-1"}>
-                  Notification
-                </span>
-              </Button>
-            </Dropdown>
-          </Space>
-        </div>
-      ) : null}
-
-      {/* Área do usuário com dropdown para logout */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {user && (
-          <Dropdown
-            menu={{ items: userMenuItems }}
-            placement="bottomRight"
-            trigger={["click"]}
+      {/* Lado direito - Usuário e Logout */}
+      {user && (
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Info do usuário */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              background: "rgba(255,255,255,0.1)",
+              padding: "6px 12px",
+              borderRadius: "24px",
+            }}
           >
-            <div
+            <Avatar
+              size={32}
               style={{
-                cursor: "pointer",
+                backgroundColor: "#fff",
+                color: primaryColor,
+                fontWeight: "bold",
+              }}
+            >
+              {getInitials()}
+            </Avatar>
+            {!isMobile && (
+              <div style={{ lineHeight: 1.2 }}>
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    maxWidth: "180px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {user?.user?.email}
+                </div>
+                <div
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    fontSize: "11px",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {user?.user?.role || "Usuário"}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Botão Logout */}
+          <Tooltip title="Sair do sistema">
+            <Button
+              type="primary"
+              danger
+              icon={<LogoutOutlined />}
+              onClick={logout}
+              style={{
                 display: "flex",
                 alignItems: "center",
-                padding: "8px 12px",
+                justifyContent: "center",
+                gap: "6px",
+                height: "40px",
                 borderRadius: "8px",
-                background: "#f5f5f5",
-                transition: "background 0.2s",
+                fontWeight: "500",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
               }}
-              className="user-dropdown-trigger"
             >
-              <Space>
-                <UserOutlined style={{ fontSize: "16px", color: "#1890ff" }} />
-                {!isMobile ? (
-                  <span style={{ color: "#333", fontSize: "14px" }}>
-                    {user?.user?.email} | <b>{user?.user?.role ?? "Admin"}</b>
-                  </span>
-                ) : null}
-                <DownOutlined style={{ fontSize: "12px", color: "#999" }} />
-              </Space>
-            </div>
-          </Dropdown>
-        )}
-      </div>
+              {!isMobile && "Sair"}
+            </Button>
+          </Tooltip>
+        </div>
+      )}
     </Header>
   );
 }

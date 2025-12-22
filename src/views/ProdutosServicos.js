@@ -29,6 +29,9 @@ import {
   ConfigProvider,
   Spin,
   FloatButton,
+  Upload,
+  Avatar,
+  message,
 } from "antd";
 import {
   SearchOutlined,
@@ -45,6 +48,8 @@ import {
   HomeOutlined,
   AppstoreOutlined,
   MenuOutlined,
+  UploadOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import BarcodeScanner from "components/Checkout/BarcodeScanner";
 import { UserContext } from "context/UserContext";
@@ -54,6 +59,7 @@ import {
   getProducts,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
 } from "helpers/api-integrator";
 
 const { Header, Content } = Layout;
@@ -192,6 +198,18 @@ const ProductAndServiceTable = () => {
   const [scannerVisible, setScannerVisible] = useState(false);
   const [eanScannerVisible, setEanScannerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [imageModalData, setImageModalData] = useState({ url: null, name: "" });
+
+  // Abrir modal de visualização da imagem
+  const openImageModal = (imageUrl, productName) => {
+    if (imageUrl) {
+      setImageModalData({ url: imageUrl, name: productName });
+      setImageModalVisible(true);
+    }
+  };
 
   // References and context
   const { user } = useContext(UserContext);
@@ -209,7 +227,9 @@ const ProductAndServiceTable = () => {
 
   // Format money values
   const formatCurrency = (value) => {
-    return `R$ ${parseFloat(value || 0).toFixed(2).replace(".", ",")}`;
+    return `R$ ${parseFloat(value || 0)
+      .toFixed(2)
+      .replace(".", ",")}`;
   };
 
   // Calculate product statistics
@@ -246,6 +266,7 @@ const ProductAndServiceTable = () => {
           ncm: item.ncm || "",
           valor: parseFloat(item.valor) || 0,
           descricao: item.descricao || "",
+          imageUrl: item.imageUrl || null,
         }));
 
         setProducts(normalizedData);
@@ -374,6 +395,7 @@ const ProductAndServiceTable = () => {
   const handleEdit = (record) => {
     setEditingProduct(record);
     form.setFieldsValue(record);
+    setImagePreview(record.imageUrl || null);
     setModalVisible(true);
   };
 
@@ -395,11 +417,112 @@ const ProductAndServiceTable = () => {
   const handleAdd = () => {
     setEditingProduct(null);
     form.resetFields();
+    setImagePreview(null);
     setModalVisible(true);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (file) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("Apenas imagens são permitidas!");
+      return false;
+    }
+
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error("A imagem deve ter menos de 2MB!");
+      return false;
+    }
+
+    // Se estiver editando, faz upload direto
+    if (editingProduct?.id) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result;
+        setImagePreview(base64);
+
+        try {
+          setUploadingImage(true);
+          const result = await uploadProductImage(editingProduct.id, base64);
+
+          if (result.success) {
+            message.success("Imagem atualizada com sucesso!");
+            setImagePreview(result.data.imageUrl);
+          } else {
+            message.error(result.message || "Erro ao enviar imagem");
+          }
+        } catch (error) {
+          message.error("Erro ao fazer upload da imagem");
+        } finally {
+          setUploadingImage(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Se for novo produto, apenas mostra preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+        message.info("A imagem será salva após criar o produto");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    return false; // Previne upload automático
   };
 
   // Define table columns
   const columns = [
+    {
+      title: "Imagem",
+      dataIndex: "imageUrl",
+      key: "image",
+      width: 80,
+      render: (imageUrl, record) => (
+        <div
+          onClick={() => openImageModal(imageUrl, record.descricao)}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 8,
+            overflow: "hidden",
+            background: imageUrl ? "#fff" : "#f5f5f5",
+            border: "1px solid #e8e8e8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
+            cursor: imageUrl ? "pointer" : "default",
+            transition: "transform 0.2s, box-shadow 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            if (imageUrl) {
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.06)";
+          }}
+        >
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Produto"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <PictureOutlined style={{ fontSize: 20, color: "#bfbfbf" }} />
+          )}
+        </div>
+      ),
+    },
     {
       title: "Categoria",
       dataIndex: "categoria",
@@ -502,12 +625,12 @@ const ProductAndServiceTable = () => {
   const handleBarcodeDetected = (barcode) => {
     setScannerVisible(false);
     setSearchText(barcode);
-    
+
     // Verificar se encontrou algum produto
     const found = products.find(
       (p) => p.ean === barcode || p.id?.toString() === barcode
     );
-    
+
     if (found) {
       Modal.success({
         title: "Produto encontrado!",
@@ -536,7 +659,8 @@ const ProductAndServiceTable = () => {
   };
 
   // Verificar permissão de edição
-  const canEdit = user?.user?.role === "admin" || user?.user?.role === "atendente";
+  const canEdit =
+    user?.user?.role === "admin" || user?.user?.role === "atendente";
 
   // ========== RENDER MOBILE ==========
   if (isMobile) {
@@ -552,23 +676,45 @@ const ProductAndServiceTable = () => {
         <div style={mobileStyles.container}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
                 {/* Botão Menu */}
                 <div
                   onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    const isOpen =
+                      document.documentElement.classList.contains("nav-open");
                     if (isOpen) {
                       document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                     } else {
                       document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                       var node = document.createElement("div");
                       node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.style.cssText =
+                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                       node.onclick = function () {
                         this.parentElement.removeChild(this);
                         document.documentElement.classList.remove("nav-open");
@@ -617,7 +763,9 @@ const ProductAndServiceTable = () => {
                 <span style={mobileStyles.statLabel}>Produtos</span>
               </div>
               <div style={mobileStyles.statCard}>
-                <span style={mobileStyles.statValue}>{productStats.categories}</span>
+                <span style={mobileStyles.statValue}>
+                  {productStats.categories}
+                </span>
                 <span style={mobileStyles.statLabel}>Categorias</span>
               </div>
               <div style={mobileStyles.statCard}>
@@ -644,12 +792,14 @@ const ProductAndServiceTable = () => {
             </div>
 
             {/* Products List */}
-            <div style={{ 
-              flex: 1, 
-              overflow: "auto", 
-              minHeight: 0,
-              WebkitOverflowScrolling: "touch",
-            }}>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                minHeight: 0,
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {loading ? (
                 <div style={{ textAlign: "center", padding: "40px" }}>
                   <Spin size="large" />
@@ -664,23 +814,89 @@ const ProductAndServiceTable = () => {
                   style={{ marginTop: "40px" }}
                 />
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
                   {filteredProducts.map((product) => (
                     <div key={product.id} style={mobileStyles.productCard}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ flex: 1, minWidth: 0, marginRight: "12px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        {/* Miniatura do Produto */}
+                        <div
+                          onClick={() =>
+                            openImageModal(product.imageUrl, product.descricao)
+                          }
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 8,
+                            overflow: "hidden",
+                            background: product.imageUrl ? "#fff" : "#f5f5f5",
+                            border: "1px solid #e8e8e8",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginRight: 12,
+                            flexShrink: 0,
+                            cursor: product.imageUrl ? "pointer" : "default",
+                          }}
+                        >
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.descricao}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <PictureOutlined
+                              style={{ fontSize: 18, color: "#bfbfbf" }}
+                            />
+                          )}
+                        </div>
+
+                        <div
+                          style={{ flex: 1, minWidth: 0, marginRight: "12px" }}
+                        >
                           <div style={mobileStyles.productName}>
                             {product.descricao?.toUpperCase()}
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px", flexWrap: "wrap" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              marginBottom: "6px",
+                              flexWrap: "wrap",
+                            }}
+                          >
                             <Tag
-                              color={product.categoria?.toLowerCase() === "serviço" ? "green" : "blue"}
+                              color={
+                                product.categoria?.toLowerCase() === "serviço"
+                                  ? "green"
+                                  : "blue"
+                              }
                               style={mobileStyles.productCategory}
                             >
                               {product.categoria?.toUpperCase()}
                             </Tag>
                             {product.ean && (
-                              <Text type="secondary" style={{ fontSize: "10px" }}>
+                              <Text
+                                type="secondary"
+                                style={{ fontSize: "10px" }}
+                              >
                                 <BarcodeOutlined /> {product.ean}
                               </Text>
                             )}
@@ -689,9 +905,15 @@ const ProductAndServiceTable = () => {
                             {formatCurrency(product.valor)}
                           </div>
                         </div>
-                        
+
                         {canEdit && (
-                          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              flexShrink: 0,
+                            }}
+                          >
                             <Button
                               type="primary"
                               icon={<EditOutlined />}
@@ -717,13 +939,16 @@ const ProductAndServiceTable = () => {
 
             {/* Quantidade de resultados */}
             {!loading && filteredProducts.length > 0 && (
-              <div style={{ 
-                textAlign: "center", 
-                padding: "8px 0",
-                flexShrink: 0,
-              }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "8px 0",
+                  flexShrink: 0,
+                }}
+              >
                 <Text type="secondary" style={{ fontSize: "12px" }}>
-                  {filteredProducts.length} {filteredProducts.length === 1 ? "produto" : "produtos"}
+                  {filteredProducts.length}{" "}
+                  {filteredProducts.length === 1 ? "produto" : "produtos"}
                 </Text>
               </div>
             )}
@@ -746,11 +971,7 @@ const ProductAndServiceTable = () => {
 
           {/* Modais */}
           <Modal
-            title={
-              editingProduct
-                ? "Editar Produto"
-                : "Adicionar Produto"
-            }
+            title={editingProduct ? "Editar Produto" : "Adicionar Produto"}
             open={modalVisible}
             onCancel={() => setModalVisible(false)}
             footer={null}
@@ -774,9 +995,7 @@ const ProductAndServiceTable = () => {
               <Form.Item
                 name="descricao"
                 label="Nome do Produto"
-                rules={[
-                  { required: true, message: "Informe o nome!" },
-                ]}
+                rules={[{ required: true, message: "Informe o nome!" }]}
               >
                 <Input placeholder="Nome/descrição do produto" size="large" />
               </Form.Item>
@@ -815,10 +1034,7 @@ const ProductAndServiceTable = () => {
                 </Col>
               </Row>
 
-              <Form.Item
-                name="ean"
-                label="Código de Barras (EAN)"
-              >
+              <Form.Item name="ean" label="Código de Barras (EAN)">
                 <Input
                   placeholder="Código de barras"
                   size="large"
@@ -831,11 +1047,38 @@ const ProductAndServiceTable = () => {
                 />
               </Form.Item>
 
-              <Form.Item
-                name="ncm"
-                label="NCM (opcional)"
-              >
+              <Form.Item name="ncm" label="NCM (opcional)">
                 <Input placeholder="Código NCM" size="large" />
+              </Form.Item>
+
+              {/* Image Upload - Mobile */}
+              <Form.Item label="Imagem do Produto">
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <Avatar
+                    src={imagePreview}
+                    icon={!imagePreview && <PictureOutlined />}
+                    size={64}
+                    shape="square"
+                    style={{
+                      background: imagePreview ? "transparent" : "#f0f0f0",
+                    }}
+                  />
+                  <Upload
+                    beforeUpload={handleImageUpload}
+                    showUploadList={false}
+                    accept="image/*"
+                  >
+                    <Button
+                      icon={<UploadOutlined />}
+                      loading={uploadingImage}
+                      size="large"
+                    >
+                      {imagePreview ? "Trocar" : "Enviar"}
+                    </Button>
+                  </Upload>
+                </div>
               </Form.Item>
 
               <Form.Item style={{ marginBottom: 0, marginTop: "16px" }}>
@@ -880,10 +1123,18 @@ const ProductAndServiceTable = () => {
             <div style={{ padding: "16px 0" }}>
               <p>Tem certeza que deseja excluir este produto?</p>
               {productToDelete && (
-                <div style={{ background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                <div
+                  style={{
+                    background: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
                   <Text strong>{productToDelete.descricao}</Text>
                   <br />
-                  <Text type="secondary">{formatCurrency(productToDelete.valor)}</Text>
+                  <Text type="secondary">
+                    {formatCurrency(productToDelete.valor)}
+                  </Text>
                 </div>
               )}
             </div>
@@ -900,6 +1151,30 @@ const ProductAndServiceTable = () => {
             onClose={() => setEanScannerVisible(false)}
             onDetect={handleEanDetected}
           />
+
+          {/* Modal de Visualização da Imagem */}
+          <Modal
+            open={imageModalVisible}
+            onCancel={() => setImageModalVisible(false)}
+            footer={null}
+            width="90%"
+            style={{ maxWidth: 600 }}
+            centered
+            title={imageModalData.name}
+          >
+            <div style={{ textAlign: "center" }}>
+              <img
+                src={imageModalData.url}
+                alt={imageModalData.name}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+          </Modal>
         </div>
       </ConfigProvider>
     );
@@ -961,7 +1236,14 @@ const ProductAndServiceTable = () => {
         </Card>
 
         <Card bordered={false} className="shadow-sm">
-          <div style={{ marginBottom: 16, display: "flex", gap: "8px", alignItems: "center" }}>
+          <div
+            style={{
+              marginBottom: 16,
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+            }}
+          >
             <Input
               placeholder="Buscar produtos..."
               prefix={<SearchOutlined />}
@@ -1116,6 +1398,63 @@ const ProductAndServiceTable = () => {
               </Col>
             </Row>
 
+            {/* Image Upload Section */}
+            <Form.Item label="Imagem do Produto">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    border: "2px dashed #d9d9d9",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#fafafa",
+                    overflow: "hidden",
+                  }}
+                >
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <PictureOutlined
+                      style={{ fontSize: "32px", color: "#999" }}
+                    />
+                  )}
+                </div>
+                <div>
+                  <Upload
+                    beforeUpload={handleImageUpload}
+                    showUploadList={false}
+                    accept="image/*"
+                  >
+                    <Button icon={<UploadOutlined />} loading={uploadingImage}>
+                      {imagePreview ? "Trocar Imagem" : "Enviar Imagem"}
+                    </Button>
+                  </Upload>
+                  <div style={{ marginTop: "8px" }}>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      PNG, JPG ou GIF. Máx 2MB.
+                    </Text>
+                  </div>
+                </div>
+              </div>
+            </Form.Item>
+
             <Divider />
 
             <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
@@ -1197,6 +1536,29 @@ const ProductAndServiceTable = () => {
           onClose={() => setEanScannerVisible(false)}
           onDetect={handleEanDetected}
         />
+
+        {/* Modal de Visualização da Imagem */}
+        <Modal
+          open={imageModalVisible}
+          onCancel={() => setImageModalVisible(false)}
+          footer={null}
+          width={600}
+          centered
+          title={imageModalData.name}
+        >
+          <div style={{ textAlign: "center" }}>
+            <img
+              src={imageModalData.url}
+              alt={imageModalData.name}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: 8,
+              }}
+            />
+          </div>
+        </Modal>
       </Content>
     </Layout>
   );
