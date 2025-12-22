@@ -27,6 +27,7 @@ import {
   Form,
   Modal,
   Popconfirm,
+  Input,
 } from "antd";
 import {
   BarChartOutlined,
@@ -867,9 +868,13 @@ function Vendas() {
     const searchLower = searchFilter.toLowerCase();
     return (
       venda.id.toString().includes(searchFilter) ||
-      (venda.nome_cliente && venda.nome_cliente.toLowerCase().includes(searchLower)) ||
-      (venda.metodoPagamento && venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
-      calcularTotal(venda.total, venda.desconto).toFixed(2).includes(searchFilter)
+      (venda.nome_cliente &&
+        venda.nome_cliente.toLowerCase().includes(searchLower)) ||
+      (venda.metodoPagamento &&
+        venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
+      calcularTotal(venda.total, venda.desconto)
+        .toFixed(2)
+        .includes(searchFilter)
     );
   });
 
@@ -880,23 +885,45 @@ function Vendas() {
         <div style={mobileStyles.container}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
                 {/* Botão Menu */}
                 <div
                   onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
+                    const isOpen =
+                      document.documentElement.classList.contains("nav-open");
                     if (isOpen) {
                       document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                     } else {
                       document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
+                      const existingBodyClick =
+                        document.getElementById("bodyClick");
+                      if (existingBodyClick)
+                        existingBodyClick.parentElement.removeChild(
+                          existingBodyClick
+                        );
                       var node = document.createElement("div");
                       node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
+                      node.style.cssText =
+                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
                       node.onclick = function () {
                         this.parentElement.removeChild(this);
                         document.documentElement.classList.remove("nav-open");
@@ -953,24 +980,49 @@ function Vendas() {
             {/* Summary Cards */}
             <div style={mobileStyles.summaryGrid}>
               <div style={mobileStyles.summaryCard}>
-                <ShoppingCartOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <ShoppingCartOutlined
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginBottom: "4px",
+                  }}
+                />
                 <span style={mobileStyles.summaryValue}>{vendas.length}</span>
                 <span style={mobileStyles.summaryLabel}>Vendas</span>
               </div>
               <div style={mobileStyles.summaryCard}>
-                <UserOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
-                <span style={mobileStyles.summaryValue}>{calcularClientesUnicos()}</span>
+                <UserOutlined
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginBottom: "4px",
+                  }}
+                />
+                <span style={mobileStyles.summaryValue}>
+                  {calcularClientesUnicos()}
+                </span>
                 <span style={mobileStyles.summaryLabel}>Clientes</span>
               </div>
               <div style={mobileStyles.summaryCard}>
-                <BarChartOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <BarChartOutlined
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginBottom: "4px",
+                  }}
+                />
                 <span style={mobileStyles.summaryValue}>
-                  {formatCurrency(calcularValorMedioPorVenda()).replace("R$ ", "")}
+                  {formatCurrency(calcularValorMedioPorVenda()).replace(
+                    "R$ ",
+                    ""
+                  )}
                 </span>
                 <span style={mobileStyles.summaryLabel}>Ticket Médio</span>
               </div>
               <div style={mobileStyles.summaryCard}>
-                <DollarOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
+                <DollarOutlined
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginBottom: "4px",
+                  }}
+                />
                 <span style={mobileStyles.summaryValue}>
                   {formatCurrency(calcularTotalPorPeriodo()).replace("R$ ", "")}
                 </span>
@@ -1001,7 +1053,14 @@ function Vendas() {
                   size="middle"
                 />
                 {searchFilter && (
-                  <Text type="secondary" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "11px",
+                      marginTop: "4px",
+                      display: "block",
+                    }}
+                  >
                     {filteredVendas.length} de {vendas.length} vendas
                   </Text>
                 )}
@@ -1018,16 +1077,22 @@ function Vendas() {
             ) : filteredVendas.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={searchFilter ? "Nenhuma venda encontrada" : "Nenhuma venda no período"}
+                description={
+                  searchFilter
+                    ? "Nenhuma venda encontrada"
+                    : "Nenhuma venda no período"
+                }
                 style={{ marginTop: "40px" }}
               />
             ) : (
-              <div style={{ 
-                flex: 1, 
-                overflow: "auto",
-                minHeight: 0,
-                WebkitOverflowScrolling: "touch",
-              }}>
+              <div
+                style={{
+                  flex: 1,
+                  overflow: "auto",
+                  minHeight: 0,
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
                 {filteredVendas.map((venda) => {
                   const total = calcularTotal(venda.total, venda.desconto);
                   return (
@@ -1037,7 +1102,12 @@ function Vendas() {
                           <Text style={mobileStyles.saleId}>
                             Venda #{venda.id}
                           </Text>
-                          <Text style={{ ...mobileStyles.saleTime, display: "block" }}>
+                          <Text
+                            style={{
+                              ...mobileStyles.saleTime,
+                              display: "block",
+                            }}
+                          >
                             {moment(venda.createdAt).format("DD/MM HH:mm")}
                           </Text>
                           {venda.nome_cliente && (
@@ -1053,9 +1123,22 @@ function Vendas() {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <Tag
-                          color={venda.metodoPagamento === "dinheiro" ? "green" : venda.metodoPagamento === "pix" ? "blue" : "purple"}
+                          color={
+                            venda.metodoPagamento === "dinheiro"
+                              ? "green"
+                              : venda.metodoPagamento === "pix"
+                              ? "blue"
+                              : "purple"
+                          }
                           style={{ margin: 0, fontSize: "10px" }}
                         >
                           {venda.metodoPagamento?.toUpperCase()}
@@ -1079,7 +1162,9 @@ function Vendas() {
                           Ver
                         </Button>
 
-                        {venda.exclusionRequested && venda.exclusionStatus === "pending" && isAdmin ? (
+                        {venda.exclusionRequested &&
+                        venda.exclusionStatus === "pending" &&
+                        isAdmin ? (
                           <Button
                             type="primary"
                             icon={<CheckCircleOutlined />}
@@ -1089,7 +1174,8 @@ function Vendas() {
                           >
                             Revisar
                           </Button>
-                        ) : !venda.exclusionRequested || venda.exclusionStatus === "rejected" ? (
+                        ) : !venda.exclusionRequested ||
+                          venda.exclusionStatus === "rejected" ? (
                           <Button
                             danger
                             icon={<DeleteOutlined />}
@@ -1114,7 +1200,10 @@ function Vendas() {
             open={exclusionModalVisible}
             onCancel={() => setExclusionModalVisible(false)}
             footer={[
-              <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
+              <Button
+                key="cancel"
+                onClick={() => setExclusionModalVisible(false)}
+              >
                 Cancelar
               </Button>,
               <Button
@@ -1131,11 +1220,20 @@ function Vendas() {
           >
             <Form form={exclusionForm} layout="vertical">
               {selectedVenda && (
-                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    background: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
                   <Text strong>Venda #{selectedVenda.id}</Text>
                   <br />
                   <Text type="secondary">
-                    {formatCurrency(calcularTotal(selectedVenda.total, selectedVenda.desconto))}
+                    {formatCurrency(
+                      calcularTotal(selectedVenda.total, selectedVenda.desconto)
+                    )}
                   </Text>
                 </div>
               )}
@@ -1147,7 +1245,12 @@ function Vendas() {
                   { min: 10, message: "Mínimo 10 caracteres" },
                 ]}
               >
-                <TextArea rows={3} placeholder="Descreva o motivo..." maxLength={500} showCount />
+                <TextArea
+                  rows={3}
+                  placeholder="Descreva o motivo..."
+                  maxLength={500}
+                  showCount
+                />
               </Form.Item>
             </Form>
           </Modal>
@@ -1161,14 +1264,27 @@ function Vendas() {
           >
             <Form form={reviewForm} layout="vertical">
               {selectedVenda && (
-                <div style={{ marginBottom: 16, background: "#f5f5f5", padding: 12, borderRadius: 8 }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    background: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
                   <Text strong>Venda #{selectedVenda.id}</Text>
                   <br />
-                  <Text type="secondary">Motivo: {selectedVenda.exclusionReason}</Text>
+                  <Text type="secondary">
+                    Motivo: {selectedVenda.exclusionReason}
+                  </Text>
                 </div>
               )}
               <Form.Item name="observacoes" label="Observações">
-                <TextArea rows={2} placeholder="Observações..." maxLength={500} />
+                <TextArea
+                  rows={2}
+                  placeholder="Observações..."
+                  maxLength={500}
+                />
               </Form.Item>
               <Row gutter={12}>
                 <Col span={12}>
