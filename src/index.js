@@ -53,14 +53,18 @@ import AdminLayout from "layouts/Admin.js";
 import { UserProvider } from "context/UserContext";
 import { CompanyProvider } from "context/CompanyContext";
 import { SubscriptionProvider } from "context/SubscriptionContext";
+import { ClerkProvider } from "@clerk/clerk-react";
+
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
-  <UserProvider>
-    <CompanyProvider>
-      <SubscriptionProvider>
-        <BrowserRouter>
+  <ClerkProvider publishableKey={clerkPubKey}>
+    <UserProvider>
+      <CompanyProvider>
+        <SubscriptionProvider>
+          <BrowserRouter>
           <Switch>
             <Route
               path="/admin"
@@ -78,4 +82,5 @@ root.render(
       </SubscriptionProvider>
     </CompanyProvider>
   </UserProvider>
+  </ClerkProvider>
 );

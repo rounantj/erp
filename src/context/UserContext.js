@@ -4,7 +4,10 @@ import React, {
   useMemo,
   useCallback,
   useContext,
+  useEffect,
 } from "react";
+import { useUser as useClerkUser, useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { syncClerkUser } from "helpers/clerk-sync";
 
 export const UserContext = createContext();
 
@@ -19,6 +22,9 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const clerkUser = useClerkUser();
+  const { getToken, isSignedIn } = useClerkAuth();
 
   // Função memoizada para atualizar o usuário
   const updateUser = useCallback((newUser) => {
@@ -27,30 +33,57 @@ export const UserProvider = ({ children }) => {
       localStorage.setItem("user", JSON.stringify(newUser));
     } else {
       localStorage.removeItem("user");
+      localStorage.removeItem("api_token");
     }
   }, []);
+
+  // Sincronizar usuário Clerk com backend
+  useEffect(() => {
+    const syncUser = async () => {
+      if (isSignedIn && clerkUser) {
+        try {
+          setIsLoading(true);
+          const token = await getToken();
+          if (token) {
+            const result = await syncClerkUser(token);
+            if (result.success && result.data?.user) {
+              // Estrutura compatível com código existente
+              const userData = {
+                user: result.data.user,
+                access_token: result.data.access_token,
+              };
+              setUser(userData);
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao sincronizar usuário Clerk:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (!isSignedIn) {
+        // Usuário não está logado no Clerk
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("api_token");
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    syncUser();
+  }, [isSignedIn, clerkUser, getToken]);
 
   // Memoizar o valor do contexto para evitar re-renders desnecessários
   const contextValue = useMemo(
     () => ({
       user,
       setUser: updateUser,
+      isLoading,
+      isSignedIn,
     }),
-    [user, updateUser]
+    [user, updateUser, isLoading, isSignedIn]
   );
-
-  // Carregar usuário do localStorage apenas uma vez na inicialização
-  React.useEffect(() => {
-    const usr = localStorage.getItem("user");
-    if (usr) {
-      try {
-        setUser(JSON.parse(usr));
-      } catch (error) {
-        console.error("Erro ao carregar usuário do localStorage:", error);
-        localStorage.removeItem("user");
-      }
-    }
-  }, []);
 
   return (
     <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>

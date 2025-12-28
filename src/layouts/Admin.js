@@ -39,6 +39,7 @@ import { UserContext } from "context/UserContext";
 import { useCompany } from "context/CompanyContext";
 import { SubscriptionContext } from "context/SubscriptionContext";
 import { createSingleCharge } from "helpers/api-integrator";
+import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 
 // Email do Super Admin - único usuário com acesso a funcionalidades exclusivas
 const SUPER_ADMIN_EMAIL = "rounantj@hotmail.com";
@@ -301,9 +302,10 @@ function Admin() {
 
   return (
     <>
-      {user && (
-        <>
-          <div className={`wrapper ${isMobile ? "mobile" : ""}`}>
+      <SignedIn>
+        {user && (
+          <>
+            <div className={`wrapper ${isMobile ? "mobile" : ""}`}>
             <Sidebar
               color={color}
               image={hasImage ? image : ""}
@@ -465,18 +467,13 @@ function Admin() {
             onStart={handleStartTour}
             onSkip={handleSkipTour}
           />
-          <OnboardingTour run={runTour} onFinish={handleTourFinish} />
-        </>
-      )}
-      {!user && (
-        <>
-          <div ref={mainPanel}>
-            <div>
-              <Switch>{getRoutes(routes)}</Switch>
-            </div>
-          </div>
-        </>
-      )}
+            <OnboardingTour run={runTour} onFinish={handleTourFinish} />
+          </>
+        )}
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
     </>
   );
 }

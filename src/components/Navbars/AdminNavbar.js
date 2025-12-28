@@ -4,6 +4,7 @@ import { Layout, Button, Space, Avatar, Divider, Tooltip } from "antd";
 import { MenuOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 import { useCompany } from "context/CompanyContext";
+import { useAuth } from "@clerk/clerk-react";
 import routes from "routes.js";
 
 const { Header } = Layout;
@@ -27,6 +28,7 @@ function AdminNavbar() {
   const [isMobile, setIsMobile] = useState(false);
   const { user, setUser } = useContext(UserContext);
   const { sidebarColor, companySetup } = useCompany();
+  const { signOut } = useAuth();
   const companyName = companySetup?.companyName || "";
 
   // Usar cor da empresa ou fallback
@@ -69,9 +71,19 @@ function AdminNavbar() {
     return "Dashboard";
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Limpar sessão do Clerk
+      await signOut();
+    } catch (error) {
+      console.error("Erro ao fazer logout do Clerk:", error);
+    }
+    
+    // Limpar dados locais
     setUser(null);
     localStorage.clear();
+    
+    // Redirecionar para login
     window.location.replace("/");
   };
 
