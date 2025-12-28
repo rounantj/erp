@@ -520,7 +520,6 @@ export const updateDespesa = async (item) => {
 
   try {
     const despesas = await axios.post(`${urlBase}/despesas`, item, { headers });
-    console.log({ despesas });
     return {
       success: true,
       data: despesas.data,
@@ -541,7 +540,6 @@ export const getDespesas = async () => {
 
   try {
     const despesas = await axios.get(`${urlBase}/despesas`, { headers });
-    console.log({ despesas });
     return {
       success: true,
       data: despesas.data,
@@ -564,7 +562,6 @@ export const delDepesa = async (id) => {
     const despesas = await axios.delete(`${urlBase}/despesas?id=` + id, {
       headers,
     });
-    console.log({ despesas });
     return {
       success: true,
       data: despesas.data,
@@ -588,7 +585,6 @@ export const getCompanySetup = async (companyId) => {
       `${urlBase}/companies/setup/get?companyId=` + companyId,
       { headers }
     );
-    console.log({ setup });
     return {
       success: true,
       data: setup.data,
@@ -611,7 +607,6 @@ export const updateSetup = async (payload) => {
     const setup = await axios.post(`${urlBase}/companies/setup`, payload, {
       headers,
     });
-    console.log({ setup });
     return {
       success: true,
       data: setup.data,
@@ -635,7 +630,6 @@ export const getUsers = async (companyId) => {
       `${urlBase}/user/list?companyId=` + companyId,
       { headers }
     );
-    console.log({ setup });
     return {
       success: true,
       data: setup.data,
@@ -660,7 +654,6 @@ export const updateUserRole = async (companyId, userName, userRule) => {
       { companyId, userName, userRule },
       { headers }
     );
-    console.log({ setup });
     return {
       success: true,
       data: setup.data,

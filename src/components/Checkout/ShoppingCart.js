@@ -554,13 +554,15 @@ const ShoppingCart = ({
         boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
         minHeight: 0,
       }}
-      bodyStyle={{
-        flex: 1,
-        padding: "8px",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        overflow: "hidden",
+      styles={{
+        body: {
+          flex: 1,
+          padding: "8px",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "hidden",
+        }
       }}
       size="small"
     >

@@ -623,7 +623,7 @@ const Clientes = () => {
             destroyOnClose
             width="100%"
             style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            bodyStyle={{ padding: "16px" }}
+            styles={{ body: { padding: "16px" } }}
           >
             <AntForm
               form={antForm}

@@ -42,10 +42,10 @@ export const vendaFinaliza = (
   return axios.post(`${urlBase}/vendas`, vendaData, { headers });
 };
 
-export const openCaixa = (userId, valorAbertura) => {
+export const openCaixa = (valorAbertura) => {
   return axios.post(
     `${urlBase}/caixa/open`,
-    { companyId: 1, userId, valorAbertura },
+    { valorAbertura },
     { headers }
   );
 };

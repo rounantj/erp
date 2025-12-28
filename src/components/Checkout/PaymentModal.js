@@ -154,8 +154,8 @@ const PaymentModal = ({
             }
           : {}
       }
-      bodyStyle={
-        isMobile
+      styles={{
+        body: isMobile
           ? {
               padding: "12px",
               height: "calc(100vh - 55px)",
@@ -163,7 +163,7 @@ const PaymentModal = ({
               overflowY: "auto",
             }
           : {}
-      }
+      }}
       wrapClassName={isMobile ? "mobile-fullscreen-modal" : ""}
     >
       <Row gutter={[12, 12]}>

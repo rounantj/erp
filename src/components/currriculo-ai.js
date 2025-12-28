@@ -83,9 +83,11 @@ const CurriculoAICard = ({
         border: expanded ? "1px solid #1890ff" : "1px solid #f0f0f0",
         overflow: "hidden",
       }}
-      bodyStyle={{
-        padding: expanded ? "24px" : "16px",
-        transition: "all 0.3s ease",
+      styles={{
+        body: {
+          padding: expanded ? "24px" : "16px",
+          transition: "all 0.3s ease",
+        }
       }}
       bordered={false}
     >

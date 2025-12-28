@@ -207,7 +207,7 @@ const ClienteSelector = ({
     <Card
       size="small"
       style={{ marginBottom: 12 }}
-      bodyStyle={{ padding: "12px" }}
+      styles={{ body: { padding: "12px" } }}
     >
       <div
         style={{
@@ -385,11 +385,11 @@ const ClienteSelector = ({
         style={
           isMobile ? { top: 0, margin: 0, maxWidth: "100vw", padding: 0 } : {}
         }
-        bodyStyle={
-          isMobile
+        styles={{
+          body: isMobile
             ? { padding: "12px", maxHeight: "70vh", overflowY: "auto" }
             : {}
-        }
+        }}
       >
         {alertInfo.show && (
           <Alert

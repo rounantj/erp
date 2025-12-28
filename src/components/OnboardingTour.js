@@ -310,7 +310,7 @@ export function WelcomeModal({ visible, onStart, onSkip }) {
       closable={false}
       centered
       width={450}
-      bodyStyle={{ padding: "32px", textAlign: "center" }}
+      styles={{ body: { padding: "32px", textAlign: "center" } }}
     >
       <div style={{ marginBottom: "24px" }}>
         <RocketOutlined style={{ fontSize: "64px", color: "#667eea" }} />
@@ -360,3 +360,5 @@ export function WelcomeModal({ visible, onStart, onSkip }) {
 }
 
 export default OnboardingTour;
+
+

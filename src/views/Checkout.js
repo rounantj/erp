@@ -315,6 +315,23 @@ const Checkout = () => {
     return calcularTotalItens(venda);
   }, [venda]);
 
+  // Atualizar automaticamente o valor quando há apenas 1 forma de pagamento selecionada
+  useEffect(() => {
+    if (formaPagamento.length === 1 && totalVendaAtual > 0) {
+      const formaUnica = formaPagamento[0];
+      const valorAtual = valoresPorForma[formaUnica];
+      
+      // Só atualiza se o valor atual for diferente do total ou se não existir
+      if (valorAtual !== totalVendaAtual) {
+        setValoresPorForma((prev) => ({ ...prev, [formaUnica]: totalVendaAtual }));
+        if (formaUnica === "dinheiro") {
+          setValorRecebido(totalVendaAtual);
+        }
+      }
+    }
+  }, [formaPagamento.length, totalVendaAtual, valoresPorForma, formaPagamento]);
+
+
   // Quantidade de itens no carrinho
   const cartItemCount = useMemo(() => {
     return venda.reduce((sum, item) => sum + (item.qtd || 1), 0);
@@ -416,27 +433,37 @@ const Checkout = () => {
         const novosValores = { ...valoresPorForma };
         delete novosValores[forma];
         setValoresPorForma(novosValores);
+        
+        // Se após remover ficou apenas 1 forma, preencher automaticamente com o total
+        const formasRestantes = formaPagamento.filter((f) => f !== forma);
+        if (formasRestantes.length === 1) {
+          const formaRestante = formasRestantes[0];
+          setValoresPorForma({ [formaRestante]: totalVendaAtual });
+          if (formaRestante === "dinheiro") {
+            setValorRecebido(totalVendaAtual);
+          }
+        }
       } else {
         if (formaPagamento.length < 2) {
           const novasFormas = [...formaPagamento, forma];
           setFormaPagamento(novasFormas);
 
-          // Calcula o valor já preenchido nas outras formas
-          const valorJaPreenchido = Object.values(valoresPorForma).reduce(
-            (acc, val) => acc + (val || 0),
-            0
-          );
-
-          // Preenche automaticamente com o valor restante
-          const valorRestante = Math.max(
-            0,
-            totalVendaAtual - valorJaPreenchido
-          );
-          setValoresPorForma({ ...valoresPorForma, [forma]: valorRestante });
-
-          // Se for dinheiro, também preenche o valor recebido
-          if (forma === "dinheiro") {
-            setValorRecebido(valorRestante);
+          // Se é a primeira forma, o useEffect vai preencher automaticamente
+          // Não precisamos setar aqui, deixamos o useEffect fazer o trabalho
+          if (formaPagamento.length > 0) {
+            // Se é a segunda forma, calcula o valor restante
+            const valorJaPreenchido = Object.values(valoresPorForma).reduce(
+              (acc, val) => acc + (val || 0),
+              0
+            );
+            const valorRestante = Math.max(
+              0,
+              totalVendaAtual - valorJaPreenchido
+            );
+            setValoresPorForma({ ...valoresPorForma, [forma]: valorRestante });
+            if (forma === "dinheiro") {
+              setValorRecebido(valorRestante);
+            }
           }
         }
       }

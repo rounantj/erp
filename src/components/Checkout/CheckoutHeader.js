@@ -126,16 +126,11 @@ const CheckoutHeader = ({
                 Sistema de Vendas
               </Title>
               <Text type="secondary" style={{ fontSize: "10px" }}>
-                {(() => {
-                  console.log("User data in CheckoutHeader:", user);
-                  return (
-                    user?.user?.username ||
+                {user?.user?.username ||
                     user?.user?.name ||
                     user?.username ||
                     user?.name ||
-                    "Usuário"
-                  );
-                })()}
+                    "Usuário"}
               </Text>
             </div>
           </div>
@@ -154,13 +149,15 @@ const CheckoutHeader = ({
               display: "flex",
               flexDirection: "column",
             }}
-            bodyStyle={{
-              padding: "6px",
-              textAlign: "center",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
+            styles={{
+              body: {
+                padding: "6px",
+                textAlign: "center",
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+              }
             }}
           >
             <Badge

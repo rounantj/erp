@@ -37,10 +37,7 @@ export const SubscriptionProvider = ({ children }) => {
     const companyId = getCurrentCompanyId();
     const user = getCurrentUser();
 
-    console.log("🔍 [Subscription] Verificando... companyId:", companyId, "user:", user ? user.email : "null");
-
     if (!companyId || !user) {
-      console.log("⚠️ [Subscription] Sem companyId ou user, ignorando verificação");
       if (!silent) setLoading(false);
       return;
     }
@@ -49,9 +46,7 @@ export const SubscriptionProvider = ({ children }) => {
     setError(null);
 
     try {
-      console.log("📡 [Subscription] Chamando API getCompanyFeatures...");
       const result = await getCompanyFeatures(companyId);
-      console.log("📦 [Subscription] Resposta da API:", result);
 
       if (result.success && result.data) {
         const data = result.data;
@@ -68,10 +63,6 @@ export const SubscriptionProvider = ({ children }) => {
         const blocked = blockedStatuses.includes(data.status) || !data.canAccess;
         setIsReadonly(blocked);
 
-        console.log("✅ [Subscription] Status:", data.status);
-        console.log("✅ [Subscription] canAccess:", data.canAccess);
-        console.log("✅ [Subscription] isBlocked:", blocked);
-
         // Buscar subscription completa
         setSubscription({
           id: data.subscriptionId,
@@ -82,7 +73,6 @@ export const SubscriptionProvider = ({ children }) => {
           currentPeriodEnd: data.currentPeriodEnd,
         });
       } else {
-        console.log("⚠️ [Subscription] Sem subscription encontrada");
         setStatus("no_subscription");
         setCanAccess(true);
         setIsReadonly(false);
@@ -101,15 +91,11 @@ export const SubscriptionProvider = ({ children }) => {
       clearInterval(pollingRef.current);
     }
     
-    console.log("🔄 [Subscription] Iniciando polling a cada 30 segundos");
-    
     pollingRef.current = setInterval(() => {
       const user = getCurrentUser();
       if (user) {
-        console.log("🔄 [Subscription] Polling tick...");
         checkSubscription(true);
       } else {
-        console.log("🛑 [Subscription] Usuário deslogou, parando polling");
         stopPolling();
       }
     }, POLLING_INTERVAL);
@@ -118,7 +104,6 @@ export const SubscriptionProvider = ({ children }) => {
   // Parar polling
   const stopPolling = () => {
     if (pollingRef.current) {
-      console.log("🛑 [Subscription] Polling parado");
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
@@ -126,16 +111,12 @@ export const SubscriptionProvider = ({ children }) => {
 
   // Verificação inicial ao montar o componente
   useEffect(() => {
-    console.log("🚀 [Subscription] Provider montado!");
-    
     // Verificar se já tem usuário logado
     const user = getCurrentUser();
     if (user) {
-      console.log("👤 [Subscription] Usuário já logado, verificando subscription...");
       checkSubscription();
       startPolling();
     } else {
-      console.log("👤 [Subscription] Nenhum usuário logado ainda");
       setLoading(false);
     }
 
@@ -147,13 +128,11 @@ export const SubscriptionProvider = ({ children }) => {
   // Escutar evento de login
   useEffect(() => {
     const handleLogin = () => {
-      console.log("🎉 [Subscription] Evento de login recebido!");
       checkSubscription();
       startPolling();
     };
 
     const handleLogout = () => {
-      console.log("👋 [Subscription] Evento de logout recebido!");
       stopPolling();
       setStatus("no_subscription");
       setCanAccess(true);
@@ -183,8 +162,6 @@ export const SubscriptionProvider = ({ children }) => {
     error,
     refreshSubscription: checkSubscription,
   };
-
-  console.log("🎯 [Subscription] Estado atual - status:", status, "canAccess:", canAccess, "isReadonly:", isReadonly);
 
   return (
     <SubscriptionContext.Provider value={value}>

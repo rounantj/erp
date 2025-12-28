@@ -1345,7 +1345,7 @@ function Vendas() {
         ref={containerRef}
       >
         <Content>
-          <Card bodyStyle={{ padding: isMobile ? "12px" : "24px" }}>
+          <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
             <Space direction="vertical" size="large" style={{ width: "100%" }}>
               <Row justify="space-between" align="middle" gutter={[8, 8]} wrap>
                 <Col xs={16} md={12}>
@@ -1368,7 +1368,7 @@ function Vendas() {
                 <>
                   <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]}>
                     <Col xs={12} sm={12} md={6}>
-                      <Card bodyStyle={{ padding: isMobile ? "12px" : "24px" }}>
+                      <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
                         <Statistic
                           title="Total do Período"
                           value={calcularTotalPorPeriodo()}
@@ -1386,7 +1386,7 @@ function Vendas() {
                       </Card>
                     </Col>
                     <Col xs={12} sm={12} md={6}>
-                      <Card bodyStyle={{ padding: isMobile ? "12px" : "24px" }}>
+                      <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
                         <Statistic
                           title="Número de Vendas"
                           value={vendas.length}
@@ -1396,7 +1396,7 @@ function Vendas() {
                       </Card>
                     </Col>
                     <Col xs={12} sm={12} md={6}>
-                      <Card bodyStyle={{ padding: isMobile ? "12px" : "24px" }}>
+                      <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
                         <Statistic
                           title="Clientes Únicos"
                           value={calcularClientesUnicos()}
@@ -1406,7 +1406,7 @@ function Vendas() {
                       </Card>
                     </Col>
                     <Col xs={12} sm={12} md={6}>
-                      <Card bodyStyle={{ padding: isMobile ? "12px" : "24px" }}>
+                      <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
                         <Statistic
                           title="Valor Médio"
                           value={calcularValorMedioPorVenda()}
@@ -1441,7 +1441,7 @@ function Vendas() {
                           </>
                         }
                         style={{ height: "100%" }}
-                        bodyStyle={{ padding: isMobile ? "8px" : "24px" }}
+                        styles={{ body: { padding: isMobile ? "8px" : "24px" } }}
                       >
                         {dailyData.length > 0 ? (
                           <div className="responsive-table-container">
@@ -1466,7 +1466,7 @@ function Vendas() {
                           </>
                         }
                         style={{ height: "100%" }}
-                        bodyStyle={{ padding: isMobile ? "8px" : "24px" }}
+                        styles={{ body: { padding: isMobile ? "8px" : "24px" } }}
                       >
                         {vendas.length > 0 ? (
                           <div

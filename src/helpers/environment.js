@@ -7,7 +7,6 @@ export const urlBase = isDev
   : "https://erp-api-a826ac7bcd67.herokuapp.com";
 axios.interceptors.request.use(
   (config) => {
-    console.log({ config });
     if (config.url.includes(urlBase)) {
       const token = localStorage.getItem("api_token");
       if (token) {
