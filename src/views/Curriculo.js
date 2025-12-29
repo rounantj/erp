@@ -335,6 +335,129 @@ const ESCOLARIDADE = [
   "Ensino Superior Completo",
 ];
 
+// Estilos modernos para UX/UI melhorada
+const modernStyles = {
+  // Layout principal
+  container: {
+    maxWidth: 1200,
+    margin: "0 auto",
+    padding: "32px",
+  },
+  background: {
+    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+    minHeight: "100vh",
+  },
+  // Header
+  header: {
+    background: "linear-gradient(135deg, #1890ff 0%, #096dd9 100%)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    height: 72,
+    padding: "0 32px",
+  },
+  // Cards
+  card: {
+    borderRadius: 16,
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+    border: "none",
+    padding: "32px",
+  },
+  // Inputs
+  input: {
+    fontSize: 16,
+    height: 48,
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "2px solid #E5E7EB",
+    transition: "all 0.3s ease",
+    color: "#000000",
+    fontWeight: 700,
+  },
+  inputFocus: {
+    borderColor: "#1890ff",
+    boxShadow: "0 0 0 3px rgba(24, 144, 255, 0.1)",
+  },
+  // TextArea
+  textArea: {
+    fontSize: 16,
+    minHeight: 120,
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "2px solid #E5E7EB",
+    transition: "all 0.3s ease",
+    color: "#000000",
+    fontWeight: 700,
+    lineHeight: 1.6,
+  },
+  // Select
+  select: {
+    fontSize: 16,
+    height: 48,
+    borderRadius: 12,
+    border: "2px solid #E5E7EB",
+    transition: "all 0.3s ease",
+  },
+  // Labels
+  label: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#374151",
+    marginBottom: 8,
+  },
+  // Botões
+  button: {
+    height: 48,
+    fontSize: 16,
+    fontWeight: 600,
+    borderRadius: 10,
+    transition: "all 0.3s ease",
+  },
+  buttonPrimary: {
+    height: 48,
+    fontSize: 16,
+    fontWeight: 600,
+    borderRadius: 10,
+    boxShadow: "0 4px 12px rgba(24, 144, 255, 0.3)",
+    transition: "all 0.3s ease",
+  },
+  // Cards de experiência
+  experienceCard: {
+    background: "#FAFBFC",
+    border: "2px solid #E5E7EB",
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 20,
+    transition: "all 0.3s ease",
+  },
+  experienceCardHover: {
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    transform: "translateY(-2px)",
+  },
+  // Steps
+  stepsCard: {
+    borderRadius: 16,
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+    border: "none",
+    padding: "24px 32px",
+    background: "#FFFFFF",
+    marginBottom: 24,
+  },
+  // Placeholder
+  placeholder: {
+    color: "#9CA3AF",
+  },
+  // Ícones
+  icon: {
+    color: "#1890ff",
+  },
+  // Espaçamento
+  fieldSpacing: {
+    marginBottom: 20,
+  },
+  sectionSpacing: {
+    marginBottom: 32,
+  },
+};
+
 const CriadorCurriculo = () => {
   // Desabilitar interação durante impressão
   useEffect(() => {
@@ -709,16 +832,29 @@ const CriadorCurriculo = () => {
     switch (currentStep) {
       case 0:
         return (
-          <Card title="Dados Pessoais" bordered={false}>
+          <Card
+            title="Dados Pessoais"
+            bordered={false}
+            style={modernStyles.card}
+          >
             <Form.Item
               name="nome"
               label="Nome Completo"
               rules={[{ required: true, message: "Informe o nome completo" }]}
+              style={modernStyles.fieldSpacing}
             >
               <Input
                 placeholder="Ex: João da Silva"
-                prefix={<UserOutlined />}
+                prefix={<UserOutlined style={modernStyles.icon} />}
                 onChange={(e) => setPersonalData("nome", e.target.value)}
+                style={modernStyles.input}
+                styles={{
+                  input: {
+                    fontSize: 16,
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               />
             </Form.Item>
 
@@ -728,22 +864,41 @@ const CriadorCurriculo = () => {
                   name="telefone"
                   label="Telefone"
                   rules={[{ required: true, message: "Informe o telefone" }]}
+                  style={modernStyles.fieldSpacing}
                 >
                   <Input
                     placeholder="Ex: (27) 99999-9999"
-                    prefix={<PhoneOutlined />}
+                    prefix={<PhoneOutlined style={modernStyles.icon} />}
                     onChange={(e) =>
                       setPersonalData("telefone", e.target.value)
                     }
+                    style={modernStyles.input}
+                    styles={{
+                      input: {
+                        fontSize: 16,
+                        color: "#1F2937",
+                      },
+                    }}
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="email" label="E-mail">
+                <Form.Item
+                  name="email"
+                  label="E-mail"
+                  style={modernStyles.fieldSpacing}
+                >
                   <Input
                     placeholder="Ex: joao@email.com"
-                    prefix={<MailOutlined />}
+                    prefix={<MailOutlined style={modernStyles.icon} />}
                     onChannge={(e) => setPersonalData("email", e.target.value)}
+                    style={modernStyles.input}
+                    styles={{
+                      input: {
+                        fontSize: 16,
+                        color: "#1F2937",
+                      },
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -753,11 +908,20 @@ const CriadorCurriculo = () => {
               name="endereco"
               label="Endereço"
               rules={[{ required: true, message: "Informe o endereço" }]}
+              style={modernStyles.fieldSpacing}
             >
               <Input
                 placeholder="Ex: Rua das Flores, 123, Bairro - Cidade/UF"
-                prefix={<HomeOutlined />}
+                prefix={<HomeOutlined style={modernStyles.icon} />}
                 onChange={(e) => setPersonalData("endereco", e.target.value)}
+                style={modernStyles.input}
+                styles={{
+                  input: {
+                    fontSize: 16,
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               />
             </Form.Item>
 
@@ -767,6 +931,7 @@ const CriadorCurriculo = () => {
               rules={[
                 { required: true, message: "Selecione ou digite a profissão" },
               ]}
+              style={modernStyles.fieldSpacing}
             >
               <Select
                 placeholder="Selecione ou digite a profissão"
@@ -774,9 +939,24 @@ const CriadorCurriculo = () => {
                 showSearch
                 allowClear
                 optionFilterProp="children"
-                mode="tags" // This enables custom entries
-                maxTagCount={1} // Only show one tag
+                mode="tags"
+                maxTagCount={10}
+                maxTagPlaceholder={(omittedValues) =>
+                  `+${omittedValues.length}`
+                }
                 tokenSeparators={[","]}
+                style={modernStyles.select}
+                styles={{
+                  selector: {
+                    height: 48,
+                    fontSize: 16,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "2px solid #E5E7EB",
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               >
                 {PROFISSOES_COMUNS.map((profissao) => (
                   <Option key={profissao} value={profissao}>
@@ -832,18 +1012,31 @@ const CriadorCurriculo = () => {
 
       case 1:
         return (
-          <Card title="Experiência Profissional" bordered={false}>
+          <Card
+            title="Experiência Profissional"
+            bordered={false}
+            style={modernStyles.card}
+          >
             <Form.Item
               name="objetivo"
               label="Objetivo Profissional"
               rules={[
                 { required: true, message: "Informe o objetivo profissional" },
               ]}
+              style={modernStyles.fieldSpacing}
             >
               <TextArea
                 onChange={(e) => setPersonalData("objetivo", e.target.value)}
-                rows={3}
+                rows={4}
                 placeholder="Ex: Procuro oportunidade como Mecânico onde possa aplicar minha experiência em manutenção de veículos..."
+                style={modernStyles.textArea}
+                styles={{
+                  textarea: {
+                    fontSize: 16,
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               />
             </Form.Item>
 
@@ -852,33 +1045,60 @@ const CriadorCurriculo = () => {
             {experiencias.map((exp, index) => (
               <div
                 key={index}
-                style={{
-                  marginBottom: 16,
-                  padding: 16,
-                  border: "1px dashed #d9d9d9",
-                  borderRadius: 4,
+                style={modernStyles.experienceCard}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    modernStyles.experienceCardHover.boxShadow;
+                  e.currentTarget.style.transform =
+                    modernStyles.experienceCardHover.transform;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "none";
                 }}
               >
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item label="Empresa" required={index === 0}>
+                    <Form.Item
+                      label="Empresa"
+                      required={index === 0}
+                      style={modernStyles.fieldSpacing}
+                    >
                       <Input
                         value={exp.empresa}
                         onChange={(e) =>
                           atualizarExperiencia(index, "empresa", e.target.value)
                         }
                         placeholder="Nome da empresa"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label="Cargo" required={index === 0}>
+                    <Form.Item
+                      label="Cargo"
+                      required={index === 0}
+                      style={modernStyles.fieldSpacing}
+                    >
                       <Input
                         value={exp.cargo}
                         onChange={(e) =>
                           atualizarExperiencia(index, "cargo", e.target.value)
                         }
                         placeholder="Seu cargo"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -886,20 +1106,33 @@ const CriadorCurriculo = () => {
 
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item label="Período">
+                    <Form.Item
+                      label="Período"
+                      style={modernStyles.fieldSpacing}
+                    >
                       <Input
                         value={exp.periodo}
                         onChange={(e) =>
                           atualizarExperiencia(index, "periodo", e.target.value)
                         }
                         placeholder="Ex: 2018 - 2021 ou 2018 - Atual"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label="Descrição das Atividades">
+                    <Form.Item
+                      label="Descrição das Atividades"
+                      style={modernStyles.fieldSpacing}
+                    >
                       <TextArea
-                        rows={2}
+                        rows={3}
                         value={exp.descricao}
                         onChange={(e) =>
                           atualizarExperiencia(
@@ -909,6 +1142,13 @@ const CriadorCurriculo = () => {
                           )
                         }
                         placeholder="Descreva suas principais atividades"
+                        style={modernStyles.textArea}
+                        styles={{
+                          textarea: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -932,6 +1172,7 @@ const CriadorCurriculo = () => {
               onClick={adicionarExperiencia}
               block
               icon={<PlusOutlined />}
+              style={modernStyles.button}
             >
               Adicionar Experiência
             </Button>
@@ -940,7 +1181,11 @@ const CriadorCurriculo = () => {
 
       case 2:
         return (
-          <Card title="Formação e Qualificações" bordered={false}>
+          <Card
+            title="Formação e Qualificações"
+            bordered={false}
+            style={modernStyles.card}
+          >
             <Form.Item
               name="escolaridade"
               label="Escolaridade"
@@ -972,6 +1217,7 @@ const CriadorCurriculo = () => {
                   },
                 },
               ]}
+              style={modernStyles.fieldSpacing}
             >
               <Select
                 placeholder="Selecione ou digite sua escolaridade"
@@ -991,8 +1237,23 @@ const CriadorCurriculo = () => {
                 allowClear
                 optionFilterProp="children"
                 mode="tags"
-                maxTagCount={1}
+                maxTagCount={10}
+                maxTagPlaceholder={(omittedValues) =>
+                  `+${omittedValues.length}`
+                }
                 tokenSeparators={[","]}
+                style={modernStyles.select}
+                styles={{
+                  selector: {
+                    height: 48,
+                    fontSize: 16,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "2px solid #E5E7EB",
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               >
                 {ESCOLARIDADE.map((nivel) => (
                   <Option key={nivel} value={nivel}>
@@ -1005,15 +1266,34 @@ const CriadorCurriculo = () => {
               </Text>
             </Form.Item>
 
-            <Form.Item name="instituicaoEnsino" label="Instituição de Ensino">
-              <Input placeholder="Ex: E.E. Joaquim da Silva" />
+            <Form.Item
+              name="instituicaoEnsino"
+              label="Instituição de Ensino"
+              style={modernStyles.fieldSpacing}
+            >
+              <Input
+                placeholder="Ex: E.E. Joaquim da Silva"
+                style={modernStyles.input}
+                styles={{
+                  input: {
+                    fontSize: 16,
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
+              />
             </Form.Item>
 
-            <Form.Item name="anoConclusao" label="Ano de Conclusão">
+            <Form.Item
+              name="anoConclusao"
+              label="Ano de Conclusão"
+              style={modernStyles.fieldSpacing}
+            >
               <DatePicker
                 picker="year"
                 locale={locale}
                 placeholder="Selecione o ano"
+                style={{ width: "100%", ...modernStyles.input }}
               />
             </Form.Item>
 
@@ -1022,33 +1302,58 @@ const CriadorCurriculo = () => {
             {cursos.map((curso, index) => (
               <div
                 key={index}
-                style={{
-                  marginBottom: 16,
-                  padding: 16,
-                  border: "1px dashed #d9d9d9",
-                  borderRadius: 4,
+                style={modernStyles.experienceCard}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    modernStyles.experienceCardHover.boxShadow;
+                  e.currentTarget.style.transform =
+                    modernStyles.experienceCardHover.transform;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "none";
                 }}
               >
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item label="Nome do Curso">
+                    <Form.Item
+                      label="Nome do Curso"
+                      style={modernStyles.fieldSpacing}
+                    >
                       <Input
                         value={curso.nome}
                         onChange={(e) =>
                           atualizarCurso(index, "nome", e.target.value)
                         }
                         placeholder="Ex: Mecânica Básica"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label="Instituição">
+                    <Form.Item
+                      label="Instituição"
+                      style={modernStyles.fieldSpacing}
+                    >
                       <Input
                         value={curso.instituicao}
                         onChange={(e) =>
                           atualizarCurso(index, "instituicao", e.target.value)
                         }
                         placeholder="Ex: SENAI"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -1056,13 +1361,20 @@ const CriadorCurriculo = () => {
 
                 <Row>
                   <Col span={12}>
-                    <Form.Item label="Ano">
+                    <Form.Item label="Ano" style={modernStyles.fieldSpacing}>
                       <Input
                         value={curso.ano}
                         onChange={(e) =>
                           atualizarCurso(index, "ano", e.target.value)
                         }
                         placeholder="Ex: 2020"
+                        style={modernStyles.input}
+                        styles={{
+                          input: {
+                            fontSize: 16,
+                            color: "#1F2937",
+                          },
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -1084,6 +1396,7 @@ const CriadorCurriculo = () => {
               onClick={adicionarCurso}
               block
               icon={<PlusOutlined />}
+              style={modernStyles.button}
             >
               Adicionar Curso
             </Button>
@@ -1092,8 +1405,16 @@ const CriadorCurriculo = () => {
 
       case 3:
         return (
-          <Card title="Habilidades e Informações Adicionais" bordered={false}>
-            <Form.Item name="habilidades" label="Habilidades e Competências">
+          <Card
+            title="Habilidades e Informações Adicionais"
+            bordered={false}
+            style={modernStyles.card}
+          >
+            <Form.Item
+              name="habilidades"
+              label="Habilidades e Competências"
+              style={modernStyles.fieldSpacing}
+            >
               <Select
                 mode="tags"
                 placeholder="Selecione ou digite suas habilidades"
@@ -1103,9 +1424,24 @@ const CriadorCurriculo = () => {
                   form.setFieldsValue({ habilidades: values });
                 }}
                 value={habilidades}
-                style={{ width: "100%" }}
+                style={{ width: "100%", ...modernStyles.select }}
                 allowClear
+                maxTagCount={10}
+                maxTagPlaceholder={(omittedValues) =>
+                  `+${omittedValues.length}`
+                }
                 tokenSeparators={[","]}
+                styles={{
+                  selector: {
+                    minHeight: 48,
+                    fontSize: 16,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "2px solid #E5E7EB",
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               >
                 {profissaoSelecionada &&
                   HABILIDADES_COMUNS[profissaoSelecionada]?.map(
@@ -1125,10 +1461,19 @@ const CriadorCurriculo = () => {
             <Form.Item
               name="informacoesAdicionais"
               label="Informações Adicionais"
+              style={modernStyles.fieldSpacing}
             >
               <TextArea
                 rows={4}
                 placeholder="Informações complementares como disponibilidade de horário, CNH, etc."
+                style={modernStyles.textArea}
+                styles={{
+                  textarea: {
+                    fontSize: 16,
+                    color: "#000000",
+                    fontWeight: 700,
+                  },
+                }}
               />
             </Form.Item>
 
@@ -1725,7 +2070,52 @@ const CriadorCurriculo = () => {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header style={{ background: "#1890ff", padding: "0 20px" }}>
+      <style>{`
+        .ant-form-item-label > label {
+          font-size: 14px !important;
+          font-weight: 600 !important;
+          color: #374151 !important;
+          margin-bottom: 8px;
+        }
+        .ant-input,
+        .ant-input-number-input,
+        .ant-select-selection-item,
+        .ant-select-selection-search-input {
+          color: #000000 !important;
+          font-weight: 700 !important;
+        }
+        .ant-input::placeholder,
+        .ant-input-number-input::placeholder,
+        .ant-select-selection-placeholder {
+          color: #9CA3AF !important;
+          font-weight: 400 !important;
+        }
+        .ant-input:focus,
+        .ant-input-number:focus,
+        .ant-select-focused .ant-select-selector {
+          border-color: #1890ff !important;
+          box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1) !important;
+        }
+        .ant-input:focus,
+        .ant-input-number-input:focus {
+          color: #000000 !important;
+          font-weight: 700 !important;
+        }
+        textarea.ant-input {
+          color: #000000 !important;
+          font-weight: 700 !important;
+        }
+        .ant-btn {
+          transition: all 0.3s ease !important;
+        }
+        .ant-btn:hover {
+          transform: translateY(-1px);
+        }
+        .ant-btn-primary:hover {
+          box-shadow: 0 6px 16px rgba(24, 144, 255, 0.4) !important;
+        }
+      `}</style>
+      <Header style={modernStyles.header}>
         <Row align="middle" style={{ height: "100%" }}>
           <Col>
             <Title level={3} style={{ color: "white", margin: 0 }}>
@@ -1735,19 +2125,21 @@ const CriadorCurriculo = () => {
         </Row>
       </Header>
 
-      <Content style={{ padding: "20px", background: "#f0f2f5" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <Content style={{ padding: "32px", ...modernStyles.background }}>
+        <div style={modernStyles.container}>
           {mostrarPreview ? (
             <div>
               <Card
                 title="Visualização do Currículo"
                 bordered={false}
+                style={modernStyles.card}
                 extra={
                   <Space>
                     <Tooltip title="Editar">
                       <Button
                         icon={<EditOutlined />}
                         onClick={() => setMostrarPreview(false)}
+                        style={modernStyles.button}
                       >
                         Editar
                       </Button>
@@ -1759,6 +2151,7 @@ const CriadorCurriculo = () => {
                         icon={<DownloadOutlined />}
                         onClick={imprimirCurriculo}
                         loading={carregando}
+                        style={modernStyles.buttonPrimary}
                       >
                         Salvar PDF
                       </Button>
@@ -1768,6 +2161,7 @@ const CriadorCurriculo = () => {
                         danger
                         icon={<DeleteOutlined />}
                         onClick={reiniciarCriacao}
+                        style={modernStyles.button}
                       >
                         Reiniciar
                       </Button>
@@ -1793,7 +2187,7 @@ const CriadorCurriculo = () => {
                 />
               </div>
 */}
-              <Card bordered={false} style={{ marginBottom: 20 }}>
+              <Card bordered={false} style={modernStyles.stepsCard}>
                 <Steps current={currentStep} responsive={true}>
                   <Step title="Dados Pessoais" icon={<UserOutlined />} />
                   <Step title="Experiência" icon={<ToolOutlined />} />
@@ -1814,10 +2208,10 @@ const CriadorCurriculo = () => {
               >
                 {renderizarEtapa()}
 
-                <div style={{ marginTop: 20, textAlign: "right" }}>
+                <div style={{ marginTop: 32, textAlign: "right" }}>
                   {currentStep > 0 && (
                     <Button
-                      style={{ marginRight: 8 }}
+                      style={{ marginRight: 12, ...modernStyles.button }}
                       onClick={voltarEtapa}
                       icon={<ArrowLeftOutlined />}
                     >
@@ -1835,6 +2229,7 @@ const CriadorCurriculo = () => {
                         <ArrowRightOutlined />
                       )
                     }
+                    style={modernStyles.buttonPrimary}
                   >
                     {currentStep === 3 ? "Visualizar Currículo" : "Próximo"}
                   </Button>
