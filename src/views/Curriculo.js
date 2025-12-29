@@ -519,6 +519,12 @@ const CriadorCurriculo = () => {
   const avancarEtapa = async () => {
     try {
       const values = await form.validateFields();
+      // Normaliza o valor de escolaridade (converte array para string se necessário)
+      if (values.escolaridade) {
+        if (Array.isArray(values.escolaridade) && values.escolaridade.length > 0) {
+          values.escolaridade = values.escolaridade[0];
+        }
+      }
       setDadosCurriculo({
         ...dadosCurriculo,
         ...values,
@@ -570,7 +576,12 @@ const CriadorCurriculo = () => {
     }
 
     if (currentStep === 2) {
-      return !fields.escolaridade;
+      const escolaridade = fields.escolaridade;
+      // Verifica se é array vazio, string vazia, ou undefined/null
+      if (Array.isArray(escolaridade)) {
+        return escolaridade.length === 0 || !escolaridade[0] || escolaridade[0].trim() === "";
+      }
+      return !escolaridade || (typeof escolaridade === 'string' && escolaridade.trim() === "");
     }
 
     return false;
@@ -597,7 +608,15 @@ const CriadorCurriculo = () => {
 
     if (currentStep === 2) {
       const fields = form.getFieldsValue();
-      if (!fields.escolaridade) camposFaltantes.push("Escolaridade");
+      const escolaridade = fields.escolaridade;
+      // Verifica se é array vazio, string vazia, ou undefined/null
+      let isEmpty = false;
+      if (Array.isArray(escolaridade)) {
+        isEmpty = escolaridade.length === 0 || !escolaridade[0] || escolaridade[0].trim() === "";
+      } else {
+        isEmpty = !escolaridade || (typeof escolaridade === 'string' && escolaridade.trim() === "");
+      }
+      if (isEmpty) camposFaltantes.push("Escolaridade");
     }
 
     if (camposFaltantes.length > 0) {
@@ -910,11 +929,41 @@ const CriadorCurriculo = () => {
             <Form.Item
               name="escolaridade"
               label="Escolaridade"
-              rules={[{ required: true, message: "Selecione a escolaridade" }]}
+              rules={[
+                {
+                  required: true,
+                  message: "Selecione ou digite a escolaridade",
+                  validator: (_, value) => {
+                    // Valida se é array vazio, string vazia, ou undefined/null
+                    if (Array.isArray(value)) {
+                      if (value.length === 0 || !value[0] || value[0].trim() === "") {
+                        return Promise.reject(new Error("Selecione ou digite a escolaridade"));
+                      }
+                    } else if (!value || (typeof value === 'string' && value.trim() === "")) {
+                      return Promise.reject(new Error("Selecione ou digite a escolaridade"));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
             >
               <Select
-                placeholder="Selecione sua escolaridade"
-                onChange={(value) => setPersonalData("escolaridade", value)}
+                placeholder="Selecione ou digite sua escolaridade"
+                onChange={(value) => {
+                  // Se for array, pega o primeiro elemento ou converte para string
+                  const escolaridadeValue = Array.isArray(value) && value.length > 0 
+                    ? value[0] 
+                    : (typeof value === 'string' ? value : '');
+                  setPersonalData("escolaridade", escolaridadeValue);
+                  // Atualiza o form com o valor correto
+                  form.setFieldsValue({ escolaridade: value });
+                }}
+                showSearch
+                allowClear
+                optionFilterProp="children"
+                mode="tags"
+                maxTagCount={1}
+                tokenSeparators={[","]}
               >
                 {ESCOLARIDADE.map((nivel) => (
                   <Option key={nivel} value={nivel}>
@@ -922,6 +971,9 @@ const CriadorCurriculo = () => {
                   </Option>
                 ))}
               </Select>
+              <Text type="secondary">
+                Selecione uma opção da lista ou digite sua própria escolaridade
+              </Text>
             </Form.Item>
 
             <Form.Item name="instituicaoEnsino" label="Instituição de Ensino">
