@@ -45,3 +45,4 @@ Após configurar, verifique se a variável está sendo lida corretamente:
 - A variável deve começar com `REACT_APP_` para ser lida pelo Create React App
 - Após alterar variáveis de ambiente, é necessário fazer rebuild da aplicação
 
+
