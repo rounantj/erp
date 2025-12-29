@@ -521,7 +521,10 @@ const CriadorCurriculo = () => {
       const values = await form.validateFields();
       // Normaliza o valor de escolaridade (converte array para string se necessário)
       if (values.escolaridade) {
-        if (Array.isArray(values.escolaridade) && values.escolaridade.length > 0) {
+        if (
+          Array.isArray(values.escolaridade) &&
+          values.escolaridade.length > 0
+        ) {
           values.escolaridade = values.escolaridade[0];
         }
       }
@@ -579,9 +582,16 @@ const CriadorCurriculo = () => {
       const escolaridade = fields.escolaridade;
       // Verifica se é array vazio, string vazia, ou undefined/null
       if (Array.isArray(escolaridade)) {
-        return escolaridade.length === 0 || !escolaridade[0] || escolaridade[0].trim() === "";
+        return (
+          escolaridade.length === 0 ||
+          !escolaridade[0] ||
+          escolaridade[0].trim() === ""
+        );
       }
-      return !escolaridade || (typeof escolaridade === 'string' && escolaridade.trim() === "");
+      return (
+        !escolaridade ||
+        (typeof escolaridade === "string" && escolaridade.trim() === "")
+      );
     }
 
     return false;
@@ -612,9 +622,14 @@ const CriadorCurriculo = () => {
       // Verifica se é array vazio, string vazia, ou undefined/null
       let isEmpty = false;
       if (Array.isArray(escolaridade)) {
-        isEmpty = escolaridade.length === 0 || !escolaridade[0] || escolaridade[0].trim() === "";
+        isEmpty =
+          escolaridade.length === 0 ||
+          !escolaridade[0] ||
+          escolaridade[0].trim() === "";
       } else {
-        isEmpty = !escolaridade || (typeof escolaridade === 'string' && escolaridade.trim() === "");
+        isEmpty =
+          !escolaridade ||
+          (typeof escolaridade === "string" && escolaridade.trim() === "");
       }
       if (isEmpty) camposFaltantes.push("Escolaridade");
     }
@@ -936,11 +951,22 @@ const CriadorCurriculo = () => {
                   validator: (_, value) => {
                     // Valida se é array vazio, string vazia, ou undefined/null
                     if (Array.isArray(value)) {
-                      if (value.length === 0 || !value[0] || value[0].trim() === "") {
-                        return Promise.reject(new Error("Selecione ou digite a escolaridade"));
+                      if (
+                        value.length === 0 ||
+                        !value[0] ||
+                        value[0].trim() === ""
+                      ) {
+                        return Promise.reject(
+                          new Error("Selecione ou digite a escolaridade")
+                        );
                       }
-                    } else if (!value || (typeof value === 'string' && value.trim() === "")) {
-                      return Promise.reject(new Error("Selecione ou digite a escolaridade"));
+                    } else if (
+                      !value ||
+                      (typeof value === "string" && value.trim() === "")
+                    ) {
+                      return Promise.reject(
+                        new Error("Selecione ou digite a escolaridade")
+                      );
                     }
                     return Promise.resolve();
                   },
@@ -951,9 +977,12 @@ const CriadorCurriculo = () => {
                 placeholder="Selecione ou digite sua escolaridade"
                 onChange={(value) => {
                   // Se for array, pega o primeiro elemento ou converte para string
-                  const escolaridadeValue = Array.isArray(value) && value.length > 0 
-                    ? value[0] 
-                    : (typeof value === 'string' ? value : '');
+                  const escolaridadeValue =
+                    Array.isArray(value) && value.length > 0
+                      ? value[0]
+                      : typeof value === "string"
+                      ? value
+                      : "";
                   setPersonalData("escolaridade", escolaridadeValue);
                   // Atualiza o form com o valor correto
                   form.setFieldsValue({ escolaridade: value });
