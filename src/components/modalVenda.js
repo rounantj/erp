@@ -350,11 +350,15 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       dataIndex: "valorUnitario",
       key: "valorUnitario",
       align: "right",
-      render: (value) => (
-        <Text strong style={{ color: "#1890ff" }}>
-          R$ {(value || 0).toFixed(2)}
-        </Text>
-      ),
+      render: (value, record) => {
+        // Usar valorUnitario, valor como fallback, ou 0
+        const unitValue = value || record.valor || 0;
+        return (
+          <Text strong style={{ color: "#1890ff" }}>
+            R$ {unitValue.toFixed(2)}
+          </Text>
+        );
+      },
     },
     {
       title: "Desconto",
@@ -372,8 +376,10 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       key: "subtotal",
       align: "right",
       render: (_, record) => {
+        // Usar valorUnitario, valor como fallback, ou 0
+        const unitValue = record.valorUnitario || record.valor || 0;
         const subtotal =
-          (record.quantidade || 0) * (record.valorUnitario || 0) - (record.desconto || 0);
+          (record.quantidade || 0) * unitValue - (record.desconto || 0);
         return (
           <Text strong style={{ fontSize: "16px", color: "#52c41a" }}>
             R$ {subtotal.toFixed(2)}
@@ -546,6 +552,8 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
               dataSource={(saleData.produtos || []).map((produto, index) => ({
                 ...produto,
                 key: index,
+                // Converter valor para valorUnitario se não existir
+                valorUnitario: produto.valorUnitario || produto.valor || 0,
               }))}
               pagination={false}
               size="middle"
@@ -574,8 +582,11 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
                         R${" "}
                         {(saleData.produtos || [])
                           .reduce(
-                            (acc, prod) =>
-                              acc + (prod.quantidade || 0) * (prod.valorUnitario || 0),
+                            (acc, prod) => {
+                              // Usar valorUnitario, valor como fallback, ou 0
+                              const unitValue = prod.valorUnitario || prod.valor || 0;
+                              return acc + (prod.quantidade || 0) * unitValue;
+                            },
                             0
                           )
                           .toFixed(2)}

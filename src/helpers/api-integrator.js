@@ -276,6 +276,40 @@ export const getSells = async (startDate, endDate) => {
   }
 };
 
+export const getMonthlySalesAndExpenses = async () => {
+  try {
+    const response = await api.get("/vendas/monthly-stats");
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error fetching monthly sales and expenses:", error);
+    return {
+      success: false,
+      data: { meses: [], vendas: [], despesas: [] },
+      message: "Erro ao buscar dados mensais",
+    };
+  }
+};
+
+export const getMonthlyCurriculums = async () => {
+  try {
+    const response = await api.get("/vendas/monthly-curriculums");
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error fetching monthly curriculums:", error);
+    return {
+      success: false,
+      data: { meses: [], curriculos: [] },
+      message: "Erro ao buscar dados de currículos",
+    };
+  }
+};
+
 export const getDashboard = async () => {
   const cacheKey = "dashboard";
   const cachedData = getCachedData(cacheKey);

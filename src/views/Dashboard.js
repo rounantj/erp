@@ -34,9 +34,14 @@ import {
   FallOutlined,
   MenuOutlined,
 } from "@ant-design/icons";
-import { getDashboard } from "helpers/api-integrator";
+import {
+  getDashboard,
+  getMonthlySalesAndExpenses,
+  getMonthlyCurriculums,
+} from "helpers/api-integrator";
 import { toMoneyFormat, monthName } from "helpers/formatters";
 import ChartistGraph from "react-chartist"; // Keeping the existing chart library
+import Chartist from "chartist"; // Import Chartist for SVG manipulation
 import TopSellingItemsDashboard from "components/Dashboard/TopSellers";
 import moment from "moment";
 
@@ -181,6 +186,9 @@ function Dashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const [monthlyData, setMonthlyData] = useState(null);
+  const [curriculumData, setCurriculumData] = useState(null);
+
   const [dataDash, setDataDash] = useState({
     produtosVendidos: [
       {
@@ -252,9 +260,35 @@ function Dashboard() {
     }
   }, []);
 
+  // Fetch monthly sales and expenses data
+  const fetchMonthlyData = useCallback(async () => {
+    try {
+      const result = await getMonthlySalesAndExpenses();
+      if (result.success) {
+        setMonthlyData(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching monthly data:", error);
+    }
+  }, []);
+
+  // Fetch monthly curriculums data
+  const fetchCurriculumData = useCallback(async () => {
+    try {
+      const result = await getMonthlyCurriculums();
+      if (result.success) {
+        setCurriculumData(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching curriculum data:", error);
+    }
+  }, []);
+
   useEffect(() => {
     getDataDash();
-  }, [getDataDash]);
+    fetchMonthlyData();
+    fetchCurriculumData();
+  }, [getDataDash, fetchMonthlyData, fetchCurriculumData]);
 
   // Format date functions
   const formatDate = (dateString) => {
@@ -900,6 +934,311 @@ function Dashboard() {
           ]}
         />
       )}
+
+      {/* Monthly Charts Row */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        {/* Vendas e Despesas - Últimos 12 Meses */}
+        <Col xs={24}>
+          {loading ? (
+            <Card>
+              <Skeleton active paragraph={{ rows: 6 }} />
+            </Card>
+          ) : (
+            <Card
+              title="Vendas e Despesas - Últimos 12 Meses"
+              extra={<LineChartOutlined style={{ fontSize: 18 }} />}
+              bordered={false}
+              style={{ marginBottom: 16 }}
+            >
+              {monthlyData && monthlyData.meses?.length > 0 ? (
+                <>
+                  <style>{`
+                    #chartMonthly .ct-series-a .ct-line,
+                    #chartMonthly .ct-series-a .ct-point {
+                      stroke: #1890ff;
+                    }
+                    #chartMonthly .ct-series-b .ct-line,
+                    #chartMonthly .ct-series-b .ct-point {
+                      stroke: #f5222d;
+                    }
+                  `}</style>
+                  <div className="ct-chart" id="chartMonthly">
+                    <ChartistGraph
+                      data={{
+                        labels: monthlyData.meses,
+                        series: [monthlyData.vendas, monthlyData.despesas],
+                      }}
+                      type="Line"
+                      style={{ zoom: "95%" }}
+                      listener={{
+                        draw: (function(vendasData, despesasData) {
+                          return function(data) {
+                            // Adicionar labels sobre os pontos
+                            if (data.type === 'point') {
+                              // Acessar o valor correto da série usando o índice
+                              const seriesIndex = data.seriesIndex;
+                              const pointIndex = data.index;
+                              let value = 0;
+                              
+                              // Pegar o valor do array de séries
+                              if (seriesIndex === 0 && vendasData) {
+                                value = vendasData[pointIndex] || 0;
+                              } else if (seriesIndex === 1 && despesasData) {
+                                value = despesasData[pointIndex] || 0;
+                              }
+                              
+                              // Garantir que é um número
+                              value = parseFloat(value) || 0;
+                              
+                              // Formatar com R$ e sem centavos
+                              const valueInteiro = Math.round(value);
+                              const formattedValue = `R$ ${valueInteiro.toLocaleString('pt-BR')}`;
+                              
+                              // Criar elemento de texto para o label
+                              const label = new Chartist.Svg('text', {
+                                x: data.x,
+                                y: data.y - 10,
+                                'text-anchor': 'middle',
+                                'class': 'ct-point-label',
+                                style: 'font-size: 14px; font-weight: bold; fill: #333;'
+                              });
+                              
+                              label.text(formattedValue);
+                              data.element.parent().append(label);
+                            }
+                          };
+                        })(monthlyData.vendas, monthlyData.despesas)
+                      }}
+                      options={{
+                        low: 0,
+                        high: (() => {
+                          const maxValue = Math.max(
+                            ...monthlyData.vendas,
+                            ...monthlyData.despesas
+                          );
+                          if (maxValue === 0) return 1000;
+                          // Determinar o valor de arredondamento baseado no tamanho
+                          let roundTo = 100;
+                          if (maxValue >= 50000) roundTo = 10000;
+                          else if (maxValue >= 10000) roundTo = 5000;
+                          else if (maxValue >= 5000) roundTo = 1000;
+                          else if (maxValue >= 1000) roundTo = 500;
+                          else if (maxValue >= 500) roundTo = 100;
+                          else if (maxValue >= 100) roundTo = 50;
+                          else roundTo = 10;
+                          // Arredondar para o próximo múltiplo
+                          const rounded = Math.ceil(maxValue / roundTo) * roundTo;
+                          // Adicionar apenas uma pequena margem proporcional ao roundTo (não percentual)
+                          // Isso evita escalas muito grandes quando os valores são pequenos
+                          const padding = roundTo * 0.2; // 20% do roundTo, não do valor
+                          return rounded + Math.ceil(padding);
+                        })(),
+                        showArea: false,
+                        height: "250px",
+                        axisX: {
+                          showGrid: false,
+                          labelOffset: {
+                            x: 0,
+                            y: 5,
+                          },
+                          labelInterpolationFnc: function (value, index) {
+                            // Adicionar o ano ao mês (formato: Jan/25)
+                            const mes = value.substring(0, 3);
+                            // Calcular o ano baseado no índice (últimos 12 meses)
+                            const hoje = new Date();
+                            const mesAtual = hoje.getMonth();
+                            const anoAtual = hoje.getFullYear();
+                            // Calcular quantos meses atrás estamos
+                            const mesesAtras = 11 - index;
+                            const dataDoMes = new Date(anoAtual, mesAtual - mesesAtras, 1);
+                            const ano = String(dataDoMes.getFullYear()).substring(2);
+                            return `${mes}/${ano}`;
+                          },
+                        },
+                        axisY: {
+                          labelInterpolationFnc: function (value) {
+                            // Formatar números com separador de milhar brasileiro
+                            if (value >= 1000) {
+                              return value.toLocaleString('pt-BR');
+                            }
+                            return value.toString();
+                          },
+                        },
+                        lineSmooth: true,
+                        showLine: true,
+                        showPoint: true,
+                        fullWidth: true,
+                        chartPadding: {
+                          right: 50,
+                          left: 60,
+                          top: 20,
+                          bottom: 30,
+                        },
+                      }}
+                      responsiveOptions={[
+                        [
+                          "screen and (max-width: 640px)",
+                          {
+                            axisX: {
+                              labelInterpolationFnc: function (value) {
+                                return value[0];
+                              },
+                            },
+                          },
+                        ],
+                      ]}
+                    />
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <Space>
+                      <Badge color="#1890ff" text="Vendas" />
+                      <Badge color="#f5222d" text="Despesas" />
+                    </Space>
+                  </div>
+                </>
+              ) : (
+                <Empty description="Sem dados para exibir" />
+              )}
+            </Card>
+          )}
+        </Col>
+
+        {/* Currículos Criados - Últimos 12 Meses */}
+        <Col xs={24}>
+          {loading ? (
+            <Card>
+              <Skeleton active paragraph={{ rows: 6 }} />
+            </Card>
+          ) : (
+            <Card
+              title="Currículos Criados - Últimos 12 Meses"
+              extra={<BarChartOutlined style={{ fontSize: 18 }} />}
+              bordered={false}
+              style={{ marginBottom: 16 }}
+            >
+              {curriculumData && curriculumData.meses?.length > 0 ? (
+                <>
+                  <style>{`
+                    #chartCurriculums .ct-series-a .ct-line,
+                    #chartCurriculums .ct-series-a .ct-point {
+                      stroke: #52c41a;
+                    }
+                  `}</style>
+                  <div className="ct-chart" id="chartCurriculums">
+                    <ChartistGraph
+                      data={{
+                        labels: curriculumData.meses,
+                        series: [curriculumData.curriculos],
+                      }}
+                      type="Line"
+                      style={{ zoom: "95%" }}
+                      listener={{
+                        draw: function(data) {
+                          // Adicionar labels sobre os pontos
+                          if (data.type === 'point') {
+                            // Acessar o valor correto da série usando o índice
+                            const pointIndex = data.index;
+                            let value = 0;
+                            
+                            // Pegar o valor do array de séries
+                            if (curriculumData && curriculumData.curriculos) {
+                              value = curriculumData.curriculos[pointIndex] || 0;
+                            }
+                            
+                            // Garantir que é um número
+                            value = parseFloat(value) || 0;
+                            
+                            const formattedValue = value.toString();
+                            
+                            // Criar elemento de texto para o label
+                            const label = new Chartist.Svg('text', {
+                              x: data.x,
+                              y: data.y - 10,
+                              'text-anchor': 'middle',
+                              'class': 'ct-point-label',
+                              style: 'font-size: 14px; font-weight: bold; fill: #333;'
+                            });
+                            
+                            label.text(formattedValue);
+                            data.element.parent().append(label);
+                          }
+                        }
+                      }}
+                      options={{
+                        low: 0,
+                        high: (() => {
+                          const maxValue = Math.max(...curriculumData.curriculos);
+                          if (maxValue === 0) return 10;
+                          // Arredondar para cima de forma mais inteligente
+                          let roundTo = 2;
+                          if (maxValue >= 50) roundTo = 50;
+                          else if (maxValue >= 10) roundTo = 10;
+                          else if (maxValue >= 5) roundTo = 5;
+                          else roundTo = 2;
+                          const rounded = Math.ceil(maxValue / roundTo) * roundTo;
+                          // Adicionar um pouco de espaço no topo (10% ou mínimo de 2)
+                          return rounded + Math.max(2, Math.ceil(rounded * 0.1));
+                        })(),
+                        showArea: false,
+                        height: "250px",
+                        axisX: {
+                          showGrid: false,
+                          labelOffset: {
+                            x: 0,
+                            y: 5,
+                          },
+                          labelInterpolationFnc: function (value, index) {
+                            // Adicionar o ano ao mês (formato: Jan/25)
+                            const mes = value.substring(0, 3);
+                            // Calcular o ano baseado no índice (últimos 12 meses)
+                            const hoje = new Date();
+                            const mesAtual = hoje.getMonth();
+                            const anoAtual = hoje.getFullYear();
+                            // Calcular quantos meses atrás estamos
+                            const mesesAtras = 11 - index;
+                            const dataDoMes = new Date(anoAtual, mesAtual - mesesAtras, 1);
+                            const ano = String(dataDoMes.getFullYear()).substring(2);
+                            return `${mes}/${ano}`;
+                          },
+                        },
+                        lineSmooth: true,
+                        showLine: true,
+                        showPoint: true,
+                        fullWidth: true,
+                        chartPadding: {
+                          right: 50,
+                          left: 60,
+                          top: 20,
+                          bottom: 30,
+                        },
+                      }}
+                      responsiveOptions={[
+                        [
+                          "screen and (max-width: 640px)",
+                          {
+                            axisX: {
+                              labelInterpolationFnc: function (value) {
+                                return value[0];
+                              },
+                            },
+                          },
+                        ],
+                      ]}
+                    />
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <Space>
+                      <Badge color="#52c41a" text="Currículos" />
+                    </Space>
+                  </div>
+                </>
+              ) : (
+                <Empty description="Sem dados para exibir" />
+              )}
+            </Card>
+          )}
+        </Col>
+      </Row>
     </div>
   );
 }
