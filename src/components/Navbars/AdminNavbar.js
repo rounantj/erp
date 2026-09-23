@@ -1,9 +1,10 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Layout, Button, Space, Avatar, Divider, Tooltip } from "antd";
+import { Layout, Button, Avatar, Tooltip, message } from "antd";
 import { MenuOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { UserContext } from "context/UserContext";
 import { useCompany } from "context/CompanyContext";
+import { getCompanies, getMyCompanies } from "helpers/api-integrator";
 import routes from "routes.js";
 
 const { Header } = Layout;
@@ -25,9 +26,14 @@ const adjustColor = (hex, percent) => {
 function AdminNavbar() {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
-  const { user, setUser } = useContext(UserContext);
-  const { sidebarColor, companySetup } = useCompany();
+  const { user, setUser, switchCompany } = useContext(UserContext);
+  const { sidebarColor, companySetup, switchActiveCompany } = useCompany();
   const companyName = companySetup?.companyName || "";
+  const [companies, setCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  const loggedEmail = (user?.user?.email || user?.email || "").toLowerCase();
+  const canSwitchCompany = loggedEmail === "rounantj@hotmail.com";
 
   // Usar cor da empresa ou fallback
   const primaryColor = sidebarColor || "#667eea";
@@ -41,6 +47,37 @@ function AdminNavbar() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (!canSwitchCompany) return;
+      setLoadingCompanies(true);
+      try {
+        // Super admin: tenta buscar todas as empresas, com fallback para my-companies
+        let data = [];
+        const allResult = await getCompanies();
+        if (allResult?.success && Array.isArray(allResult.data)) {
+          data = allResult.data;
+        } else {
+          const mineResult = await getMyCompanies();
+          if (mineResult?.success && Array.isArray(mineResult.data)) {
+            data = mineResult.data;
+          }
+        }
+
+        if (data.length > 0) {
+          setCompanies(data);
+        } else {
+          message.warning("Nenhuma empresa encontrada para alternar.");
+        }
+      } catch (error) {
+        message.error("Erro ao carregar lista de empresas.");
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    fetchCompanies();
+  }, [canSwitchCompany]);
 
   const mobileSidebarToggle = (e) => {
     e.preventDefault();
@@ -73,6 +110,22 @@ function AdminNavbar() {
     setUser(null);
     localStorage.clear();
     window.location.replace("/");
+  };
+
+  const currentCompanyId = Number(
+    user?.user?.companyId || user?.companyId || companySetup?.companyId || 0
+  );
+
+  const handleCompanySwitch = async (companyId) => {
+    const numericCompanyId = Number(companyId);
+    if (!numericCompanyId || numericCompanyId === currentCompanyId) return;
+
+    try {
+      switchCompany(numericCompanyId);
+      await switchActiveCompany(numericCompanyId);
+    } finally {
+      window.location.href = window.location.pathname + window.location.search;
+    }
   };
 
   // Pegar iniciais do email para o avatar
@@ -148,6 +201,56 @@ function AdminNavbar() {
       {/* Lado direito - Usuário e Logout */}
       {user && (
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {canSwitchCompany && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                background: "rgba(255,255,255,0.15)",
+                borderRadius: 8,
+                padding: "2px 6px",
+              }}
+            >
+              <select
+                value={currentCompanyId || ""}
+                onChange={(e) => handleCompanySwitch(e.target.value)}
+                disabled={loadingCompanies || companies.length === 0}
+                style={{
+                  minWidth: isMobile ? 120 : 220,
+                  maxWidth: isMobile ? 140 : 320,
+                  height: isMobile ? 30 : 34,
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  color: "#fff",
+                  fontSize: isMobile ? 12 : 13,
+                  fontWeight: 500,
+                  cursor:
+                    loadingCompanies || companies.length === 0
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+                title="Trocar empresa"
+              >
+                {companies.length === 0 ? (
+                  <option value="" style={{ color: "#333" }}>
+                    {loadingCompanies ? "Carregando..." : "Sem empresas"}
+                  </option>
+                ) : (
+                  companies.map((company) => (
+                    <option
+                      key={company.id}
+                      value={Number(company.id)}
+                      style={{ color: "#333" }}
+                    >
+                      {company.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
+
           {/* Info do usuário */}
           <div
             style={{

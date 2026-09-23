@@ -227,7 +227,9 @@ const ProductList = ({
                 boxSizing: "border-box",
               }}
             >
-              {products.map((product) => (
+              {products.map((product) => {
+                const isDisabled = !!product.isOutOfStock;
+                return (
                 <div
                   key={product.id}
                   style={{
@@ -242,8 +244,10 @@ const ProductList = ({
                     maxWidth: "100%",
                     boxSizing: "border-box",
                     overflow: "hidden",
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    opacity: isDisabled ? 0.6 : 1,
                   }}
-                  onClick={() => onAddProduct(product, 1)}
+                  onClick={() => !isDisabled && onAddProduct(product, 1)}
                 >
                   {/* Miniatura do Produto */}
                   <div
@@ -305,6 +309,9 @@ const ProductList = ({
                         flexWrap: "wrap",
                       }}
                     >
+                      <Tag color={isDisabled ? "red" : "green"} style={{ margin: 0 }}>
+                        Estoque: {Number(product.stockQuantity || 0)}
+                      </Tag>
                       <Tag
                         color={
                           product.categoria?.toLowerCase() === "serviço"
@@ -345,6 +352,7 @@ const ProductList = ({
                       type="primary"
                       size="small"
                       icon={<PlusOutlined />}
+                      disabled={isDisabled}
                       style={{
                         marginTop: "4px",
                         borderRadius: "8px",
@@ -355,14 +363,15 @@ const ProductList = ({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onAddProduct(product, 1);
+                        if (!isDisabled) onAddProduct(product, 1);
                       }}
                     >
-                      Add
+                      {isDisabled ? "Sem estoque" : "Add"}
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -515,7 +524,9 @@ const ProductList = ({
         ) : (
           <List
             dataSource={products}
-            renderItem={(product) => (
+            renderItem={(product) => {
+              const isDisabled = !!product.isOutOfStock;
+              return (
               <List.Item
                 key={product.id}
                 style={{
@@ -524,9 +535,10 @@ const ProductList = ({
                   borderRadius: "4px",
                   marginBottom: "4px",
                   backgroundColor: "#fff",
-                  cursor: "pointer",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  opacity: isDisabled ? 0.55 : 1,
                 }}
-                onClick={() => onAddProduct(product, 1)}
+                onClick={() => !isDisabled && onAddProduct(product, 1)}
               >
                 <div
                   style={{
@@ -596,6 +608,9 @@ const ProductList = ({
                     >
                       {product.categoria?.toUpperCase()}
                     </Tag>
+                    <Tag color={isDisabled ? "red" : "green"}>
+                      Estoque: {Number(product.stockQuantity || 0)}
+                    </Tag>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <Text strong style={{ fontSize: "13px", color: "#1890ff" }}>
@@ -605,18 +620,20 @@ const ProductList = ({
                       type="primary"
                       icon={<PlusOutlined />}
                       size="small"
+                      disabled={isDisabled}
                       style={{ marginLeft: "8px" }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onAddProduct(product, 1);
+                        if (!isDisabled) onAddProduct(product, 1);
                       }}
                     >
-                      Add
+                      {isDisabled ? "Sem estoque" : "Add"}
                     </Button>
                   </div>
                 </div>
               </List.Item>
-            )}
+              );
+            }}
             pagination={false}
           />
         )}

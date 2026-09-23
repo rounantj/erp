@@ -213,6 +213,16 @@ const Checkout = () => {
   // Estados para cliente
   const [selectedCliente, setSelectedCliente] = useState(null);
 
+  const canSellProduct = useCallback(
+    (produto) => {
+      const categoria = (produto?.categoria || "").toLowerCase();
+      if (categoria.includes("servi")) return true;
+      if (companySetup?.allowNegativeStock !== false) return true;
+      return !produto?.isOutOfStock && Number(produto?.stockQuantity || 0) > 0;
+    },
+    [companySetup?.allowNegativeStock]
+  );
+
   // Verificar responsividade
   useEffect(() => {
     const handleResize = () => {
@@ -339,6 +349,15 @@ const Checkout = () => {
 
   // Adicionar produto ao carrinho
   const adicionarProduto = (produto, qtd) => {
+    if (!canSellProduct(produto)) {
+      notification.warning({
+        message: "Sem estoque",
+        description: `${produto.descricao} está com estoque 0 e não pode ser vendido.`,
+        placement: isMobile ? "top" : "topRight",
+      });
+      return;
+    }
+
     const produtoExistente = venda.find((item) => item.id === produto.id);
 
     if (produtoExistente) {
@@ -395,6 +414,14 @@ const Checkout = () => {
 
       if (result.success && result.data) {
         const produto = result.data;
+        if (!canSellProduct(produto)) {
+          notification.warning({
+            message: "Sem estoque",
+            description: `${produto.descricao} está com estoque 0 e não pode ser vendido.`,
+            placement: isMobile ? "top" : "topRight",
+          });
+          return;
+        }
         adicionarProduto(produto, 1);
       } else {
         notification.warning({
@@ -404,9 +431,11 @@ const Checkout = () => {
         });
       }
     } catch (error) {
+      const backendMessage =
+        error?.response?.data?.message || error?.message || "Erro desconhecido";
       notification.error({
         message: "Erro",
-        description: error.message,
+        description: backendMessage,
       });
     } finally {
       setLoading(false);
@@ -580,9 +609,11 @@ const Checkout = () => {
         placement: isMobile ? "top" : "topRight",
       });
     } catch (error) {
+      const backendMessage =
+        error?.response?.data?.message || error?.message || "Erro desconhecido";
       notification.error({
         message: "Erro",
-        description: error.message,
+        description: backendMessage,
       });
     } finally {
       setLoading(false);
@@ -599,6 +630,7 @@ const Checkout = () => {
     caixa?.id,
     selectedCliente,
     isMobile,
+    canSellProduct,
   ]);
 
   // Abrir caixa

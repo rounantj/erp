@@ -23,6 +23,21 @@ export const useCompany = () => {
 const DEFAULT_LOGO = null; // Será usado o logo.png do assets
 const DEFAULT_SIDEBAR_COLOR = "#667eea";
 
+const getInitialCompanyId = () => {
+  const activeCompanyId = Number(localStorage.getItem("active_company_id"));
+  if (Number.isFinite(activeCompanyId) && activeCompanyId > 0) {
+    return activeCompanyId;
+  }
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userCompanyId = Number(user?.user?.companyId || user?.companyId);
+  if (Number.isFinite(userCompanyId) && userCompanyId > 0) {
+    return userCompanyId;
+  }
+
+  return null;
+};
+
 export const CompanyProvider = ({ children }) => {
   const [companySetup, setCompanySetup] = useState({
     logoUrl: DEFAULT_LOGO,
@@ -33,15 +48,18 @@ export const CompanyProvider = ({ children }) => {
     companyPhone: "",
     companyEmail: "",
     receiptFooter: "",
+    allowNegativeStock: true,
     onboardingCompleted: false,
     companyIntegration: {},
   });
+  const [activeCompanyId, setActiveCompanyId] = useState(getInitialCompanyId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Função para carregar configurações da empresa
-  const loadCompanySetup = useCallback(async (companyId) => {
-    if (!companyId) {
+  const loadCompanySetup = useCallback(async (companyIdParam) => {
+    const companyId = companyIdParam || getInitialCompanyId();
+    if (!companyId || !Number.isFinite(Number(companyId))) {
       setLoading(false);
       return;
     }
@@ -64,6 +82,7 @@ export const CompanyProvider = ({ children }) => {
           companyPhone: data.companyPhone || "",
           companyEmail: data.companyEmail || "",
           receiptFooter: data.receiptFooter || "",
+          allowNegativeStock: data.allowNegativeStock !== false,
           onboardingCompleted: data.onboardingCompleted || false,
           companyIntegration: data.companyIntegration || {},
           companyNCM: data.companyNCM || "",
@@ -79,6 +98,15 @@ export const CompanyProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  const switchActiveCompany = useCallback(async (nextCompanyId) => {
+    const numericCompanyId = Number(nextCompanyId);
+    if (!Number.isFinite(numericCompanyId) || numericCompanyId <= 0) return;
+
+    localStorage.setItem("active_company_id", String(numericCompanyId));
+    setActiveCompanyId(numericCompanyId);
+    await loadCompanySetup(numericCompanyId);
+  }, [loadCompanySetup]);
 
   // Função para atualizar o setup localmente (após salvar no backend)
   const updateCompanySetup = useCallback((newSetup) => {
@@ -102,8 +130,7 @@ export const CompanyProvider = ({ children }) => {
 
   // Função para recarregar setup
   const refreshSetup = useCallback(async () => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const companyId = user?.user?.companyId;
+    const companyId = getInitialCompanyId();
     if (companyId) {
       await loadCompanySetup(companyId);
     }
@@ -127,13 +154,25 @@ export const CompanyProvider = ({ children }) => {
     }
 
     // Carregar da API
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const companyId = user?.user?.companyId;
+    const companyId = getInitialCompanyId();
     if (companyId) {
+      setActiveCompanyId(companyId);
       loadCompanySetup(companyId);
     } else {
       setLoading(false);
     }
+  }, [loadCompanySetup]);
+
+  useEffect(() => {
+    const handleCompanyChanged = (event) => {
+      const companyId = Number(event?.detail?.companyId);
+      if (!Number.isFinite(companyId) || companyId <= 0) return;
+      setActiveCompanyId(companyId);
+      loadCompanySetup(companyId);
+    };
+
+    window.addEventListener("companyChanged", handleCompanyChanged);
+    return () => window.removeEventListener("companyChanged", handleCompanyChanged);
   }, [loadCompanySetup]);
 
   // Memoizar o valor do contexto
@@ -142,7 +181,9 @@ export const CompanyProvider = ({ children }) => {
       companySetup,
       loading,
       error,
+      activeCompanyId,
       loadCompanySetup,
+      switchActiveCompany,
       updateCompanySetup,
       refreshSetup,
       // Helpers
@@ -156,7 +197,9 @@ export const CompanyProvider = ({ children }) => {
       companySetup,
       loading,
       error,
+      activeCompanyId,
       loadCompanySetup,
+      switchActiveCompany,
       updateCompanySetup,
       refreshSetup,
     ]

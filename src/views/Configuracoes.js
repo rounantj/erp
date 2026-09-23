@@ -21,6 +21,7 @@ import {
   Upload,
   message,
   Avatar,
+  Switch,
 } from "antd";
 import {
   SaveOutlined,
@@ -284,6 +285,7 @@ function Configuracoes() {
     receiptFooter: "",
     logoUrl: "",
     sidebarColor: "#667eea",
+    allowNegativeStock: true,
     companyIntegration: {
       sefazCode: "",
       sefazId: "",
@@ -311,6 +313,7 @@ function Configuracoes() {
           companyPhone: data.companyPhone,
           companyEmail: data.companyEmail,
           receiptFooter: data.receiptFooter,
+          allowNegativeStock: data.allowNegativeStock !== false,
           sefazCode: data.companyIntegration?.sefazCode,
           sefazId: data.companyIntegration?.sefazId,
         });
@@ -406,6 +409,10 @@ function Configuracoes() {
             description: "A logo da empresa foi atualizada com sucesso.",
           });
           setLogoPreview(result.data.logoUrl);
+          setCompany((prev) => ({
+            ...prev,
+            logoUrl: result.data.logoUrl,
+          }));
           updateCompanySetup({ logoUrl: result.data.logoUrl });
           refreshSetup();
         } else {
@@ -434,6 +441,7 @@ function Configuracoes() {
 
       const updatedCompany = {
         ...company,
+        companyId: company.companyId || user?.user?.companyId || 1,
         companyName: values.companyName,
         companyCNPJ: values.companyCNPJ,
         companyNCM: values.companyNCM,
@@ -441,7 +449,9 @@ function Configuracoes() {
         companyPhone: values.companyPhone,
         companyEmail: values.companyEmail,
         receiptFooter: values.receiptFooter,
+        allowNegativeStock: values.allowNegativeStock !== false,
         sidebarColor: selectedColor,
+        logoUrl: logoPreview || company.logoUrl || null,
         companyIntegration: {
           sefazCode: values.sefazCode,
           sefazId: values.sefazId,
@@ -460,6 +470,7 @@ function Configuracoes() {
       updateCompanySetup({
         sidebarColor: selectedColor,
         companyName: values.companyName,
+        allowNegativeStock: values.allowNegativeStock !== false,
       });
 
       await fetchCompanySetup();
@@ -877,6 +888,19 @@ function Configuracoes() {
                   </Form.Item>
                 </div>
 
+                <div style={mobileStyles.sectionCard}>
+                  <div style={mobileStyles.sectionTitle}>
+                    <SettingOutlined /> Controle de Estoque
+                  </div>
+                  <Form.Item
+                    name="allowNegativeStock"
+                    label="Permitir estoque negativo"
+                    valuePropName="checked"
+                  >
+                    <Switch checkedChildren="Sim" unCheckedChildren="Não" />
+                  </Form.Item>
+                </div>
+
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -1236,6 +1260,17 @@ function Configuracoes() {
                   rows={3}
                   placeholder="Texto que aparecerá no rodapé do cupom não fiscal..."
                 />
+              </Form.Item>
+
+              <Divider />
+              <Title level={5}>Estoque</Title>
+              <Form.Item
+                name="allowNegativeStock"
+                label="Permitir estoque negativo"
+                valuePropName="checked"
+                extra="Se desativado, produtos com estoque zero ficam bloqueados no checkout."
+              >
+                <Switch checkedChildren="Sim" unCheckedChildren="Não" />
               </Form.Item>
             </Form>
           </Card>

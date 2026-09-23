@@ -232,6 +232,19 @@ const ProductAndServiceTable = () => {
       .replace(".", ",")}`;
   };
 
+  const normalizeProduct = (item, index = 0) => ({
+    key: item.id || index.toString(),
+    id: item.id,
+    categoria: item.categoria || "",
+    ean: item.ean || "",
+    ncm: item.ncm || "",
+    valor: parseFloat(item.valor) || 0,
+    descricao: item.descricao || "",
+    imageUrl: item.imageUrl || null,
+    stockQuantity: Number(item.stockQuantity ?? 0),
+    isOutOfStock: !!item.isOutOfStock,
+  });
+
   // Calculate product statistics
   const calculateStats = (productsList) => {
     if (!productsList.length) return;
@@ -257,32 +270,19 @@ const ProductAndServiceTable = () => {
     try {
       const result = await getProducts();
       if (result.success) {
-        // Normalize data
-        const normalizedData = result.data.map((item, index) => ({
-          key: item.id || index.toString(),
-          id: item.id,
-          categoria: item.categoria || "",
-          ean: item.ean || "",
-          ncm: item.ncm || "",
-          valor: parseFloat(item.valor) || 0,
-          descricao: item.descricao || "",
-          imageUrl: item.imageUrl || null,
-        }));
+        const items = Array.isArray(result.data) ? result.data : [];
+        const normalizedData = items.map((item, index) =>
+          normalizeProduct(item, index)
+        );
 
         setProducts(normalizedData);
         calculateStats(normalizedData);
       } else {
-        Modal.error({
-          title: "Erro ao carregar produtos",
-          content: "Não foi possível buscar os produtos. Tente novamente.",
-        });
+        message.error("Não foi possível recarregar os produtos.");
       }
     } catch (error) {
       console.error("Error fetching products:", error);
-      Modal.error({
-        title: "Erro ao carregar produtos",
-        content: "Ocorreu um erro ao buscar os produtos.",
-      });
+      message.error("Ocorreu um erro ao buscar os produtos.");
     } finally {
       setLoading(false);
     }
@@ -309,6 +309,7 @@ const ProductAndServiceTable = () => {
       const productData = {
         ...values,
         id: editingProduct?.id,
+        stockQuantity: Number(values.stockQuantity ?? 0),
       };
 
       const result = await updateProduct(productData);
@@ -330,7 +331,19 @@ const ProductAndServiceTable = () => {
         });
 
         setModalVisible(false);
-        fetchProducts();
+        if (result.data?.id) {
+          const normalized = normalizeProduct(result.data);
+          setProducts((prev) => {
+            const exists = prev.some((p) => p.id === normalized.id);
+            const next = exists
+              ? prev.map((p) => (p.id === normalized.id ? normalized : p))
+              : [normalized, ...prev];
+            calculateStats(next);
+            return next;
+          });
+        } else {
+          fetchProducts();
+        }
       } else {
         Modal.error({
           title: "Operação falhou",
@@ -499,64 +512,58 @@ const ProductAndServiceTable = () => {
   // Define table columns
   const columns = [
     {
-      title: "Imagem",
+      title: "Imagem/Categoria",
       dataIndex: "imageUrl",
-      key: "image",
-      width: 80,
+      key: "imageCategory",
+      width: 120,
       render: (imageUrl, record) => (
-        <div
-          onClick={() => openImageModal(imageUrl, record.descricao)}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: imageUrl ? "#fff" : "#f5f5f5",
-            border: "1px solid #e8e8e8",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
-            cursor: imageUrl ? "pointer" : "default",
-            transition: "transform 0.2s, box-shadow 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            if (imageUrl) {
-              e.currentTarget.style.transform = "scale(1.05)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.06)";
-          }}
-        >
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt="Produto"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-            />
-          ) : (
-            <PictureOutlined style={{ fontSize: 20, color: "#bfbfbf" }} />
-          )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div
+            onClick={() => openImageModal(imageUrl, record.descricao)}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 8,
+              overflow: "hidden",
+              background: imageUrl ? "#fff" : "#f5f5f5",
+              border: "1px solid #e8e8e8",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
+              cursor: imageUrl ? "pointer" : "default",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (imageUrl) {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.06)";
+            }}
+          >
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Produto"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <PictureOutlined style={{ fontSize: 20, color: "#bfbfbf" }} />
+            )}
+          </div>
+          <Tag color="blue" icon={<TagOutlined />} style={{ marginInlineEnd: 0 }}>
+            {record.categoria || "Não categorizado"}
+          </Tag>
         </div>
       ),
-    },
-    {
-      title: "Categoria",
-      dataIndex: "categoria",
-      key: "categoria",
-      render: (text) => (
-        <Tag color="blue" icon={<TagOutlined />}>
-          {text || "Não categorizado"}
-        </Tag>
-      ),
-      sorter: (a, b) => a.categoria.localeCompare(b.categoria),
     },
     {
       title: "Preço",
@@ -564,6 +571,18 @@ const ProductAndServiceTable = () => {
       key: "valor",
       render: (text) => <Text strong>{formatCurrency(text)}</Text>,
       sorter: (a, b) => a.valor - b.valor,
+    },
+    {
+      title: "Estoque",
+      dataIndex: "stockQuantity",
+      key: "stockQuantity",
+      render: (_, record) => {
+        const qty = Number(record.stockQuantity || 0);
+        const color = qty <= 0 ? "red" : qty < 10 ? "orange" : "green";
+        return <Tag color={color}>{qty}</Tag>;
+      },
+      sorter: (a, b) =>
+        Number(a.stockQuantity || 0) - Number(b.stockQuantity || 0),
     },
     {
       title: "Descrição",
@@ -916,6 +935,18 @@ const ProductAndServiceTable = () => {
                             >
                               {product.categoria?.toUpperCase()}
                             </Tag>
+                            <Tag
+                              color={
+                                Number(product.stockQuantity || 0) <= 0
+                                  ? "red"
+                                  : Number(product.stockQuantity || 0) < 10
+                                  ? "orange"
+                                  : "green"
+                              }
+                              style={mobileStyles.productCategory}
+                            >
+                              Est: {Number(product.stockQuantity || 0)}
+                            </Tag>
                             {product.ean && (
                               <Text
                                 type="secondary"
@@ -1011,6 +1042,7 @@ const ProductAndServiceTable = () => {
               initialValues={{
                 categoria: "produto",
                 valor: 0,
+                stockQuantity: 0,
                 descricao: "",
                 ean: "",
                 ncm: "",
@@ -1057,6 +1089,19 @@ const ProductAndServiceTable = () => {
                   </Form.Item>
                 </Col>
               </Row>
+
+              <Form.Item
+                name="stockQuantity"
+                label="Estoque"
+                rules={[{ required: true, message: "Informe o estoque!" }]}
+              >
+                <InputNumber
+                  style={{ width: "100%" }}
+                  precision={0}
+                  step={1}
+                  size="large"
+                />
+              </Form.Item>
 
               <Form.Item name="ean" label="Código de Barras (EAN)">
                 <Input
@@ -1341,6 +1386,7 @@ const ProductAndServiceTable = () => {
             initialValues={{
               categoria: "produto",
               valor: 0,
+              stockQuantity: 0,
               descricao: "",
               ean: "",
               ncm: "",
@@ -1385,6 +1431,17 @@ const ProductAndServiceTable = () => {
                 </Form.Item>
               </Col>
             </Row>
+
+            <Form.Item
+              name="stockQuantity"
+              label="Estoque"
+              tooltip="Quantidade atual em estoque"
+              rules={[
+                { required: true, message: "Por favor informe o estoque!" },
+              ]}
+            >
+              <InputNumber style={{ width: "100%" }} precision={0} step={1} />
+            </Form.Item>
 
             <Form.Item
               name="descricao"

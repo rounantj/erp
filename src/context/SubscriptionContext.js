@@ -125,6 +125,17 @@ export const SubscriptionProvider = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleCompanyChanged = () => {
+      checkSubscription();
+      startPolling();
+    };
+
+    window.addEventListener("companyChanged", handleCompanyChanged);
+    return () =>
+      window.removeEventListener("companyChanged", handleCompanyChanged);
+  }, []);
+
   // Escutar evento de login
   useEffect(() => {
     const handleLogin = () => {

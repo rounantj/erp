@@ -29,6 +29,11 @@ export const getCurrentUser = () => {
 // Helper para obter companyId do usuário logado
 export const getCurrentCompanyId = () => {
   try {
+    const activeCompanyId = Number(localStorage.getItem("active_company_id"));
+    if (Number.isFinite(activeCompanyId) && activeCompanyId > 0) {
+      return activeCompanyId;
+    }
+
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const data = JSON.parse(userStr);
@@ -40,34 +45,6 @@ export const getCurrentCompanyId = () => {
   }
   return null;
 };
-
-// Interceptor para adicionar token automaticamente
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("api_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor para tratamento de erros
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado - limpar localStorage
-      localStorage.removeItem("api_token");
-      localStorage.removeItem("user");
-      window.location.href = "/admin/login-register";
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Cache simples para requisições
 const cache = new Map();
@@ -90,6 +67,45 @@ const setCachedData = (key, data) => {
     timestamp: Date.now(),
   });
 };
+
+const attachAuthAndCompanyHeaders = (config = {}) => {
+  const nextConfig = { ...config, headers: { ...(config.headers || {}) } };
+  const token = localStorage.getItem("api_token");
+  const companyId = getCurrentCompanyId();
+
+  if (token) {
+    nextConfig.headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (companyId) {
+    nextConfig.headers["x-company-id"] = String(companyId);
+  }
+
+  return nextConfig;
+};
+
+const applyInterceptors = (instance) => {
+  instance.interceptors.request.use(
+    (config) => attachAuthAndCompanyHeaders(config),
+    (error) => Promise.reject(error)
+  );
+
+  instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("api_token");
+        localStorage.removeItem("user");
+        window.location.href = "/admin/login-register";
+      }
+      return Promise.reject(error);
+    }
+  );
+};
+
+// Garante contexto de autenticação/empresa inclusive em chamadas legacy com axios direto.
+applyInterceptors(api);
+applyInterceptors(axios);
 
 export const makeRegister = async (email, password, companyId = null) => {
   const payload = {
