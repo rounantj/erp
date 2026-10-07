@@ -1,5 +1,5 @@
 import { getSells } from "helpers/api-integrator";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import {
   Layout,
   Table,
@@ -56,139 +56,21 @@ import {
   rejeitaExclusaoVenda,
 } from "helpers/api-integrator";
 import SaleDetailsModal from "components/modalVenda";
+import { useThemeColor, quietMobileStyles } from "helpers/theme";
+import "./admin-ui.css";
 
 const { Content } = Layout;
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// Estilos para mobile
-const mobileStyles = {
-  container: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "100vw",
-    overflow: "hidden",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-    zIndex: 100,
-  },
-  header: {
-    background: "transparent",
-    padding: "16px",
-    flexShrink: 0,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: "20px",
-    fontWeight: "700",
-    margin: 0,
-  },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "8px",
-    marginTop: "12px",
-  },
-  summaryCard: {
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: "12px",
-    padding: "12px",
-    backdropFilter: "blur(10px)",
-  },
-  summaryValue: {
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "700",
-    display: "block",
-  },
-  summaryLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "10px",
-  },
-  totalCard: {
-    background: "rgba(255,255,255,0.25)",
-    borderRadius: "12px",
-    padding: "14px",
-    marginTop: "8px",
-    textAlign: "center",
-  },
-  totalValue: {
-    color: "#fff",
-    fontSize: "28px",
-    fontWeight: "800",
-    display: "block",
-  },
-  totalLabel: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  content: {
-    flex: 1,
-    background: "#f8f9fa",
-    borderTopLeftRadius: "24px",
-    borderTopRightRadius: "24px",
-    padding: "16px",
-    paddingBottom: "20px",
-    overflow: "auto",
-    display: "flex",
-    flexDirection: "column",
-    maxWidth: "100vw",
-    boxSizing: "border-box",
-    minHeight: 0,
-  },
-  saleCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "12px",
-    marginBottom: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-  },
-  saleHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "8px",
-  },
-  saleId: {
-    fontSize: "12px",
-    color: "#666",
-  },
-  saleTime: {
-    fontSize: "11px",
-    color: "#999",
-  },
-  saleTotal: {
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#667eea",
-  },
-  saleActions: {
-    display: "flex",
-    gap: "6px",
-    marginTop: "8px",
-  },
-};
 
 const requestVendaExclusion = async (vendaId, motivo) => {
   return await solicitaExclusaoVenda(vendaId, motivo);
 };
 
 const VendasDoDia = () => {
-  // Estados necessários
+  const { primary, theme, pageStyle } = useThemeColor();
+  const mobileStyles = useMemo(() => quietMobileStyles(primary), [primary]);
   const [vendas, setVendas] = useState([]);
   const { user } = useContext(UserContext);
   const [caixaAberto, setCaixaAberto] = useState(false);
@@ -500,37 +382,14 @@ const VendasDoDia = () => {
     if (!venda.exclusionRequested) return null;
 
     if (venda.exclusionStatus === "pending") {
-      return (
-        <Tag
-          icon={<ClockCircleOutlined />}
-          color="warning"
-          style={{ fontSize: "10px" }}
-        >
-          Aguardando
-        </Tag>
-      );
-    } else if (venda.exclusionStatus === "approved") {
-      return (
-        <Tag
-          icon={<CheckCircleOutlined />}
-          color="success"
-          style={{ fontSize: "10px" }}
-        >
-          Aprovada
-        </Tag>
-      );
-    } else if (venda.exclusionStatus === "rejected") {
-      return (
-        <Tag
-          icon={<CloseCircleOutlined />}
-          color="error"
-          style={{ fontSize: "10px" }}
-        >
-          Negada
-        </Tag>
-      );
+      return <span className="qui-status qui-status--warn">Aguardando</span>;
     }
-
+    if (venda.exclusionStatus === "approved") {
+      return <span className="qui-status qui-status--ok">Aprovada</span>;
+    }
+    if (venda.exclusionStatus === "rejected") {
+      return <span className="qui-status qui-status--danger">Negada</span>;
+    }
     return null;
   };
 
@@ -594,14 +453,12 @@ const VendasDoDia = () => {
         return (
           <>
             <Text strong>{toMoneyFormat(total)}</Text>
-            <Tag
+            <span
+              className="qui-status qui-status--muted"
               style={{ float: "right" }}
-              color={
-                record.metodoPagamento == "dinheiro" ? "success" : "default"
-              }
             >
               {record?.metodoPagamento}
-            </Tag>
+            </span>
           </>
         );
       },
@@ -624,11 +481,10 @@ const VendasDoDia = () => {
           buttons.push(
             <Tooltip title="Ver detalhes da venda" key="details">
               <Button
-                type="primary"
+                className="qui-icon-btn"
                 icon={<EyeOutlined />}
                 size="middle"
                 onClick={() => openDetailsModal(record)}
-                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
               />
             </Tooltip>
           );
@@ -699,15 +555,8 @@ const VendasDoDia = () => {
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
-      <ConfigProvider
-        theme={{
-          token: {
-            colorPrimary: "#667eea",
-            borderRadius: 12,
-          },
-        }}
-      >
-        <div style={mobileStyles.container}>
+      <ConfigProvider theme={theme}>
+        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div
@@ -757,8 +606,8 @@ const VendasDoDia = () => {
                     }
                   }}
                   style={{
-                    background: "rgba(255,255,255,0.2)",
-                    borderRadius: "10px",
+                    background: "rgba(255,255,255,0.12)",
+                    borderRadius: "8px",
                     padding: "8px 10px",
                     cursor: "pointer",
                     display: "flex",
@@ -769,10 +618,7 @@ const VendasDoDia = () => {
                   <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
                 </div>
                 <div>
-                  <h1 style={mobileStyles.headerTitle}>
-                    <CalendarOutlined style={{ marginRight: "8px" }} />
-                    Resumo do Dia
-                  </h1>
+                  <h1 style={mobileStyles.headerTitle}>Resumo do dia</h1>
                   <Text style={mobileStyles.headerSubtitle}>
                     {nowSaoPaulo().format("DD/MM/YYYY")} • {vendas.length}{" "}
                     vendas
@@ -788,9 +634,9 @@ const VendasDoDia = () => {
                 }}
                 loading={loading || loadingVendas}
                 style={{
-                  background: "rgba(255,255,255,0.2)",
+                  background: "rgba(255,255,255,0.12)",
                   border: "none",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                 }}
               />
             </div>
@@ -954,12 +800,9 @@ const VendasDoDia = () => {
                           flexWrap: "wrap",
                         }}
                       >
-                        <Tag
-                          color={getPaymentColor(venda.metodoPagamento)}
-                          style={{ margin: 0, fontSize: "10px" }}
-                        >
-                          {venda.metodoPagamento?.toUpperCase()}
-                        </Tag>
+                        <span className="qui-status qui-status--muted">
+                          {venda.metodoPagamento}
+                        </span>
                         {renderExclusionStatus(venda)}
                       </div>
 
@@ -969,12 +812,7 @@ const VendasDoDia = () => {
                           icon={<EyeOutlined />}
                           size="small"
                           onClick={() => openDetailsModal(venda)}
-                          style={{
-                            flex: 1,
-                            backgroundColor: "#52c41a",
-                            borderColor: "#52c41a",
-                            borderRadius: "8px",
-                          }}
+                          style={{ flex: 1, borderRadius: "8px" }}
                         >
                           Ver
                         </Button>
@@ -1013,9 +851,13 @@ const VendasDoDia = () => {
 
           {/* Modais */}
           <Modal
-            title="Solicitar Exclusão"
+            title="Solicitar exclusão"
             open={exclusionModalVisible}
             onCancel={() => setExclusionModalVisible(false)}
+            wrapClassName="qui-sheet"
+            classNames={{ mask: "qui-dialog-mask" }}
+            width="100%"
+            centered={false}
             footer={[
               <Button
                 key="cancel"
@@ -1073,11 +915,15 @@ const VendasDoDia = () => {
           </Modal>
 
           <Modal
-            title="Revisar Exclusão"
+            title="Revisar exclusão"
             open={reviewModalVisible}
             onCancel={() => setReviewModalVisible(false)}
             footer={null}
             destroyOnClose
+            wrapClassName="qui-sheet"
+            classNames={{ mask: "qui-dialog-mask" }}
+            width="100%"
+            centered={false}
           >
             <Form form={reviewForm} layout="vertical">
               {selectedVenda && (
@@ -1140,120 +986,68 @@ const VendasDoDia = () => {
 
   // ========== RENDER DESKTOP ==========
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <ConfigProvider theme={theme}>
+    <Layout className="qui-page" style={{ minHeight: "auto", ...pageStyle }}>
       <Layout>
         {caixaAberto ? (
           <>
-            <Content style={{ padding: "20px", background: "#f0f2f5" }}>
+            <Content style={{ padding: 0, background: "transparent" }}>
+              <div className="qui-header">
+                <div>
+                  <h1>Resumo do dia</h1>
+                  <p>{nowSaoPaulo().format("DD/MM/YYYY")}</p>
+                </div>
+              </div>
               <Row gutter={[16, 16]}>
                 {resumoVendas.total > 0 && (
                   <Col span={24}>
-                    <Card
-                      title={
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                          <DollarOutlined
-                            style={{ marginRight: 8, color: "#1890ff" }}
-                          />
-                          <span>Resumo de Vendas do Dia</span>
-                        </div>
-                      }
-                    >
-                      <Row gutter={16}>
-                        <Col xs={24} sm={12} md={4}>
-                          <Statistic
-                            style={{ zoom: "90%" }}
-                            title="Total em Dinheiro"
-                            value={resumoVendas.dinheiro}
-                            precision={2}
-                            valueStyle={{ color: "#3f8600" }}
-                            prefix="R$"
-                          />
-                        </Col>
-                        <Col xs={24} sm={12} md={4}>
-                          <Statistic
-                            style={{ zoom: "90%" }}
-                            title="Total em PIX"
-                            value={resumoVendas.pix}
-                            precision={2}
-                            valueStyle={{ color: "#1890ff" }}
-                            prefix="R$"
-                          />
-                        </Col>
-                        <Col xs={24} sm={12} md={4}>
-                          <Statistic
-                            style={{ zoom: "90%" }}
-                            title="Total em Crédito"
-                            value={resumoVendas.credito}
-                            precision={2}
-                            valueStyle={{ color: "#722ed1" }}
-                            prefix="R$"
-                          />
-                        </Col>
-                        <Col xs={24} sm={12} md={4}>
-                          <Statistic
-                            style={{ zoom: "90%" }}
-                            title="Total em Débito"
-                            value={resumoVendas.debito}
-                            precision={2}
-                            valueStyle={{ color: "#fa8c16" }}
-                            prefix="R$"
-                          />
-                        </Col>
-                        <Col xs={24} sm={12} md={6}>
-                          <Statistic
-                            style={{ float: "right" }}
-                            title="Total Geral"
-                            value={resumoVendas.total}
-                            precision={2}
-                            valueStyle={{
-                              color: "black",
-                              fontWeight: "bold",
-                              fontSize: "24px",
-                            }}
-                            prefix="R$"
-                          />
-                        </Col>
-                      </Row>
-                    </Card>
+                    <div className="qui-stats">
+                      <div className="qui-stat">
+                        <small>Dinheiro</small>
+                        <b>{formatCurrency(resumoVendas.dinheiro)}</b>
+                      </div>
+                      <div className="qui-stat">
+                        <small>PIX</small>
+                        <b>{formatCurrency(resumoVendas.pix)}</b>
+                      </div>
+                      <div className="qui-stat">
+                        <small>Crédito</small>
+                        <b>{formatCurrency(resumoVendas.credito)}</b>
+                      </div>
+                      <div className="qui-stat">
+                        <small>Débito</small>
+                        <b>{formatCurrency(resumoVendas.debito)}</b>
+                      </div>
+                    </div>
+                    <div className="qui-stat" style={{ marginBottom: 16 }}>
+                      <small>Total do dia</small>
+                      <b className="is-theme">{formatCurrency(resumoVendas.total)}</b>
+                    </div>
                   </Col>
                 )}
               </Row>
-              <Row>
-                <Col span={24}>
-                  <Card
-                    title={
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <DollarOutlined
-                          style={{ marginRight: 8, color: "#1890ff" }}
-                        />
-                        <span>Vendas do Dia</span>
-                      </div>
-                    }
-                  >
-                    <Table
-                      columns={columnsVendas}
-                      dataSource={vendas.map((venda) => ({
-                        ...venda,
-                        key: venda.id,
-                      }))}
-                      pagination={{ pageSize: 50 }}
-                      bordered
-                      loading={loadingVendas}
-                      size="middle"
-                      locale={{
-                        emptyText: "Sem dados para o período selecionado",
-                      }}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+              <div className="qui-panel">
+                <Table
+                  columns={columnsVendas}
+                  dataSource={vendas.map((venda) => ({
+                    ...venda,
+                    key: venda.id,
+                  }))}
+                  pagination={{ pageSize: 50 }}
+                  loading={loadingVendas}
+                  size="middle"
+                  locale={{
+                    emptyText: "Sem dados para o período selecionado",
+                  }}
+                />
+              </div>
             </Content>
           </>
         ) : (
           <Content
             style={{
-              padding: "20px",
-              background: "#f0f2f5",
+              padding: "48px 0",
+              background: "transparent",
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -1271,16 +1065,12 @@ const VendasDoDia = () => {
 
       {/* Modal de Solicitação de Exclusão - Desktop */}
       <Modal
-        title={
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <ExclamationCircleOutlined
-              style={{ color: "#ff4d4f", marginRight: 8 }}
-            />
-            <span>Solicitar Exclusão de Venda</span>
-          </div>
-        }
+        title="Solicitar exclusão"
         open={exclusionModalVisible}
         onCancel={() => setExclusionModalVisible(false)}
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
+        centered
         footer={[
           <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
             Cancelar
@@ -1348,18 +1138,14 @@ const VendasDoDia = () => {
 
       {/* Modal de Revisão de Exclusão - Desktop */}
       <Modal
-        title={
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <ExclamationCircleOutlined
-              style={{ color: "#1890ff", marginRight: 8 }}
-            />
-            <span>Revisar Solicitação de Exclusão</span>
-          </div>
-        }
+        title="Revisar exclusão"
         open={reviewModalVisible}
         onCancel={() => setReviewModalVisible(false)}
         footer={null}
         destroyOnClose
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
+        centered
       >
         <Form form={reviewForm} layout="vertical" requiredMark="optional">
           {selectedVenda && (
@@ -1461,6 +1247,7 @@ const VendasDoDia = () => {
         saleData={selectedVenda}
       />
     </Layout>
+    </ConfigProvider>
   );
 };
 

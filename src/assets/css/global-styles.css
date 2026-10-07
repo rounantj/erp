@@ -508,6 +508,24 @@
   animation: pulse 1.5s infinite;
 }
 
+/* Mobile sidebar: abrir pela esquerda (override do tema base) */
+@media (max-width: 991px) {
+  .sidebar {
+    left: 0 !important;
+    right: auto !important;
+    transform: translate3d(-262px, 0, 0) !important;
+  }
+
+  .nav-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+  }
+
+  .nav-open .main-panel {
+    left: 0;
+    transform: translate3d(250px, 0, 0) !important;
+  }
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);

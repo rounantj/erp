@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useThemeColor, quietMobileStyles } from "helpers/theme";
+import "./admin-ui.css";
 import {
   Card,
   Row,
@@ -47,134 +49,9 @@ import moment from "moment";
 
 const { Title, Text } = Typography;
 
-// Estilos para mobile
-const mobileStyles = {
-  container: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "100vw",
-    overflow: "hidden",
-    background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-    zIndex: 100,
-  },
-  header: {
-    background: "transparent",
-    padding: "16px",
-    flexShrink: 0,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: "20px",
-    fontWeight: "700",
-    margin: 0,
-  },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "8px",
-    marginTop: "12px",
-  },
-  summaryCard: {
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: "12px",
-    padding: "12px",
-    backdropFilter: "blur(10px)",
-  },
-  summaryValue: {
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "700",
-    display: "block",
-  },
-  summaryLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "10px",
-  },
-  totalCard: {
-    background: "rgba(255,255,255,0.25)",
-    borderRadius: "12px",
-    padding: "14px",
-    marginTop: "8px",
-    textAlign: "center",
-  },
-  totalValue: {
-    color: "#fff",
-    fontSize: "24px",
-    fontWeight: "800",
-    display: "block",
-  },
-  totalLabel: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  content: {
-    flex: 1,
-    background: "#f8f9fa",
-    borderTopLeftRadius: "24px",
-    borderTopRightRadius: "24px",
-    padding: "16px",
-    paddingBottom: "20px",
-    overflow: "auto",
-    display: "flex",
-    flexDirection: "column",
-    maxWidth: "100vw",
-    boxSizing: "border-box",
-    minHeight: 0,
-  },
-  sectionCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "12px",
-    marginBottom: "12px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-  },
-  sectionTitle: {
-    fontSize: "14px",
-    fontWeight: "600",
-    marginBottom: "12px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  productItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "8px 0",
-    borderBottom: "1px solid #f0f0f0",
-  },
-  productName: {
-    fontSize: "12px",
-    color: "#333",
-    flex: 1,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    marginRight: "8px",
-  },
-  productValue: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#4facfe",
-  },
-};
-
 function Dashboard() {
+  const { primary, theme, pageStyle } = useThemeColor();
+  const mobileStyles = useMemo(() => quietMobileStyles(primary), [primary]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // Detectar mobile
@@ -327,24 +204,11 @@ function Dashboard() {
   // Component for stats cards - memoizado para evitar re-renders
   const StatCard = useMemo(
     () =>
-      React.memo(({ title, value, icon, color }) => (
-        <Card className="stat-card" bordered={false} style={{ height: "100%" }}>
-          <Statistic
-            title={<Text strong>{title}</Text>}
-            value={value}
-            valueStyle={{ color }}
-            prefix={React.cloneElement(icon, {
-              style: { fontSize: 20, marginRight: 8 },
-            })}
-          />
-          <div className="stat-footer">
-            <Divider style={{ margin: "12px 0" }} />
-            <Space>
-              <SyncOutlined spin={loading} />
-              <Text type="secondary">Atualizado agora</Text>
-            </Space>
-          </div>
-        </Card>
+      React.memo(({ title, value }) => (
+        <div className="qui-stat" style={{ height: "100%" }}>
+          <small>{title}</small>
+          <b>{value}</b>
+        </div>
       )),
     [loading]
   );
@@ -485,15 +349,8 @@ function Dashboard() {
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
-      <ConfigProvider
-        theme={{
-          token: {
-            colorPrimary: "#4facfe",
-            borderRadius: 12,
-          },
-        }}
-      >
-        <div style={mobileStyles.container}>
+      <ConfigProvider theme={theme}>
+        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -614,7 +471,7 @@ function Dashboard() {
                 {/* Divisão de Receita */}
                 <div style={mobileStyles.sectionCard}>
                   <div style={mobileStyles.sectionTitle}>
-                    <PieChartOutlined style={{ color: "#4facfe" }} />
+                    <PieChartOutlined style={{ color: primary }} />
                     Divisão de Receita
                   </div>
                   <Row gutter={16}>
@@ -654,7 +511,7 @@ function Dashboard() {
                 {/* Vendas por Mês */}
                 <div style={mobileStyles.sectionCard}>
                   <div style={mobileStyles.sectionTitle}>
-                    <LineChartOutlined style={{ color: "#4facfe" }} />
+                    <LineChartOutlined style={{ color: primary }} />
                     Vendas por Mês
                   </div>
                   {dataDash.meses?.map((month, index) => {
@@ -704,7 +561,7 @@ function Dashboard() {
                 {/* Produtos Mais Vendidos */}
                 <div style={mobileStyles.sectionCard}>
                   <div style={mobileStyles.sectionTitle}>
-                    <ShoppingOutlined style={{ color: "#4facfe" }} />
+                    <ShoppingOutlined style={{ color: primary }} />
                     Mais Vendidos do Mês
                   </div>
                   {dataDash.produtosVendidos?.length > 0 ? (
@@ -713,7 +570,7 @@ function Dashboard() {
                         <span style={{ 
                           fontSize: "11px", 
                           fontWeight: "600",
-                          color: "#4facfe",
+                          color: primary,
                           marginRight: "8px",
                           minWidth: "20px",
                         }}>
@@ -750,13 +607,17 @@ function Dashboard() {
 
   // ========== RENDER DESKTOP ==========
   return (
+    <ConfigProvider theme={theme}>
     <div
-      className="dashboard-container"
-      style={{ padding: 24, background: "#f0f2f5", minHeight: "100vh" }}
+      className="qui-page dashboard-container"
+      style={{ padding: 0, background: "transparent", minHeight: "auto", ...pageStyle }}
     >
-      <Title level={2} style={{ marginBottom: 24 }}>
-        Dashboard
-      </Title>
+      <div className="qui-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Visão geral do período</p>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <Row gutter={[16, 16]}>
@@ -769,8 +630,6 @@ function Dashboard() {
             <StatCard
               title={`Dias trabalhados ${monthName(new Date().getMonth())}`}
               value={`${dataDash.dias.length} dias`}
-              icon={<CalendarOutlined />}
-              color="#1890ff"
             />
           )}
         </Col>
@@ -784,8 +643,6 @@ function Dashboard() {
             <StatCard
               title={`Vendas ${monthName(new Date().getMonth())}`}
               value={toMoneyFormat(dataDash.totalEsseMes)}
-              icon={<DollarOutlined />}
-              color="#52c41a"
             />
           )}
         </Col>
@@ -797,10 +654,8 @@ function Dashboard() {
             </Card>
           ) : (
             <StatCard
-              title="Vendas Hoje"
+              title="Vendas hoje"
               value={toMoneyFormat(dataDash.totalHoje)}
-              icon={<ShoppingOutlined />}
-              color="#722ed1"
             />
           )}
         </Col>
@@ -814,8 +669,6 @@ function Dashboard() {
             <StatCard
               title={`Despesas ${monthName(new Date().getMonth())}`}
               value={toMoneyFormat(dataDash?.despesa[0]?.total || 0)}
-              icon={<DollarOutlined />}
-              color="#f5222d"
             />
           )}
         </Col>
@@ -1240,6 +1093,7 @@ function Dashboard() {
         </Col>
       </Row>
     </div>
+    </ConfigProvider>
   );
 }
 

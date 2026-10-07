@@ -5,7 +5,7 @@ import {
   toSaoPauloTime,
   nowSaoPaulo,
 } from "helpers/formatters";
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef, useContext, useMemo } from "react";
 import * as XLSX from "xlsx";
 import ptBR from "antd/lib/locale/pt_BR";
 import moment from "moment";
@@ -55,133 +55,13 @@ import Paragraph from "antd/lib/typography/Paragraph";
 import TextArea from "antd/lib/input/TextArea";
 import { aprovaExclusaoVenda } from "helpers/api-integrator";
 import SaleDetailsModal from "components/modalVenda";
+import { useThemeColor, quietMobileStyles } from "helpers/theme";
+import "./admin-ui.css";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 const { Content } = Layout;
 const { Search } = Input;
-
-// Estilos para mobile
-const mobileStyles = {
-  container: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "100vw",
-    overflow: "hidden",
-    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-    zIndex: 100,
-  },
-  header: {
-    background: "transparent",
-    padding: "16px",
-    flexShrink: 0,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: "20px",
-    fontWeight: "700",
-    margin: 0,
-  },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "8px",
-    marginTop: "12px",
-  },
-  summaryCard: {
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: "12px",
-    padding: "12px",
-    backdropFilter: "blur(10px)",
-  },
-  summaryValue: {
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "700",
-    display: "block",
-  },
-  summaryLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "10px",
-  },
-  totalCard: {
-    background: "rgba(255,255,255,0.25)",
-    borderRadius: "12px",
-    padding: "14px",
-    marginTop: "8px",
-    textAlign: "center",
-  },
-  totalValue: {
-    color: "#fff",
-    fontSize: "24px",
-    fontWeight: "800",
-    display: "block",
-  },
-  totalLabel: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  content: {
-    flex: 1,
-    background: "#f8f9fa",
-    borderTopLeftRadius: "24px",
-    borderTopRightRadius: "24px",
-    padding: "16px",
-    paddingBottom: "20px",
-    overflow: "auto",
-    display: "flex",
-    flexDirection: "column",
-    maxWidth: "100vw",
-    boxSizing: "border-box",
-    minHeight: 0,
-  },
-  saleCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "12px",
-    marginBottom: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-  },
-  saleHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "8px",
-  },
-  saleId: {
-    fontSize: "12px",
-    color: "#666",
-  },
-  saleTime: {
-    fontSize: "11px",
-    color: "#999",
-  },
-  saleTotal: {
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#f5576c",
-  },
-  saleActions: {
-    display: "flex",
-    gap: "6px",
-    marginTop: "8px",
-  },
-};
 
 // Função para calcular o total da venda com desconto
 export const calcularTotal = (valor, desconto) => {
@@ -203,7 +83,8 @@ export const calcularTotalItens = (itens) => {
 };
 
 function Vendas() {
-  // Estados
+  const { primary, theme, pageStyle } = useThemeColor();
+  const mobileStyles = useMemo(() => quietMobileStyles(primary), [primary]);
   const { user } = useContext(UserContext);
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -343,15 +224,13 @@ function Vendas() {
     if (!venda.exclusionRequested) return null;
 
     if (venda.exclusionStatus === "pending") {
-      return <Tag color="warning">Aguardando aprovação</Tag>;
-    } else if (venda.exclusionStatus === "approved") {
-      return <Tag color="success">Exclusão aprovada</Tag>;
-    } else if (venda.exclusionStatus === "rejected") {
-      return (
-        <Tag icon={<CloseCircleOutlined />} color="error">
-          Exclusão negada
-        </Tag>
-      );
+      return <span className="qui-status qui-status--warn">Aguardando</span>;
+    }
+    if (venda.exclusionStatus === "approved") {
+      return <span className="qui-status qui-status--ok">Aprovada</span>;
+    }
+    if (venda.exclusionStatus === "rejected") {
+      return <span className="qui-status qui-status--danger">Negada</span>;
     }
 
     return null;
@@ -467,15 +346,12 @@ function Vendas() {
         return (
           <>
             <Text strong>{toMoneyFormat(total)}</Text>
-            <Tag
+            <span
+              className="qui-status qui-status--muted"
               style={{ float: "right" }}
-              //icon={<CheckCircleOutlined />}
-              color={
-                record.metodoPagamento == "dinheiro" ? "success" : "default"
-              }
             >
               {record?.metodoPagamento}
-            </Tag>
+            </span>
           </>
         );
       },
@@ -513,7 +389,7 @@ function Vendas() {
                 icon={<EyeOutlined />}
                 size={isMobile ? "small" : "middle"}
                 onClick={() => openDetailsModal(record)}
-                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+                className="qui-icon-btn"
               />
             </Tooltip>
           );
@@ -888,8 +764,8 @@ function Vendas() {
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
-      <ConfigProvider locale={ptBR}>
-        <div style={mobileStyles.container}>
+      <ConfigProvider locale={ptBR} theme={theme}>
+        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div
@@ -1140,18 +1016,9 @@ function Vendas() {
                           flexWrap: "wrap",
                         }}
                       >
-                        <Tag
-                          color={
-                            venda.metodoPagamento === "dinheiro"
-                              ? "green"
-                              : venda.metodoPagamento === "pix"
-                              ? "blue"
-                              : "purple"
-                          }
-                          style={{ margin: 0, fontSize: "10px" }}
-                        >
-                          {venda.metodoPagamento?.toUpperCase()}
-                        </Tag>
+                        <span className="qui-status qui-status--muted">
+                          {venda.metodoPagamento}
+                        </span>
                         {renderExclusionStatus(venda)}
                       </div>
 
@@ -1163,8 +1030,6 @@ function Vendas() {
                           onClick={() => openDetailsModal(venda)}
                           style={{
                             flex: 1,
-                            backgroundColor: "#52c41a",
-                            borderColor: "#52c41a",
                             borderRadius: "8px",
                           }}
                         >
@@ -1205,9 +1070,13 @@ function Vendas() {
 
           {/* Modais */}
           <Modal
-            title="Solicitar Exclusão"
+            title="Solicitar exclusão"
             open={exclusionModalVisible}
             onCancel={() => setExclusionModalVisible(false)}
+            wrapClassName="qui-sheet"
+            classNames={{ mask: "qui-dialog-mask" }}
+            width="100%"
+            centered={false}
             footer={[
               <Button
                 key="cancel"
@@ -1265,9 +1134,13 @@ function Vendas() {
           </Modal>
 
           <Modal
-            title="Revisar Exclusão"
+            title="Revisar exclusão"
             open={reviewModalVisible}
             onCancel={() => setReviewModalVisible(false)}
+            wrapClassName="qui-sheet"
+            classNames={{ mask: "qui-dialog-mask" }}
+            width="100%"
+            centered={false}
             footer={null}
             destroyOnClose
           >
@@ -1335,25 +1208,29 @@ function Vendas() {
 
   // ========== RENDER DESKTOP ==========
   return (
-    <ConfigProvider locale={ptBR}>
+    <ConfigProvider locale={ptBR} theme={theme}>
       <Layout
+        className="qui-page"
         style={{
-          background: "#f0f2f5",
-          minHeight: "100vh",
-          padding: isMobile ? "8px" : "16px",
+          background: "transparent",
+          minHeight: "auto",
+          padding: 0,
+          ...pageStyle,
         }}
         ref={containerRef}
       >
         <Content>
-          <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }}>
+          <div className="qui-header">
+            <div>
+              <h1>Faturamento</h1>
+              <p>Vendas do período selecionado</p>
+            </div>
+            <ResponsiveDatePicker />
+          </div>
+          <Card styles={{ body: { padding: isMobile ? "12px" : "24px" } }} bordered={false} className="qui-panel">
             <Space direction="vertical" size="large" style={{ width: "100%" }}>
-              <Row justify="space-between" align="middle" gutter={[8, 8]} wrap>
-                <Col xs={16} md={12}>
-                  <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>
-                    <ShoppingCartOutlined /> Gestão de Vendas
-                  </Title>
-                </Col>
-                <Col xs={8} md={12} style={{ textAlign: "right" }}>
+              <Row justify="end" align="middle" gutter={[8, 8]} wrap style={{ display: "none" }}>
+                <Col>
                   <ResponsiveDatePicker />
                 </Col>
               </Row>
@@ -1372,9 +1249,11 @@ function Vendas() {
                         <Statistic
                           title="Total do Período"
                           value={calcularTotalPorPeriodo()}
-                          prefix={<DollarOutlined />}
                           formatter={moneyFormatter}
-                          valueStyle={{ fontSize: isMobile ? "18px" : "24px" }}
+                          valueStyle={{
+                            fontSize: isMobile ? "18px" : "24px",
+                            color: primary,
+                          }}
                         />
                         <Text
                           type="secondary"
@@ -1390,7 +1269,6 @@ function Vendas() {
                         <Statistic
                           title="Número de Vendas"
                           value={vendas.length}
-                          prefix={<ShoppingCartOutlined />}
                           valueStyle={{ fontSize: isMobile ? "18px" : "24px" }}
                         />
                       </Card>
@@ -1400,7 +1278,6 @@ function Vendas() {
                         <Statistic
                           title="Clientes Únicos"
                           value={calcularClientesUnicos()}
-                          prefix={<UserOutlined />}
                           valueStyle={{ fontSize: isMobile ? "18px" : "24px" }}
                         />
                       </Card>
@@ -1410,7 +1287,6 @@ function Vendas() {
                         <Statistic
                           title="Valor Médio"
                           value={calcularValorMedioPorVenda()}
-                          prefix={<BarChartOutlined />}
                           formatter={moneyFormatter}
                           valueStyle={{ fontSize: isMobile ? "18px" : "24px" }}
                         />
@@ -1525,9 +1401,9 @@ function Vendas() {
                                         {cliente}
                                       </Text>
                                     </div>
-                                    <Tag color="blue">
+                                    <span className="qui-status qui-status--muted">
                                       {vendasCliente.length} venda(s)
-                                    </Tag>
+                                    </span>
                                     <Text>{toMoneyFormat(totalCliente)}</Text>
                                   </Space>
                                 </div>
@@ -1575,16 +1451,12 @@ function Vendas() {
       </Layout>
       {/* Modal de Solicitação de Exclusão */}
       <Modal
-        title={
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <ExclamationCircleOutlined
-              style={{ color: "#ff4d4f", marginRight: 8 }}
-            />
-            <span>Solicitar Exclusão de Venda</span>
-          </div>
-        }
+        title="Solicitar exclusão"
         open={exclusionModalVisible}
         onCancel={() => setExclusionModalVisible(false)}
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
+        centered
         footer={[
           <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
             Cancelar
@@ -1650,16 +1522,12 @@ function Vendas() {
         </Form>
       </Modal>
       <Modal
-        title={
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <ExclamationCircleOutlined
-              style={{ color: "#1890ff", marginRight: 8 }}
-            />
-            <span>Revisar Solicitação de Exclusão</span>
-          </div>
-        }
+        title="Revisar exclusão"
         open={reviewModalVisible}
         onCancel={() => setReviewModalVisible(false)}
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
+        centered
         footer={null}
         destroyOnClose
       >

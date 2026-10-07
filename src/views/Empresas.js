@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
-  Card,
   Table,
   Container,
-  Row,
-  Col,
-  Button,
   Form,
-  Modal,
-  Spinner,
-  Badge,
   Alert,
 } from "react-bootstrap";
 import {
@@ -17,7 +10,6 @@ import {
   Modal as AntModal,
   Form as AntForm,
   Input,
-  Tag,
   Typography,
   Spin,
   Empty,
@@ -25,8 +17,6 @@ import {
   ConfigProvider,
   notification,
   Popconfirm,
-  List,
-  Select,
   Tooltip,
   Space,
 } from "antd";
@@ -34,19 +24,15 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  BankOutlined,
   ReloadOutlined,
   TeamOutlined,
   MenuOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   UserAddOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   CrownOutlined,
   SettingOutlined,
   ClockCircleOutlined,
-  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { Redirect } from "react-router-dom";
 import {
@@ -65,8 +51,19 @@ import {
   updatePlanTrialDays,
 } from "../helpers/api-integrator";
 import { UserContext } from "../context/UserContext";
+import { useThemeColor } from "../helpers/theme";
+import "./Empresas.css";
 
 const { Text } = Typography;
+
+function EmpTitle({ title, lede }) {
+  return (
+    <div>
+      <div className="emp-dialog__title">{title}</div>
+      {lede ? <p className="emp-modal__lede">{lede}</p> : null}
+    </div>
+  );
+}
 
 // Email do Super Admin - único usuário com acesso
 const SUPER_ADMIN_EMAIL = "rounantj@hotmail.com";
@@ -83,7 +80,7 @@ const mobileStyles = {
     height: "100%",
     maxWidth: "100vw",
     overflow: "hidden",
-    background: "linear-gradient(135deg, #2c3e50 0%, #3498db 100%)",
+    background: "var(--qui-primary, #667eea)",
     display: "flex",
     flexDirection: "column",
     boxSizing: "border-box",
@@ -95,13 +92,14 @@ const mobileStyles = {
     flexShrink: 0,
   },
   headerTitle: {
-    color: "#fff",
-    fontSize: "20px",
-    fontWeight: "700",
+    color: "#fafaf9",
+    fontSize: "18px",
+    fontWeight: "600",
+    letterSpacing: "-0.03em",
     margin: 0,
   },
   headerSubtitle: {
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(250,250,249,0.55)",
     fontSize: "12px",
   },
   statsRow: {
@@ -111,27 +109,28 @@ const mobileStyles = {
   },
   statCard: {
     flex: 1,
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: "12px",
-    padding: "12px",
-    textAlign: "center",
-    backdropFilter: "blur(10px)",
+    background: "rgba(255,255,255,0.06)",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    textAlign: "left",
+    border: "1px solid rgba(255,255,255,0.08)",
   },
   statValue: {
-    color: "#fff",
-    fontSize: "24px",
-    fontWeight: "700",
+    color: "#fafaf9",
+    fontSize: "20px",
+    fontWeight: "600",
     display: "block",
+    letterSpacing: "-0.03em",
   },
   statLabel: {
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(250,250,249,0.5)",
     fontSize: "11px",
   },
   content: {
     flex: 1,
-    background: "#f8f9fa",
-    borderTopLeftRadius: "24px",
-    borderTopRightRadius: "24px",
+    background: "#fafaf9",
+    borderTopLeftRadius: "16px",
+    borderTopRightRadius: "16px",
     padding: "16px",
     paddingBottom: "20px",
     overflow: "auto",
@@ -143,19 +142,21 @@ const mobileStyles = {
   },
   companyCard: {
     background: "#fff",
-    borderRadius: "12px",
-    padding: "12px",
+    borderRadius: "10px",
+    padding: "14px",
     marginBottom: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+    border: "1px solid #e7e5e4",
+    boxShadow: "none",
   },
   companyName: {
     fontSize: "14px",
     fontWeight: "600",
     marginBottom: "4px",
+    color: "#1c1917",
   },
   companyInfo: {
-    fontSize: "11px",
-    color: "#666",
+    fontSize: "12px",
+    color: "#78716c",
     marginTop: "2px",
   },
   companyActions: {
@@ -167,6 +168,7 @@ const mobileStyles = {
 
 function Empresas() {
   const { user } = useContext(UserContext);
+  const { primary, theme, pageStyle } = useThemeColor();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -199,6 +201,8 @@ function Empresas() {
   const [showTrialConfigModal, setShowTrialConfigModal] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [newUserRole, setNewUserRole] = useState("atendente");
 
   // Verificar se é super admin
   const userEmail = user?.user?.email;
@@ -275,42 +279,51 @@ function Empresas() {
   // Helpers para subscription
   const getSubscriptionStatusBadge = (subscription) => {
     if (!subscription) {
-      return <Tag color="default">Sem plano</Tag>;
+      return <span className="emp-status emp-status--muted">Sem plano</span>;
     }
 
     const statusConfig = {
-      trial: { color: "blue", icon: <ClockCircleOutlined />, text: "Trial" },
-      active: { color: "green", icon: <CheckCircleOutlined />, text: "Ativo" },
-      past_due: {
-        color: "orange",
-        icon: <ExclamationCircleOutlined />,
-        text: "Atrasado",
-      },
-      cancelled: {
-        color: "red",
-        icon: <CloseCircleOutlined />,
-        text: "Cancelado",
-      },
-      readonly: {
-        color: "default",
-        icon: <EyeOutlined />,
-        text: "Somente Leitura",
-      },
+      trial: { cls: "emp-status--trial", text: "Trial" },
+      active: { cls: "emp-status--ok", text: "Ativo" },
+      past_due: { cls: "emp-status--warn", text: "Atrasado" },
+      cancelled: { cls: "emp-status--danger", text: "Cancelado" },
+      readonly: { cls: "emp-status--muted", text: "Somente leitura" },
     };
 
     const config = statusConfig[subscription.status] || statusConfig.readonly;
 
-    return (
-      <Tag color={config.color} icon={config.icon}>
-        {config.text}
-      </Tag>
-    );
+    return <span className={`emp-status ${config.cls}`}>{config.text}</span>;
   };
 
   const getPlanDisplayName = (subscription) => {
     if (!subscription || !subscription.plan) return "-";
     return subscription.plan.displayName || subscription.plan.name;
   };
+
+  const formatPlanPrice = (plan) => {
+    if (!plan) return "";
+    if (plan.neverExpires) return "Nunca expira";
+    if (plan.name === "empresarial") return "Sob consulta";
+    if (Number(plan.price) > 0) {
+      return `R$ ${Number(plan.price).toFixed(2).replace(".", ",")}/mês`;
+    }
+    return `Grátis · ${plan.trialDays} dias`;
+  };
+
+  const formatPlanUsers = (plan) => {
+    if (!plan) return "";
+    if (plan.maxUsers === -1) return "Usuários ilimitados";
+    return plan.maxUsers === 1 ? "1 usuário" : `Até ${plan.maxUsers} usuários`;
+  };
+
+  const statusLabel = (status) =>
+    ({
+      trial: "Trial",
+      active: "Ativo",
+      past_due: "Atrasado",
+      cancelled: "Cancelado",
+      readonly: "Somente leitura",
+    }[status] || status || "—");
 
   const getTrialDaysRemaining = (subscription) => {
     if (
@@ -330,6 +343,8 @@ function Empresas() {
   // Gerenciamento de planos
   const handleOpenPlanModal = (company) => {
     setSelectedCompany(company);
+    const sub = subscriptions[company.id];
+    setSelectedPlanId(sub?.planId || sub?.plan?.id || null);
     setShowPlanModal(true);
   };
 
@@ -353,10 +368,12 @@ function Empresas() {
 
   const handleChangePlan = async (values) => {
     if (!selectedCompany) return;
+    const planId = values?.planId || selectedPlanId;
+    if (!planId) return;
     setPlanLoading(true);
 
     const subscription = subscriptions[selectedCompany.id];
-    const selectedPlanObj = plans.find((p) => p.id === values.planId);
+    const selectedPlanObj = plans.find((p) => p.id === planId);
 
     try {
       if (selectedPlanObj?.name === "empresarial") {
@@ -374,7 +391,7 @@ function Empresas() {
       let result;
       if (subscription) {
         // Trocar plano existente
-        result = await changeSubscriptionPlanAdmin(subscription.id, values.planId);
+        result = await changeSubscriptionPlanAdmin(subscription.id, planId);
       } else {
         // Criar nova subscription
         if (selectedPlanObj?.name === "free_trial") {
@@ -382,7 +399,7 @@ function Empresas() {
         } else {
           result = await createPaidSubscription({
             companyId: selectedCompany.id,
-            planId: values.planId,
+            planId,
             customerEmail:
               selectedCompany.email || `empresa${selectedCompany.id}@erp.com`,
             customerName: selectedCompany.name,
@@ -593,6 +610,7 @@ function Empresas() {
     setShowCreateUserModal(true);
     createUserForm.resetFields();
     setShowPassword(false);
+    setNewUserRole("atendente");
   };
 
   // Criar usuário para empresa
@@ -644,15 +662,11 @@ function Empresas() {
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
-      <ConfigProvider
-        theme={{
-          token: {
-            colorPrimary: "#3498db",
-            borderRadius: 12,
-          },
-        }}
-      >
-        <div style={mobileStyles.container}>
+      <ConfigProvider theme={theme}>
+        <div
+          className="emp-page emp-page--mobile"
+          style={{ ...mobileStyles.container, background: primary, ...pageStyle }}
+        >
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div
@@ -702,8 +716,8 @@ function Empresas() {
                     }
                   }}
                   style={{
-                    background: "rgba(255,255,255,0.2)",
-                    borderRadius: "10px",
+                    background: "rgba(255,255,255,0.08)",
+                    borderRadius: "8px",
                     padding: "8px 10px",
                     cursor: "pointer",
                     display: "flex",
@@ -714,10 +728,7 @@ function Empresas() {
                   <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
                 </div>
                 <div>
-                  <h1 style={mobileStyles.headerTitle}>
-                    <BankOutlined style={{ marginRight: "8px" }} />
-                    Empresas
-                  </h1>
+                  <h1 style={mobileStyles.headerTitle}>Empresas</h1>
                   <Text style={mobileStyles.headerSubtitle}>
                     Gerenciamento de empresas (Super Admin)
                   </Text>
@@ -726,8 +737,8 @@ function Empresas() {
               <div
                 onClick={loadCompanies}
                 style={{
-                  background: "rgba(255,255,255,0.2)",
-                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.08)",
+                  borderRadius: "8px",
                   padding: "8px 12px",
                   cursor: "pointer",
                 }}
@@ -776,118 +787,81 @@ function Empresas() {
                   style={{ marginTop: "40px" }}
                 />
               ) : (
-                companies.map((company) => (
-                  <div key={company.id} style={mobileStyles.companyCard}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={mobileStyles.companyName}>
-                          {company.name}
-                          {currentUser?.companyId === company.id && (
-                            <Tag
-                              color="blue"
-                              style={{ marginLeft: "8px", fontSize: "10px" }}
-                            >
-                              Atual
-                            </Tag>
-                          )}
+                companies.map((company) => {
+                  const subscription = subscriptions[company.id];
+                  const trialDays = getTrialDaysRemaining(subscription);
+                  return (
+                    <div key={company.id} className="emp-m-card">
+                      <div className="emp-m-card__top">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={mobileStyles.companyName}>
+                            {company.name}
+                            {currentUser?.companyId === company.id && (
+                              <span className="emp-current">Atual</span>
+                            )}
+                          </div>
+                          <div className="emp-m-card__meta">
+                            {company.cnpj && <span>{company.cnpj}</span>}
+                            {company.phone && <span>{company.phone}</span>}
+                          </div>
+                          <div className="emp-m-card__meta">
+                            <span>
+                              {getPlanDisplayName(subscription)}
+                              {trialDays !== null ? ` · ${trialDays}d` : ""}
+                            </span>
+                            {getSubscriptionStatusBadge(subscription)}
+                          </div>
                         </div>
-                        {company.cnpj && (
-                          <div style={mobileStyles.companyInfo}>
-                            CNPJ: {company.cnpj}
-                          </div>
-                        )}
-                        {company.phone && (
-                          <div style={mobileStyles.companyInfo}>
-                            Tel: {company.phone}
-                          </div>
-                        )}
-                        {company.address && (
-                          <div style={mobileStyles.companyInfo}>
-                            {company.address}
-                          </div>
-                        )}
-                      </div>
-                      <Tag
-                        color={company.is_active ? "green" : "default"}
-                        icon={
-                          company.is_active ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <CloseCircleOutlined />
-                          )
-                        }
-                      >
-                        {company.is_active ? "Ativa" : "Inativa"}
-                      </Tag>
-                    </div>
-
-                    <div style={mobileStyles.companyActions}>
-                      <AntButton
-                        type="default"
-                        icon={<TeamOutlined />}
-                        size="small"
-                        onClick={() => handleViewUsers(company)}
-                        style={{ flex: 1, borderRadius: "8px" }}
-                      >
-                        Usuários
-                      </AntButton>
-                      <AntButton
-                        type="primary"
-                        icon={<UserAddOutlined />}
-                        size="small"
-                        onClick={() => handleOpenCreateUserModal(company)}
-                        style={{
-                          flex: 1,
-                          borderRadius: "8px",
-                          background: "#52c41a",
-                          borderColor: "#52c41a",
-                        }}
-                      >
-                        + Usuário
-                      </AntButton>
-                    </div>
-                    <div
-                      style={{
-                        ...mobileStyles.companyActions,
-                        marginTop: "4px",
-                      }}
-                    >
-                      <AntButton
-                        type="primary"
-                        icon={<EditOutlined />}
-                        size="small"
-                        onClick={() => handleOpenModal(company)}
-                        style={{ flex: 1, borderRadius: "8px" }}
-                      >
-                        Editar
-                      </AntButton>
-                      <Popconfirm
-                        title="Excluir empresa?"
-                        description="Esta ação não pode ser desfeita"
-                        onConfirm={() => handleDelete(company)}
-                        okText="Sim"
-                        cancelText="Não"
-                        disabled={currentUser?.companyId === company.id}
-                      >
-                        <AntButton
-                          danger
-                          icon={<DeleteOutlined />}
-                          size="small"
-                          disabled={currentUser?.companyId === company.id}
-                          style={{ flex: 1, borderRadius: "8px" }}
+                        <span
+                          className={`emp-status ${
+                            company.is_active
+                              ? "emp-status--ok"
+                              : "emp-status--muted"
+                          }`}
                         >
-                          Excluir
+                          {company.is_active ? "Ativa" : "Inativa"}
+                        </span>
+                      </div>
+
+                      <div className="emp-m-actions">
+                        <AntButton
+                          icon={<CrownOutlined />}
+                          onClick={() => handleOpenPlanModal(company)}
+                        >
+                          Plano
                         </AntButton>
-                      </Popconfirm>
+                        <AntButton
+                          icon={<TeamOutlined />}
+                          onClick={() => handleViewUsers(company)}
+                        >
+                          Equipe
+                        </AntButton>
+                        <AntButton
+                          icon={<EditOutlined />}
+                          onClick={() => handleOpenModal(company)}
+                        >
+                          Editar
+                        </AntButton>
+                        <Popconfirm
+                          title="Excluir empresa?"
+                          description="Esta ação não pode ser desfeita"
+                          onConfirm={() => handleDelete(company)}
+                          okText="Sim"
+                          cancelText="Não"
+                          disabled={currentUser?.companyId === company.id}
+                        >
+                          <AntButton
+                            danger
+                            icon={<DeleteOutlined />}
+                            disabled={currentUser?.companyId === company.id}
+                          >
+                            Excluir
+                          </AntButton>
+                        </Popconfirm>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -906,21 +880,29 @@ function Empresas() {
 
           {/* Floating Add Button */}
           <FloatButton
-            type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
-            style={{ right: 20, bottom: 20, width: 56, height: 56 }}
+            style={{
+              right: 20,
+              bottom: 20,
+              width: 52,
+              height: 52,
+              background: primary,
+              color: "#fafaf9",
+            }}
           />
 
           {/* Modal Criar/Editar */}
           <AntModal
-            title={selectedCompany ? "Editar Empresa" : "Nova Empresa"}
+            title={selectedCompany ? "Editar empresa" : "Nova empresa"}
             open={showModal}
             onCancel={handleCloseModal}
             footer={null}
             destroyOnClose
+            wrapClassName="emp-sheet"
+            classNames={{ mask: "emp-dialog-mask" }}
             width="100%"
-            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
+            centered={false}
             styles={{ body: { padding: "16px" } }}
           >
             <AntForm
@@ -956,9 +938,9 @@ function Empresas() {
                   block
                   size="large"
                   loading={loading}
-                  style={{ height: "48px", borderRadius: "12px" }}
+                  style={{ height: "44px", borderRadius: "8px" }}
                 >
-                  {selectedCompany ? "Atualizar" : "Criar Empresa"}
+                  {selectedCompany ? "Atualizar" : "Criar empresa"}
                 </AntButton>
               </AntForm.Item>
             </AntForm>
@@ -966,7 +948,7 @@ function Empresas() {
 
           {/* Modal Usuários */}
           <AntModal
-            title={`Usuários: ${selectedCompany?.name || ""}`}
+            title={`Equipe — ${selectedCompany?.name || ""}`}
             open={showUsersModal}
             onCancel={() => setShowUsersModal(false)}
             footer={
@@ -980,15 +962,14 @@ function Empresas() {
                 block
                 style={{ height: "44px", borderRadius: "8px" }}
               >
-                Criar Novo Usuário
+                Criar usuário
               </AntButton>
             }
             destroyOnClose
+            wrapClassName="emp-sheet"
+            classNames={{ mask: "emp-dialog-mask" }}
             width="100%"
-            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            styles={{
-              body: { padding: "16px", maxHeight: "60vh", overflow: "auto" },
-            }}
+            centered={false}
           >
             {loadingUsers ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
@@ -997,33 +978,34 @@ function Empresas() {
             ) : companyUsers.length === 0 ? (
               <Empty description="Nenhum usuário nesta empresa" />
             ) : (
-              <List
-                dataSource={companyUsers}
-                renderItem={(userItem) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      title={userItem.name || userItem.username}
-                      description={userItem.email}
-                    />
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <Tag
-                        color={userItem.role === "admin" ? "blue" : "default"}
-                      >
-                        {userItem.role || "visitante"}
-                      </Tag>
-                      <Tag color={userItem.is_active ? "green" : "red"}>
-                        {userItem.is_active ? "Ativo" : "Inativo"}
-                      </Tag>
-                    </div>
-                  </List.Item>
-                )}
-              />
+              companyUsers.map((userItem) => (
+                <div key={userItem.id} className="emp-m-user">
+                  <div className="emp-m-user__name">
+                    {userItem.name || userItem.username}
+                  </div>
+                  <div className="emp-m-user__email">{userItem.email}</div>
+                  <div className="emp-m-user__tags">
+                    <span className="emp-status emp-status--muted">
+                      {userItem.role || "visitante"}
+                    </span>
+                    <span
+                      className={`emp-status ${
+                        userItem.is_active
+                          ? "emp-status--ok"
+                          : "emp-status--danger"
+                      }`}
+                    >
+                      {userItem.is_active ? "Ativo" : "Inativo"}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </AntModal>
 
           {/* Modal Criar Usuário */}
           <AntModal
-            title={`Novo Usuário: ${selectedCompany?.name || ""}`}
+            title={`Novo usuário — ${selectedCompany?.name || ""}`}
             open={showCreateUserModal}
             onCancel={() => {
               setShowCreateUserModal(false);
@@ -1031,8 +1013,10 @@ function Empresas() {
             }}
             footer={null}
             destroyOnClose
+            wrapClassName="emp-sheet"
+            classNames={{ mask: "emp-dialog-mask" }}
             width="100%"
-            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
+            centered={false}
             styles={{ body: { padding: "16px" } }}
           >
             <AntForm
@@ -1087,15 +1071,25 @@ function Empresas() {
               </AntForm.Item>
 
               <AntForm.Item name="role" label="Função" initialValue="atendente">
-                <Select
-                  size="large"
-                  placeholder="Selecione a função"
-                  options={[
+                <div className="emp-role-pills">
+                  {[
                     { value: "admin", label: "Admin" },
                     { value: "atendente", label: "Atendente" },
                     { value: "visitante", label: "Visitante" },
-                  ]}
-                />
+                  ].map((role) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      className={newUserRole === role.value ? "is-on" : ""}
+                      onClick={() => {
+                        setNewUserRole(role.value);
+                        createUserForm.setFieldsValue({ role: role.value });
+                      }}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
               </AntForm.Item>
 
               <AntForm.Item style={{ marginBottom: 0, marginTop: "16px" }}>
@@ -1106,12 +1100,80 @@ function Empresas() {
                   size="large"
                   loading={createUserLoading}
                   icon={<UserAddOutlined />}
-                  style={{ height: "48px", borderRadius: "12px" }}
+                  style={{ height: "44px", borderRadius: "8px" }}
                 >
-                  Criar Usuário
+                  Criar usuário
                 </AntButton>
               </AntForm.Item>
             </AntForm>
+          </AntModal>
+
+          <AntModal
+            title="Plano"
+            open={showPlanModal}
+            onCancel={() => setShowPlanModal(false)}
+            wrapClassName="emp-sheet"
+            classNames={{ mask: "emp-dialog-mask" }}
+            width="100%"
+            centered={false}
+            destroyOnClose
+            okText={
+              subscriptions[selectedCompany?.id] ? "Alterar plano" : "Atribuir plano"
+            }
+            cancelText="Cancelar"
+            confirmLoading={planLoading}
+            onOk={() => handleChangePlan({ planId: selectedPlanId })}
+            okButtonProps={{ disabled: !selectedPlanId }}
+          >
+            {selectedCompany && (
+              <p className="emp-modal__lede" style={{ marginBottom: 12 }}>
+                {selectedCompany.name}
+              </p>
+            )}
+            {subscriptions[selectedCompany?.id] && (
+              <div className="emp-sub-strip">
+                <span>
+                  <small>Atual</small>
+                  <b>{getPlanDisplayName(subscriptions[selectedCompany.id])}</b>
+                </span>
+                <span>
+                  <small>Status</small>
+                  <b>{statusLabel(subscriptions[selectedCompany.id]?.status)}</b>
+                </span>
+              </div>
+            )}
+            <div className="emp-plan-grid">
+              {plans.map((plan) => {
+                const isCurrent =
+                  subscriptions[selectedCompany?.id]?.planId === plan.id;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    className={`emp-plan-card${
+                      selectedPlanId === plan.id ? " is-selected" : ""
+                    }`}
+                    onClick={() => setSelectedPlanId(plan.id)}
+                  >
+                    <span className="emp-plan-card__name">{plan.displayName}</span>
+                    <span className="emp-plan-card__price">
+                      {formatPlanPrice(plan)}
+                    </span>
+                    <span className="emp-plan-card__meta">
+                      <span>{formatPlanUsers(plan)}</span>
+                      {plan.isInternal || plan.neverExpires ? (
+                        <span className="emp-plan-card__tag">Interno</span>
+                      ) : null}
+                      {isCurrent ? (
+                        <span className="emp-plan-card__tag emp-plan-card__tag--now">
+                          Plano atual
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </AntModal>
         </div>
       </ConfigProvider>
@@ -1120,240 +1182,206 @@ function Empresas() {
 
   // ========== RENDER DESKTOP ==========
   return (
-    <Container fluid>
-      <Row>
-        <Col md="12">
-          {success && (
-            <Alert
-              variant="success"
-              dismissible
-              onClose={() => setSuccess(null)}
-            >
-              {success}
-            </Alert>
-          )}
-          {error && (
-            <Alert variant="danger" dismissible onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
+    <ConfigProvider theme={theme}>
+    <Container fluid className="emp-page" style={pageStyle}>
+      <div className="emp-header">
+        <div className="emp-header__copy">
+          <h1>Empresas</h1>
+          <p>Cadastro e gestão das empresas do sistema</p>
+        </div>
+        <div className="emp-header__actions">
+          <Tooltip title="Configurar dias de trial gratuito">
+            <AntButton icon={<SettingOutlined />} onClick={handleOpenTrialConfig}>
+              Trial
+            </AntButton>
+          </Tooltip>
+          <AntButton
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+            style={{ background: primary, borderColor: primary }}
+          >
+            Nova empresa
+          </AntButton>
+        </div>
+      </div>
 
-          <Card className="strpied-tabled-with-hover">
-            <Card.Header>
-              <Card.Title as="h4">
-                <BankOutlined style={{ marginRight: "8px" }} />
-                Gerenciamento de Empresas
-              </Card.Title>
-              <p className="card-category">
-                Cadastre e gerencie as empresas do sistema (Acesso exclusivo
-                Super Admin)
-              </p>
-              <div
-                style={{
-                  float: "right",
-                  marginTop: "-40px",
-                  display: "flex",
-                  gap: "8px",
-                }}
-              >
-                <Tooltip title="Configurar dias de trial gratuito">
-                  <AntButton
-                    icon={<SettingOutlined />}
-                    onClick={handleOpenTrialConfig}
-                    size="large"
-                  >
-                    Config Trial
-                  </AntButton>
-                </Tooltip>
-                <AntButton
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => handleOpenModal()}
-                  size="large"
-                >
-                  Nova Empresa
-                </AntButton>
-              </div>
-            </Card.Header>
-            <Card.Body className="table-full-width table-responsive px-0">
-              {loading ? (
-                <div className="text-center py-5">
-                  <Spin size="large" tip="Carregando empresas..." />
-                </div>
+      {success && (
+        <Alert
+          variant="success"
+          dismissible
+          onClose={() => setSuccess(null)}
+        >
+          {success}
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <div className="emp-panel">
+        {loading ? (
+          <div className="text-center py-5">
+            <Spin size="large" tip="Carregando empresas..." />
+          </div>
+        ) : (
+          <Table className="table mb-0">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>CNPJ</th>
+                <th>Plano</th>
+                <th>Assinatura</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {companies.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="emp-empty">
+                    Nenhuma empresa cadastrada
+                  </td>
+                </tr>
               ) : (
-                <Table className="table-hover table-striped">
-                  <thead>
-                    <tr>
-                      <th className="border-0">ID</th>
-                      <th className="border-0">Nome</th>
-                      <th className="border-0">CNPJ</th>
-                      <th className="border-0">Plano</th>
-                      <th className="border-0">Status Plano</th>
-                      <th className="border-0">Status</th>
-                      <th className="border-0">Ações</th>
+                companies.map((company) => {
+                  const subscription = subscriptions[company.id];
+                  const trialDays = getTrialDaysRemaining(subscription);
+                  return (
+                    <tr key={company.id}>
+                      <td className="emp-id">{company.id}</td>
+                      <td>
+                        <span className="emp-name">{company.name}</span>
+                        {currentUser?.companyId === company.id && (
+                          <span className="emp-current">Atual</span>
+                        )}
+                      </td>
+                      <td>{company.cnpj || "—"}</td>
+                      <td>
+                        <div className="emp-plan">
+                          <strong>{getPlanDisplayName(subscription)}</strong>
+                          {trialDays !== null && (
+                            <small>{trialDays} dias restantes</small>
+                          )}
+                        </div>
+                      </td>
+                      <td>{getSubscriptionStatusBadge(subscription)}</td>
+                      <td>
+                        <span
+                          className={`emp-status ${
+                            company.is_active
+                              ? "emp-status--ok"
+                              : "emp-status--muted"
+                          }`}
+                        >
+                          {company.is_active ? "Ativa" : "Inativa"}
+                        </span>
+                      </td>
+                      <td>
+                        <Space size={6} wrap>
+                          <Tooltip title="Gerenciar plano">
+                            <AntButton
+                              className="emp-icon-btn"
+                              icon={<CrownOutlined />}
+                              onClick={() => handleOpenPlanModal(company)}
+                            />
+                          </Tooltip>
+                          {!subscription && (
+                            <Tooltip title="Iniciar trial">
+                              <AntButton
+                                className="emp-icon-btn"
+                                icon={<ClockCircleOutlined />}
+                                onClick={() => handleCreateTrial(company)}
+                                loading={planLoading}
+                              />
+                            </Tooltip>
+                          )}
+                          <Tooltip title="Ver usuários">
+                            <AntButton
+                              className="emp-icon-btn"
+                              icon={<TeamOutlined />}
+                              onClick={() => handleViewUsers(company)}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Criar usuário">
+                            <AntButton
+                              className="emp-icon-btn"
+                              icon={<UserAddOutlined />}
+                              onClick={() =>
+                                handleOpenCreateUserModal(company)
+                              }
+                            />
+                          </Tooltip>
+                          <Tooltip title="Editar empresa">
+                            <AntButton
+                              className="emp-icon-btn"
+                              icon={<EditOutlined />}
+                              onClick={() => handleOpenModal(company)}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Excluir empresa">
+                            <AntButton
+                              className="emp-icon-btn"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => {
+                                setSelectedCompany(company);
+                                setShowDeleteModal(true);
+                              }}
+                              disabled={
+                                currentUser?.companyId === company.id
+                              }
+                            />
+                          </Tooltip>
+                        </Space>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {companies.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" className="text-center">
-                          Nenhuma empresa cadastrada
-                        </td>
-                      </tr>
-                    ) : (
-                      companies.map((company) => {
-                        const subscription = subscriptions[company.id];
-                        const trialDays = getTrialDaysRemaining(subscription);
-                        return (
-                          <tr key={company.id}>
-                            <td>{company.id}</td>
-                            <td>
-                              <strong>{company.name}</strong>
-                              {currentUser?.companyId === company.id && (
-                                <Badge bg="info" className="ms-2">
-                                  Atual
-                                </Badge>
-                              )}
-                            </td>
-                            <td>{company.cnpj || "-"}</td>
-                            <td>
-                              <Space direction="vertical" size="small">
-                                <Text strong>
-                                  <CrownOutlined style={{ marginRight: 4 }} />
-                                  {getPlanDisplayName(subscription)}
-                                </Text>
-                                {trialDays !== null && (
-                                  <Text
-                                    type="secondary"
-                                    style={{ fontSize: 11 }}
-                                  >
-                                    {trialDays} dias restantes
-                                  </Text>
-                                )}
-                              </Space>
-                            </td>
-                            <td>{getSubscriptionStatusBadge(subscription)}</td>
-                            <td>
-                              <Badge
-                                bg={company.is_active ? "success" : "secondary"}
-                              >
-                                {company.is_active ? "Ativa" : "Inativa"}
-                              </Badge>
-                            </td>
-                            <td>
-                              <Space size="small" wrap>
-                                <Tooltip title="Gerenciar Plano">
-                                  <AntButton
-                                    type="primary"
-                                    icon={<CrownOutlined />}
-                                    onClick={() => handleOpenPlanModal(company)}
-                                    style={{
-                                      background: "#722ed1",
-                                      borderColor: "#722ed1",
-                                    }}
-                                  />
-                                </Tooltip>
-                                {!subscription && (
-                                  <Tooltip title="Iniciar Trial">
-                                    <AntButton
-                                      type="primary"
-                                      icon={<ClockCircleOutlined />}
-                                      onClick={() => handleCreateTrial(company)}
-                                      loading={planLoading}
-                                      style={{
-                                        background: "#13c2c2",
-                                        borderColor: "#13c2c2",
-                                      }}
-                                    />
-                                  </Tooltip>
-                                )}
-                                <Tooltip title="Ver usuários">
-                                  <AntButton
-                                    type="primary"
-                                    icon={<TeamOutlined />}
-                                    onClick={() => handleViewUsers(company)}
-                                    style={{
-                                      background: "#17a2b8",
-                                      borderColor: "#17a2b8",
-                                    }}
-                                  />
-                                </Tooltip>
-                                <Tooltip title="Criar usuário">
-                                  <AntButton
-                                    type="primary"
-                                    icon={<UserAddOutlined />}
-                                    onClick={() =>
-                                      handleOpenCreateUserModal(company)
-                                    }
-                                    style={{
-                                      background: "#28a745",
-                                      borderColor: "#28a745",
-                                    }}
-                                  />
-                                </Tooltip>
-                                <Tooltip title="Editar empresa">
-                                  <AntButton
-                                    type="primary"
-                                    icon={<EditOutlined />}
-                                    onClick={() => handleOpenModal(company)}
-                                    style={{
-                                      background: "#ffc107",
-                                      borderColor: "#ffc107",
-                                      color: "#000",
-                                    }}
-                                  />
-                                </Tooltip>
-                                <Tooltip title="Excluir empresa">
-                                  <AntButton
-                                    type="primary"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    onClick={() => {
-                                      setSelectedCompany(company);
-                                      setShowDeleteModal(true);
-                                    }}
-                                    disabled={
-                                      currentUser?.companyId === company.id
-                                    }
-                                  />
-                                </Tooltip>
-                              </Space>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </Table>
+                  );
+                })
               )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+            </tbody>
+          </Table>
+        )}
+      </div>
 
-      {/* Modal de Criar/Editar Empresa */}
-      <Modal show={showModal} onHide={handleCloseModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {selectedCompany ? "Editar Empresa" : "Nova Empresa"}
-          </Modal.Title>
-        </Modal.Header>
+      <AntModal
+        title={
+          <EmpTitle
+            title={selectedCompany ? "Editar empresa" : "Nova empresa"}
+            lede={
+              selectedCompany
+                ? "Atualize os dados cadastrais."
+                : "Cadastre uma empresa para acessar o sistema."
+            }
+          />
+        }
+        open={showModal}
+        onCancel={handleCloseModal}
+        footer={null}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={460}
+        centered
+        destroyOnClose
+      >
         <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Nome da Empresa *</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Digite o nome da empresa"
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>CNPJ</Form.Label>
+          <div className="emp-field">
+            <label className="emp-label">Nome</label>
+            <Form.Control
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Nome da empresa"
+              required
+            />
+          </div>
+          <div className="emp-field-row">
+            <div className="emp-field">
+              <label className="emp-label">CNPJ</label>
               <Form.Control
                 type="text"
                 name="cnpj"
@@ -1361,10 +1389,9 @@ function Empresas() {
                 onChange={handleChange}
                 placeholder="00.000.000/0000-00"
               />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Telefone</Form.Label>
+            </div>
+            <div className="emp-field">
+              <label className="emp-label">Telefone</label>
               <Form.Control
                 type="text"
                 name="phone"
@@ -1372,390 +1399,335 @@ function Empresas() {
                 onChange={handleChange}
                 placeholder="(00) 00000-0000"
               />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Endereço</Form.Label>
-              <Form.Control
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Digite o endereço"
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
-              Cancelar
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? (
-                <Spinner animation="border" size="sm" />
-              ) : selectedCompany ? (
-                "Salvar"
-              ) : (
-                "Criar"
-              )}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* Modal de Confirmação de Exclusão */}
-      <Modal
-        show={showDeleteModal}
-        onHide={() => setShowDeleteModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Confirmar Exclusão</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>
-            Tem certeza que deseja excluir a empresa{" "}
-            <strong>{selectedCompany?.name}</strong>?
-          </p>
-          <p className="text-danger">Esta ação não pode ser desfeita.</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancelar
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => handleDelete()}
-            disabled={loading}
-          >
-            {loading ? <Spinner animation="border" size="sm" /> : "Excluir"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal de Usuários da Empresa */}
-      <Modal
-        show={showUsersModal}
-        onHide={() => setShowUsersModal(false)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            Usuários da Empresa: {selectedCompany?.name}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {loadingUsers ? (
-            <div className="text-center py-4">
-              <Spinner animation="border" role="status" />
             </div>
-          ) : companyUsers.length === 0 ? (
-            <p className="text-center text-muted">
-              Nenhum usuário nesta empresa
-            </p>
-          ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nome</th>
-                  <th>Email</th>
-                  <th>Função</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {companyUsers.map((userItem) => (
-                  <tr key={userItem.id}>
-                    <td>{userItem.id}</td>
-                    <td>{userItem.name || userItem.username}</td>
-                    <td>{userItem.email}</td>
-                    <td>
-                      <Badge
-                        bg={userItem.role === "admin" ? "primary" : "secondary"}
-                      >
-                        {userItem.role || "visitante"}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Badge bg={userItem.is_active ? "success" : "danger"}>
-                        {userItem.is_active ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="success"
+          </div>
+          <div className="emp-field">
+            <label className="emp-label">Endereço</label>
+            <Form.Control
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Rua, número, cidade"
+            />
+          </div>
+          <div className="emp-dialog-foot">
+            <AntButton onClick={handleCloseModal}>Cancelar</AntButton>
+            <AntButton type="primary" htmlType="submit" loading={loading}>
+              {selectedCompany ? "Salvar" : "Criar"}
+            </AntButton>
+          </div>
+        </Form>
+      </AntModal>
+
+      <AntModal
+        title={<EmpTitle title="Excluir empresa" lede={selectedCompany?.name} />}
+        open={showDeleteModal}
+        onCancel={() => setShowDeleteModal(false)}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={400}
+        centered
+        footer={[
+          <AntButton key="cancel" onClick={() => setShowDeleteModal(false)}>
+            Cancelar
+          </AntButton>,
+          <AntButton
+            key="ok"
+            danger
+            type="primary"
+            loading={loading}
+            onClick={() => handleDelete()}
+          >
+            Excluir
+          </AntButton>,
+        ]}
+      >
+        <p style={{ margin: "4px 0 8px", fontSize: 14, color: "#44403c", lineHeight: 1.5 }}>
+          A empresa deixa de aparecer no sistema. Esta ação não pode ser
+          desfeita.
+        </p>
+      </AntModal>
+
+      <AntModal
+        title={<EmpTitle title="Equipe" lede={selectedCompany?.name} />}
+        open={showUsersModal}
+        onCancel={() => setShowUsersModal(false)}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={520}
+        centered
+        footer={[
+          <AntButton key="close" onClick={() => setShowUsersModal(false)}>
+            Fechar
+          </AntButton>,
+          <AntButton
+            key="add"
+            type="primary"
             onClick={() => {
               setShowUsersModal(false);
               handleOpenCreateUserModal(selectedCompany);
             }}
           >
-            <i className="nc-icon nc-simple-add"></i> Criar Novo Usuário
-          </Button>
-          <Button variant="secondary" onClick={() => setShowUsersModal(false)}>
-            Fechar
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal de Criar Usuário */}
-      <Modal
-        show={showCreateUserModal}
-        onHide={() => setShowCreateUserModal(false)}
-        centered
+            Novo usuário
+          </AntButton>,
+        ]}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Criar Usuário para: {selectedCompany?.name}</Modal.Title>
-        </Modal.Header>
+        {loadingUsers ? (
+          <div className="emp-empty-box">
+            <Spin />
+          </div>
+        ) : companyUsers.length === 0 ? (
+          <div className="emp-empty-box">Nenhum usuário nesta empresa</div>
+        ) : (
+          <div className="emp-user-list">
+            {companyUsers.map((userItem) => (
+              <div key={userItem.id} className="emp-user-row">
+                <div>
+                  <div className="emp-user-row__name">
+                    {userItem.name || userItem.username}
+                  </div>
+                  <div className="emp-user-row__email">{userItem.email}</div>
+                </div>
+                <div className="emp-user-row__side">
+                  <span className="emp-status emp-status--muted">
+                    {userItem.role || "visitante"}
+                  </span>
+                  <span
+                    className={`emp-status ${
+                      userItem.is_active
+                        ? "emp-status--ok"
+                        : "emp-status--danger"
+                    }`}
+                  >
+                    {userItem.is_active ? "Ativo" : "Inativo"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </AntModal>
+
+      <AntModal
+        title={<EmpTitle title="Novo usuário" lede={selectedCompany?.name} />}
+        open={showCreateUserModal}
+        onCancel={() => setShowCreateUserModal(false)}
+        footer={null}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={460}
+        centered
+        destroyOnClose
+      >
         <Form
           onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
+            const data = new FormData(e.target);
             handleCreateUser({
-              name: formData.get("name"),
-              email: formData.get("email"),
-              password: formData.get("password"),
-              role: formData.get("role"),
+              name: data.get("name"),
+              email: data.get("email"),
+              password: data.get("password"),
+              role: newUserRole,
             });
           }}
         >
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Nome Completo *</Form.Label>
+          <div className="emp-field">
+            <label className="emp-label">Nome</label>
+            <Form.Control
+              type="text"
+              name="name"
+              placeholder="Nome completo"
+              required
+            />
+          </div>
+          <div className="emp-field">
+            <label className="emp-label">Email</label>
+            <Form.Control
+              type="email"
+              name="email"
+              placeholder="email@exemplo.com"
+              required
+            />
+          </div>
+          <div className="emp-field">
+            <label className="emp-label">Senha</label>
+            <div className="emp-pw">
               <Form.Control
-                type="text"
-                name="name"
-                placeholder="Nome do usuário"
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Email *</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                placeholder="email@exemplo.com"
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Senha *</Form.Label>
-              <Form.Control
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Mínimo 6 caracteres"
                 minLength={6}
                 required
               />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Função</Form.Label>
-              <Form.Select name="role" defaultValue="atendente">
-                <option value="admin">Admin</option>
-                <option value="atendente">Atendente</option>
-                <option value="visitante">Visitante</option>
-              </Form.Select>
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => setShowCreateUserModal(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="success"
-              type="submit"
-              disabled={createUserLoading}
-            >
-              {createUserLoading ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                "Criar Usuário"
-              )}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* Modal de Gerenciar Plano */}
-      <Modal
-        show={showPlanModal}
-        onHide={() => setShowPlanModal(false)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <CrownOutlined style={{ color: "#722ed1", marginRight: 8 }} />
-            Gerenciar Plano: {selectedCompany?.name}
-          </Modal.Title>
-        </Modal.Header>
-        <Form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const planId = Number(formData.get("planId"));
-            if (planId) {
-              handleChangePlan({ planId });
-            }
-          }}
-        >
-          <Modal.Body>
-            <p className="text-muted mb-3">
-              Selecione o plano para esta empresa. A cobrança será feita
-              automaticamente via Asaas.
-            </p>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Plano *</Form.Label>
-              <Form.Select
-                name="planId"
-                size="lg"
-                required
-                defaultValue={subscriptions[selectedCompany?.id]?.planId || ""}
+              <button
+                type="button"
+                className="emp-pw__toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
-                <option value="">Selecione um plano...</option>
-                {plans.map((plan) => (
-                  <option 
-                    key={plan.id} 
-                    value={plan.id}
-                    style={plan.neverExpires ? { fontWeight: 'bold', color: '#722ed1' } : {}}
-                  >
-                    {plan.neverExpires ? "⭐ " : ""}
-                    {plan.displayName} -{" "}
-                    {plan.neverExpires 
-                      ? "NUNCA EXPIRA"
-                      : plan.price > 0
-                        ? `R$ ${Number(plan.price).toFixed(2)}/mês`
-                        : plan.name === "empresarial"
-                          ? "Sob consulta"
-                          : `Grátis (${plan.trialDays} dias)`}{" "}
-                    - {plan.maxUsers === -1 ? "Usuários ilimitados" : `Até ${plan.maxUsers} usuários`}
-                  </option>
-                ))}
-              </Form.Select>
-              <Form.Text className="text-muted">
-                ⭐ Planos com estrela são internos e não aparecem para clientes
-              </Form.Text>
-            </Form.Group>
-
-            {subscriptions[selectedCompany?.id] && (
-              <Alert variant="info" className="mt-3">
-                <strong>Plano Atual:</strong>{" "}
-                {getPlanDisplayName(subscriptions[selectedCompany?.id])}
-                <br />
-                <strong>Status:</strong>{" "}
-                {subscriptions[selectedCompany?.id]?.status}
-                {getTrialDaysRemaining(subscriptions[selectedCompany?.id]) !==
-                  null && (
-                  <>
-                    <br />
-                    <strong>Trial restante:</strong>{" "}
-                    {getTrialDaysRemaining(subscriptions[selectedCompany?.id])}{" "}
-                    dias
-                  </>
-                )}
-              </Alert>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>
+                {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              </button>
+            </div>
+          </div>
+          <div className="emp-field">
+            <label className="emp-label">Função</label>
+            <div className="emp-role-pills">
+              {[
+                { value: "admin", label: "Admin" },
+                { value: "atendente", label: "Atendente" },
+                { value: "visitante", label: "Visitante" },
+              ].map((role) => (
+                <button
+                  key={role.value}
+                  type="button"
+                  className={newUserRole === role.value ? "is-on" : ""}
+                  onClick={() => setNewUserRole(role.value)}
+                >
+                  {role.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="emp-dialog-foot">
+            <AntButton onClick={() => setShowCreateUserModal(false)}>
               Cancelar
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              disabled={planLoading}
-              style={{ background: "#722ed1", borderColor: "#722ed1" }}
-            >
-              {planLoading ? (
-                <Spinner animation="border" size="sm" />
-              ) : subscriptions[selectedCompany?.id] ? (
-                "Alterar Plano"
-              ) : (
-                "Atribuir Plano"
-              )}
-            </Button>
-          </Modal.Footer>
+            </AntButton>
+            <AntButton type="primary" htmlType="submit" loading={createUserLoading}>
+              Criar usuário
+            </AntButton>
+          </div>
         </Form>
-      </Modal>
+      </AntModal>
 
-      {/* Modal de Configurar Trial */}
-      <Modal
-        show={showTrialConfigModal}
-        onHide={() => setShowTrialConfigModal(false)}
+      <AntModal
+        title={<EmpTitle title="Plano" lede={selectedCompany?.name} />}
+        open={showPlanModal}
+        onCancel={() => setShowPlanModal(false)}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={460}
         centered
+        destroyOnClose
+        okText={
+          subscriptions[selectedCompany?.id] ? "Alterar plano" : "Atribuir plano"
+        }
+        cancelText="Cancelar"
+        confirmLoading={planLoading}
+        okButtonProps={{ disabled: !selectedPlanId }}
+        onOk={() => handleChangePlan({ planId: selectedPlanId })}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <SettingOutlined style={{ marginRight: 8 }} />
-            Configurar Dias de Trial
-          </Modal.Title>
-        </Modal.Header>
+        {subscriptions[selectedCompany?.id] && (
+          <div className="emp-sub-strip">
+            <span>
+              <small>Atual</small>
+              <b>{getPlanDisplayName(subscriptions[selectedCompany.id])}</b>
+            </span>
+            <span>
+              <small>Status</small>
+              <b>{statusLabel(subscriptions[selectedCompany.id]?.status)}</b>
+            </span>
+            {getTrialDaysRemaining(subscriptions[selectedCompany.id]) !==
+              null && (
+              <span>
+                <small>Trial</small>
+                <b>
+                  {getTrialDaysRemaining(subscriptions[selectedCompany.id])}{" "}
+                  dias
+                </b>
+              </span>
+            )}
+          </div>
+        )}
+        <div className="emp-plan-grid">
+          {plans.map((plan) => {
+            const isCurrent =
+              subscriptions[selectedCompany?.id]?.planId === plan.id;
+            return (
+              <button
+                key={plan.id}
+                type="button"
+                className={`emp-plan-card${
+                  selectedPlanId === plan.id ? " is-selected" : ""
+                }`}
+                onClick={() => setSelectedPlanId(plan.id)}
+              >
+                <span className="emp-plan-card__name">{plan.displayName}</span>
+                <span className="emp-plan-card__price">
+                  {formatPlanPrice(plan)}
+                </span>
+                <span className="emp-plan-card__meta">
+                  <span>{formatPlanUsers(plan)}</span>
+                  {plan.isInternal || plan.neverExpires ? (
+                    <span className="emp-plan-card__tag">Interno</span>
+                  ) : null}
+                  {isCurrent ? (
+                    <span className="emp-plan-card__tag emp-plan-card__tag--now">
+                      Plano atual
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="emp-hint">
+          Planos internos não aparecem para o cliente. Cobrança via Asaas.
+        </p>
+      </AntModal>
+
+      <AntModal
+        title={
+          <EmpTitle
+            title="Dias de trial"
+            lede="Período gratuito para novas empresas."
+          />
+        }
+        open={showTrialConfigModal}
+        onCancel={() => setShowTrialConfigModal(false)}
+        footer={null}
+        wrapClassName="emp-dialog"
+        classNames={{ mask: "emp-dialog-mask" }}
+        width={400}
+        centered
+        destroyOnClose
+      >
         <Form
           onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const trialDays = Number(formData.get("trialDays"));
+            const data = new FormData(e.target);
+            const trialDays = Number(data.get("trialDays"));
             if (trialDays > 0) {
               handleUpdateTrialDays({ trialDays });
             }
           }}
         >
-          <Modal.Body>
-            <p className="text-muted mb-3">
-              Configure quantos dias de teste gratuito as novas empresas terão
-              ao se cadastrar.
+          <div className="emp-field">
+            <label className="emp-label">Duração</label>
+            <Form.Control
+              type="number"
+              name="trialDays"
+              min={1}
+              max={365}
+              defaultValue={selectedPlan?.trialDays || 15}
+              required
+            />
+            <p className="emp-hint">
+              De 1 a 365 dias. Só vale para cadastros novos.
             </p>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Dias de Trial *</Form.Label>
-              <Form.Control
-                type="number"
-                name="trialDays"
-                min={1}
-                max={365}
-                defaultValue={selectedPlan?.trialDays || 15}
-                required
-              />
-              <Form.Text className="text-muted">Entre 1 e 365 dias</Form.Text>
-            </Form.Group>
-
-            <Alert variant="warning">
-              <strong>Atenção:</strong> Esta alteração afetará apenas novas
-              empresas. Empresas existentes manterão o período de trial
-              original.
-            </Alert>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => setShowTrialConfigModal(false)}
-            >
+          </div>
+          <div className="emp-dialog-foot">
+            <AntButton onClick={() => setShowTrialConfigModal(false)}>
               Cancelar
-            </Button>
-            <Button variant="primary" type="submit" disabled={planLoading}>
-              {planLoading ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                "Salvar Configuração"
-              )}
-            </Button>
-          </Modal.Footer>
+            </AntButton>
+            <AntButton type="primary" htmlType="submit" loading={planLoading}>
+              Salvar
+            </AntButton>
+          </div>
         </Form>
-      </Modal>
+      </AntModal>
     </Container>
+    </ConfigProvider>
   );
 }
 

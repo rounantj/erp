@@ -1,0 +1,260 @@
+/* Quiet admin pages — surfaces stay neutral; --qui-primary is the company theme */
+
+.qui-page {
+  --qui-ink: #1c1917;
+  --qui-muted: #78716c;
+  --qui-line: #e7e5e4;
+  --qui-wash: #fafaf9;
+  padding: 8px 4px 24px;
+}
+
+.qui-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.qui-header h1,
+.qui-header .qui-header__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--qui-ink);
+  line-height: 1.25;
+}
+
+.qui-header p,
+.qui-header .qui-header__lede {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--qui-muted);
+  line-height: 1.45;
+}
+
+.qui-panel {
+  background: #fff;
+  border: 1px solid var(--qui-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.qui-panel .ant-card,
+.qui-page .ant-card {
+  border: 1px solid var(--qui-line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.qui-page .ant-card:hover {
+  box-shadow: none;
+}
+
+.qui-status {
+  display: inline;
+  font-size: 12px;
+  font-weight: 560;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1.3;
+}
+
+.qui-status--muted {
+  color: var(--qui-muted);
+}
+
+.qui-status--ok {
+  color: #15803d;
+}
+
+.qui-status--trial,
+.qui-status--info {
+  color: #1d4ed8;
+}
+
+.qui-status--warn {
+  color: #b45309;
+}
+
+.qui-status--danger {
+  color: #b91c1c;
+}
+
+.qui-icon-btn.ant-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #57534e;
+  border: 1px solid var(--qui-line);
+  background: #fff;
+  box-shadow: none;
+}
+
+.qui-icon-btn.ant-btn:hover:not(:disabled) {
+  color: var(--qui-ink);
+  border-color: #d6d3d1;
+  background: var(--qui-wash);
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.qui-page .ant-btn:hover,
+.qui-dialog .ant-btn:hover {
+  transform: none !important;
+}
+
+.qui-page .ant-btn-primary:not(.ant-btn-dangerous),
+.qui-dialog .ant-btn-primary:not(.ant-btn-dangerous),
+.qui-sheet .ant-btn-primary:not(.ant-btn-dangerous) {
+  background: var(--qui-primary, #667eea);
+  border-color: var(--qui-primary, #667eea);
+}
+
+.qui-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.qui-stat {
+  background: #fff;
+  border: 1px solid var(--qui-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.qui-stat small {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--qui-muted);
+  margin-bottom: 4px;
+}
+
+.qui-stat b {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--qui-ink);
+}
+
+.qui-stat b.is-theme {
+  color: var(--qui-primary, #667eea);
+}
+
+.qui-dialog .ant-modal-content {
+  background: #fff;
+  border: 1px solid var(--qui-line);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(28, 25, 23, 0.18);
+  overflow: visible;
+  padding: 0;
+}
+
+.qui-dialog .ant-modal-header {
+  background: #fff;
+  margin: 0;
+  padding: 22px 24px 0;
+  border-bottom: none;
+}
+
+.qui-dialog__title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--qui-ink);
+}
+
+.qui-dialog__lede {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--qui-muted);
+}
+
+.qui-dialog .ant-modal-body {
+  background: #fff;
+  padding: 16px 24px 8px;
+}
+
+.qui-dialog .ant-modal-footer {
+  background: #fff;
+  margin: 0;
+  padding: 12px 24px 18px;
+  border-top: 1px solid #f5f5f4;
+}
+
+.qui-dialog-mask {
+  background: rgba(28, 25, 23, 0.45) !important;
+}
+
+.qui-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.qui-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #57534e;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+  .qui-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qui-sheet.ant-modal-wrap {
+    overflow: hidden;
+  }
+
+  .qui-sheet .ant-modal {
+    max-width: 100vw;
+    width: 100% !important;
+    margin: 0;
+    top: auto;
+    padding: 0;
+    position: absolute;
+    bottom: 0;
+  }
+
+  .qui-sheet .ant-modal-content {
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    max-height: min(92vh, 100dvh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -8px 32px rgba(28, 25, 23, 0.12);
+  }
+
+  .qui-sheet .ant-modal-header {
+    padding: 18px 16px 12px;
+    margin: 0;
+    border-bottom: 1px solid #f5f5f4;
+    background: #fff;
+  }
+
+  .qui-sheet .ant-modal-body {
+    padding: 16px !important;
+    overflow: auto;
+    flex: 1;
+  }
+
+  .qui-sheet .ant-modal-footer {
+    margin: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #f5f5f4;
+    background: #fff;
+  }
+}

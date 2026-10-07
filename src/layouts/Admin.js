@@ -132,12 +132,15 @@ function Admin() {
   const [runTour, setRunTour] = useState(false);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
-  // Injetar CSS dinâmico para a cor do sidebar da empresa
+  // Cor do tema da empresa (Configurações) — disponível em páginas e modais portaled
   useEffect(() => {
-    if (sidebarColor && sidebarColor !== "#667eea") {
-      const styleId = "dynamic-sidebar-color";
-      let styleEl = document.getElementById(styleId);
+    const primary = sidebarColor || "#667eea";
+    document.documentElement.style.setProperty("--qui-primary", primary);
 
+    const styleId = "dynamic-sidebar-color";
+    let styleEl = document.getElementById(styleId);
+
+    if (sidebarColor && sidebarColor !== "#667eea") {
       if (!styleEl) {
         styleEl = document.createElement("style");
         styleEl.id = styleId;
@@ -145,19 +148,19 @@ function Admin() {
       }
 
       const darkerColor = darkenColor(sidebarColor, -40);
-
       styleEl.textContent = `
         .sidebar::after {
           background: ${sidebarColor} !important;
           background: linear-gradient(to bottom, ${sidebarColor} 0%, ${darkerColor} 100%) !important;
         }
       `;
-
-      return () => {
-        const el = document.getElementById(styleId);
-        if (el) el.remove();
-      };
+    } else if (styleEl) {
+      styleEl.remove();
     }
+
+    return () => {
+      document.documentElement.style.removeProperty("--qui-primary");
+    };
   }, [sidebarColor]);
 
   // Verificar tamanho da tela para responsividade

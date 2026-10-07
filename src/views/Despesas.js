@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Card,
   Table,
@@ -42,149 +42,28 @@ import {
 import { updateDespesa, getDespesas, delDepesa } from "helpers/api-integrator";
 import moment from "moment";
 import { CSVLink } from "react-csv";
+import { useThemeColor, quietMobileStyles } from "helpers/theme";
+import "./admin-ui.css";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { Search } = Input;
 
-// Estilos para mobile
-const mobileStyles = {
-  container: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "100vw",
-    overflow: "hidden",
-    background: "linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)",
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-    zIndex: 100,
-  },
-  header: {
-    background: "transparent",
-    padding: "16px",
-    flexShrink: 0,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: "20px",
-    fontWeight: "700",
-    margin: 0,
-  },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "12px",
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "8px",
-    marginTop: "12px",
-  },
-  summaryCard: {
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: "12px",
-    padding: "12px",
-    backdropFilter: "blur(10px)",
-  },
-  summaryValue: {
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "700",
-    display: "block",
-  },
-  summaryLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "10px",
-  },
-  totalCard: {
-    background: "rgba(255,255,255,0.25)",
-    borderRadius: "12px",
-    padding: "14px",
-    marginTop: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  totalValue: {
-    color: "#fff",
-    fontSize: "18px",
-    fontWeight: "800",
-    display: "block",
-  },
-  totalLabel: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: "11px",
-  },
-  content: {
-    flex: 1,
-    background: "#f8f9fa",
-    borderTopLeftRadius: "24px",
-    borderTopRightRadius: "24px",
-    padding: "16px",
-    paddingBottom: "20px",
-    overflow: "auto",
-    display: "flex",
-    flexDirection: "column",
-    maxWidth: "100vw",
-    boxSizing: "border-box",
-    minHeight: 0,
-  },
-  searchContainer: {
-    marginBottom: "12px",
-    display: "flex",
-    gap: "8px",
-    flexShrink: 0,
-  },
-  despesaCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "12px",
-    marginBottom: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-  },
-  despesaHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "8px",
-  },
-  despesaName: {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-    marginRight: "8px",
-  },
-  despesaValue: {
-    fontSize: "16px",
-    fontWeight: "700",
-    color: "#ff6b6b",
-  },
-  despesaActions: {
-    display: "flex",
-    gap: "6px",
-    marginTop: "8px",
-  },
-  actionButton: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "8px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-};
-
 function Despesas() {
+  const { primary, theme, pageStyle } = useThemeColor();
+  const mobileStyles = useMemo(
+    () => ({
+      ...quietMobileStyles(primary),
+      totalCard: {
+        ...quietMobileStyles(primary).totalCard,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        textAlign: "left",
+      },
+    }),
+    [primary]
+  );
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // Detectar mobile
@@ -406,18 +285,13 @@ function Despesas() {
       dataIndex: "status",
       key: "status",
       render: (status) => (
-        <Tag
-          color={status === "Pago" ? "green" : "volcano"}
-          icon={
-            status === "Pago" ? (
-              <CheckCircleOutlined />
-            ) : (
-              <ClockCircleOutlined />
-            )
-          }
+        <span
+          className={`qui-status ${
+            status === "Pago" ? "qui-status--ok" : "qui-status--warn"
+          }`}
         >
           {status}
-        </Tag>
+        </span>
       ),
       filters: [
         { text: "Pago", value: "Pago" },
@@ -430,7 +304,9 @@ function Despesas() {
       dataIndex: "fixa",
       key: "fixa",
       render: (fixa) => (
-        <Tag color={fixa ? "blue" : "orange"}>{fixa ? "Fixa" : "Variável"}</Tag>
+        <span className="qui-status qui-status--muted">
+          {fixa ? "Fixa" : "Variável"}
+        </span>
       ),
       filters: [
         { text: "Fixa", value: true },
@@ -467,8 +343,7 @@ function Despesas() {
         <Space size="small">
           <Tooltip title="Editar">
             <Button
-              type="primary"
-              shape="circle"
+              className="qui-icon-btn"
               icon={<EditOutlined />}
               size="small"
               onClick={() => showEditModal(record)}
@@ -482,9 +357,8 @@ function Despesas() {
               cancelText="Não"
             >
               <Button
-                type="primary"
+                className="qui-icon-btn"
                 danger
-                shape="circle"
                 icon={<DeleteOutlined />}
                 size="small"
               />
@@ -513,15 +387,8 @@ function Despesas() {
   // ========== RENDER MOBILE ==========
   if (isMobile) {
     return (
-      <ConfigProvider
-        theme={{
-          token: {
-            colorPrimary: "#ff6b6b",
-            borderRadius: 12,
-          },
-        }}
-      >
-        <div style={mobileStyles.container}>
+      <ConfigProvider theme={theme}>
+        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
           {/* Header Mobile */}
           <div style={mobileStyles.header}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -561,10 +428,7 @@ function Despesas() {
                   <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
                 </div>
                 <div>
-                  <h1 style={mobileStyles.headerTitle}>
-                    <WalletOutlined style={{ marginRight: "8px" }} />
-                    Despesas
-                  </h1>
+                  <h1 style={mobileStyles.headerTitle}>Despesas</h1>
                   <Text style={mobileStyles.headerSubtitle}>
                     {estatisticas.totalDespesas} despesas cadastradas
                   </Text>
@@ -698,23 +562,22 @@ function Despesas() {
                             {despesa.descricao}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-                            <Tag
-                              color={despesa.status === "Pago" ? "green" : "volcano"}
-                              icon={despesa.status === "Pago" ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
-                              style={{ margin: 0, fontSize: "10px" }}
+                            <span
+                              className={`qui-status ${
+                                despesa.status === "Pago"
+                                  ? "qui-status--ok"
+                                  : "qui-status--warn"
+                              }`}
                             >
                               {despesa.status}
-                            </Tag>
-                            <Tag
-                              color={despesa.fixa ? "blue" : "orange"}
-                              style={{ margin: 0, fontSize: "10px" }}
-                            >
+                            </span>
+                            <span className="qui-status qui-status--muted">
                               {despesa.fixa ? "Fixa" : "Variável"}
-                            </Tag>
+                            </span>
                             {isLate && (
-                              <Tag color="red" icon={<ExclamationCircleOutlined />} style={{ margin: 0, fontSize: "10px" }}>
+                              <span className="qui-status qui-status--danger">
                                 Atrasada
-                              </Tag>
+                              </span>
                             )}
                           </div>
                           <Text style={{ fontSize: "11px", color: "#999", display: "block", marginTop: "4px" }}>
@@ -789,14 +652,15 @@ function Despesas() {
 
           {/* Modal de Cadastro/Edição */}
           <Modal
-            title={editingId ? "Editar Despesa" : "Nova Despesa"}
+            title={editingId ? "Editar despesa" : "Nova despesa"}
             open={isModalVisible}
             onCancel={handleCancel}
             footer={null}
             destroyOnClose
+            wrapClassName="qui-sheet"
+            classNames={{ mask: "qui-dialog-mask" }}
             width="100%"
-            style={{ top: 0, maxWidth: "100vw", margin: 0, padding: 0 }}
-            styles={{ body: { padding: "16px" } }}
+            centered={false}
           >
             <Form
               form={form}
@@ -892,57 +756,38 @@ function Despesas() {
 
   // ========== RENDER DESKTOP ==========
   return (
-    <>
-      <Card
-        title={<Title level={4}>Controle de Despesas</Title>}
-        extra={
-          <Button
-            type="primary"
-            onClick={showCreateModal}
-            icon={<PlusOutlined />}
-          >
-            Nova Despesa
-          </Button>
-        }
-      >
-        {/* Painel de Estatísticas */}
-        <Row gutter={16}>
-          <Col span={6}>
-            <Statistic
-              title="Total de Despesas"
-              value={estatisticas.totalDespesas}
-              suffix="despesas"
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic
-              title="Valor Pendente"
-              value={estatisticas.totalValorPendente}
-              precision={2}
-              prefix="R$"
-              valueStyle={{ color: "#cf1322" }}
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic
-              title="Valor Pago"
-              value={estatisticas.totalValorPago}
-              precision={2}
-              prefix="R$"
-              valueStyle={{ color: "#3f8600" }}
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic
-              title="Despesas Fixas"
-              value={estatisticas.despesasFixas}
-              suffix={`/ ${estatisticas.totalDespesas}`}
-              valueStyle={{ color: "#1890ff" }}
-            />
-          </Col>
-        </Row>
-
-        <Divider />
+    <ConfigProvider theme={theme}>
+    <div className="qui-page" style={pageStyle}>
+      <div className="qui-header">
+        <div>
+          <h1>Despesas</h1>
+          <p>Contas a pagar e recorrentes</p>
+        </div>
+        <Button type="primary" onClick={showCreateModal} icon={<PlusOutlined />}>
+          Nova despesa
+        </Button>
+      </div>
+      <div className="qui-stats">
+        <div className="qui-stat">
+          <small>Cadastradas</small>
+          <b>{estatisticas.totalDespesas}</b>
+        </div>
+        <div className="qui-stat">
+          <small>Pendente</small>
+          <b>{formatCurrency(estatisticas.totalValorPendente)}</b>
+        </div>
+        <div className="qui-stat">
+          <small>Pago</small>
+          <b>{formatCurrency(estatisticas.totalValorPago)}</b>
+        </div>
+        <div className="qui-stat">
+          <small>Fixas</small>
+          <b>
+            {estatisticas.despesasFixas}/{estatisticas.totalDespesas}
+          </b>
+        </div>
+      </div>
+      <div className="qui-panel" style={{ padding: 16 }}>
 
         {/* Filtros */}
         <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -1003,13 +848,16 @@ function Despesas() {
             showTotal: (total) => `Total de ${total} despesas`,
           }}
         />
-      </Card>
+      </div>
 
       {/* Modal de Cadastro/Edição */}
       <Modal
-        title={editingId ? "Editar Despesa" : "Cadastrar Nova Despesa"}
-        visible={isModalVisible}
+        title={editingId ? "Editar despesa" : "Nova despesa"}
+        open={isModalVisible}
         onCancel={handleCancel}
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
+        centered
         footer={[
           <Button key="cancel" onClick={handleCancel}>
             Cancelar
@@ -1112,7 +960,8 @@ function Despesas() {
           </Row>
         </Form>
       </Modal>
-    </>
+    </div>
+    </ConfigProvider>
   );
 }
 

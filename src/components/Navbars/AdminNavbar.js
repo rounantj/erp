@@ -191,6 +191,10 @@ function AdminNavbar() {
               fontWeight: "600",
               color: "#fff",
               letterSpacing: "-0.3px",
+              maxWidth: isMobile ? 120 : "none",
+              overflow: isMobile ? "hidden" : "visible",
+              textOverflow: isMobile ? "ellipsis" : "clip",
+              whiteSpace: "nowrap",
             }}
           >
             {getBrandText()}
@@ -200,7 +204,17 @@ function AdminNavbar() {
 
       {/* Lado direito - Usuário e Logout */}
       {user && (
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: isMobile ? "8px" : "16px",
+            flexWrap: "nowrap",
+            justifyContent: "flex-end",
+            maxWidth: isMobile ? "calc(100% - 145px)" : "none",
+            minWidth: 0,
+          }}
+        >
           {canSwitchCompany && (
             <div
               style={{
@@ -209,6 +223,8 @@ function AdminNavbar() {
                 background: "rgba(255,255,255,0.15)",
                 borderRadius: 8,
                 padding: "2px 6px",
+                width: isMobile ? "100%" : "auto",
+                order: isMobile ? -1 : 0,
               }}
             >
               <select
@@ -216,8 +232,9 @@ function AdminNavbar() {
                 onChange={(e) => handleCompanySwitch(e.target.value)}
                 disabled={loadingCompanies || companies.length === 0}
                 style={{
-                  minWidth: isMobile ? 120 : 220,
-                  maxWidth: isMobile ? 140 : 320,
+                  width: isMobile ? "100%" : "auto",
+                  minWidth: isMobile ? 130 : 220,
+                  maxWidth: isMobile ? 150 : 320,
                   height: isMobile ? 30 : 34,
                   border: "none",
                   outline: "none",
@@ -229,6 +246,7 @@ function AdminNavbar() {
                     loadingCompanies || companies.length === 0
                       ? "not-allowed"
                       : "pointer",
+                  textOverflow: "ellipsis",
                 }}
                 title="Trocar empresa"
               >
@@ -237,15 +255,23 @@ function AdminNavbar() {
                     {loadingCompanies ? "Carregando..." : "Sem empresas"}
                   </option>
                 ) : (
-                  companies.map((company) => (
-                    <option
-                      key={company.id}
-                      value={Number(company.id)}
-                      style={{ color: "#333" }}
-                    >
-                      {company.name}
-                    </option>
-                  ))
+                  <>
+                    {!companies.some((c) => Number(c.id) === currentCompanyId) &&
+                      currentCompanyId > 0 && (
+                        <option value={currentCompanyId} style={{ color: "#333" }}>
+                          Empresa atual ({currentCompanyId})
+                        </option>
+                      )}
+                    {companies.map((company) => (
+                      <option
+                        key={company.id}
+                        value={Number(company.id)}
+                        style={{ color: "#333" }}
+                      >
+                        {company.name}
+                      </option>
+                    ))}
+                  </>
                 )}
               </select>
             </div>
@@ -254,7 +280,7 @@ function AdminNavbar() {
           {/* Info do usuário */}
           <div
             style={{
-              display: "flex",
+              display: isMobile && canSwitchCompany ? "none" : "flex",
               alignItems: "center",
               gap: "10px",
               background: "rgba(255,255,255,0.1)",

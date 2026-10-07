@@ -31,6 +31,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import jsPDF from "jspdf";
+import { useThemeColor } from "helpers/theme";
 
 const { Title, Text } = Typography;
 
@@ -287,6 +288,7 @@ const CupomPreviewModal = ({ visible, onClose }) => {
 };
 
 const SaleDetailsModal = ({ visible, onClose, saleData }) => {
+  const { primary } = useThemeColor();
   const [loadingCupom, setLoadingCupom] = useState(false);
   const { gerarCupom, previewVisible, setPreviewVisible } = useCupomGenerator();
 
@@ -429,6 +431,8 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
         footer={null}
         width={900}
         centered
+        wrapClassName="qui-dialog"
+        classNames={{ mask: "qui-dialog-mask" }}
         closeIcon={<CloseOutlined style={{ fontSize: "18px" }} />}
         styles={{
           body: { padding: 0 },
@@ -437,7 +441,7 @@ const SaleDetailsModal = ({ visible, onClose, saleData }) => {
       >
         <div
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: primary,
             padding: "24px",
             borderRadius: "8px 8px 0 0",
           }}
