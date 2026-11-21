@@ -23,6 +23,7 @@ const VendasDoDia = lazy(() => import("views/VendasDoDia"));
 const Clientes = lazy(() => import("views/Clientes"));
 const Empresas = lazy(() => import("views/Empresas"));
 const MeuPlano = lazy(() => import("views/MeuPlano"));
+const WhatsApp = lazy(() => import("views/whatsapp/WhatsApp"));
 
 // Componente de loading para Suspense
 const LoadingComponent = () => (
@@ -111,6 +112,15 @@ const dashboardRoutes = [
     component: withSuspense(Clientes),
     layout: "/admin",
     rule: ["atendente", "admin"],
+  },
+  {
+    path: "/whatsapp",
+    name: "WhatsApp",
+    icon: "nc-icon nc-chat-round",
+    component: withSuspense(WhatsApp),
+    layout: "/admin",
+    rule: ["atendente", "admin"],
+    feature: "whatsapp_atendimento",
   },
   {
     path: "/login-register",

@@ -102,9 +102,12 @@ const FeatureGuard = ({
     customization: "Personalização",
     curriculos: "Currículos",
     employees: "Funcionários",
+    whatsapp_atendimento: "Atendimento por WhatsApp",
   };
 
   const upgradeMessage = {
+    whatsapp_atendimento:
+      "O atendimento automático por WhatsApp está disponível nos planos Profissional, Empresarial e Vitalício.",
     product_images: "Faça upgrade para o plano Profissional para usar imagens nos produtos.",
     customization: "Faça upgrade para o plano Profissional para personalizar a aparência.",
     curriculos: "Faça upgrade para o plano Profissional para criar currículos.",

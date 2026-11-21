@@ -29,6 +29,17 @@ const resizeObserverErr = (e) => {
 };
 window.addEventListener("error", resizeObserverErr);
 
+// O overlay de erros do dev server registra seu listener antes deste arquivo, então o filtro acima
+// não o alcança; adiar as notificações para o próximo frame evita que o aviso seja disparado.
+if (process.env.NODE_ENV === "development" && window.ResizeObserver) {
+  const NativeResizeObserver = window.ResizeObserver;
+  window.ResizeObserver = class extends NativeResizeObserver {
+    constructor(callback) {
+      super((entries, observer) => window.requestAnimationFrame(() => callback(entries, observer)));
+    }
+  };
+}
+
 // Também suprimir no console
 const originalError = console.error;
 console.error = (...args) => {

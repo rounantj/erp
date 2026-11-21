@@ -19,6 +19,7 @@ import React from "react";
 import { useLocation, NavLink } from "react-router-dom";
 import { Nav } from "react-bootstrap";
 import { useCompany } from "context/CompanyContext";
+import { SubscriptionContext } from "context/SubscriptionContext";
 import { CrownOutlined } from "@ant-design/icons";
 
 // Logo padrão como fallback
@@ -27,6 +28,7 @@ import defaultLogo from "assets/img/logo.png";
 function Sidebar({ color, image, routes }) {
   const location = useLocation();
   const { logoUrl } = useCompany();
+  const { features } = React.useContext(SubscriptionContext);
 
   // A cor do sidebar é controlada pelo CSS dinâmico injetado no Admin.js
 
@@ -71,7 +73,8 @@ function Sidebar({ color, image, routes }) {
                 item.path !== "/login-register" &&
                 item.path !== "/meu-plano" &&
                 item.path !== "/cadastro" &&
-                !item.hideFromMenu
+                !item.hideFromMenu &&
+                (!item.feature || features?.[item.feature] === true)
             )
             .map((prop, key) => {
               if (!prop.redirect)

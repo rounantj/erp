@@ -28,6 +28,7 @@ import { openCaixa } from "helpers/caixa.adapter";
 import { UserContext } from "context/UserContext";
 import { useCompany } from "context/CompanyContext";
 import { getCaixaEmAberto } from "helpers/caixa.adapter";
+import { CHECKOUT_IMPORT_KEY, whatsappApi } from "views/whatsapp/whatsapp-api";
 import { vendaFinaliza } from "helpers/caixa.adapter";
 import { getResumoVendas } from "helpers/caixa.adapter";
 import { fechaCaixa } from "helpers/caixa.adapter";
@@ -212,6 +213,31 @@ const Checkout = () => {
 
   // Estados para cliente
   const [selectedCliente, setSelectedCliente] = useState(null);
+
+  // Pedido do WhatsApp trazido para o caixa pela tela de pedidos.
+  const [whatsappOrder, setWhatsappOrder] = useState(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(CHECKOUT_IMPORT_KEY);
+    if (!raw) return;
+    localStorage.removeItem(CHECKOUT_IMPORT_KEY);
+    try {
+      const imported = JSON.parse(raw);
+      if (!imported?.orderId || Date.now() - (imported.createdAt || 0) > 60 * 60 * 1000) return;
+      setWhatsappOrder(imported);
+      setVenda(imported.items || []);
+      if (imported.cliente) setSelectedCliente(imported.cliente);
+      notification.info({
+        message: `Pedido WhatsApp nº ${imported.number}`,
+        description: imported.items?.length
+          ? "Itens do pedido adicionados ao carrinho. Confira e finalize a venda."
+          : "O pedido não tinha itens com preço: adicione os produtos ou serviços ao carrinho.",
+        duration: 6,
+      });
+    } catch (error) {
+      console.error("Pedido do WhatsApp inválido:", error);
+    }
+  }, []);
 
   const canSellProduct = useCallback(
     (produto) => {
@@ -590,6 +616,19 @@ const Checkout = () => {
         }
       }
 
+      if (whatsappOrder) {
+        try {
+          await whatsappApi.markSold(whatsappOrder.orderId, vendaSalva?.data?.id);
+          notification.success({ message: `Pedido WhatsApp nº ${whatsappOrder.number} finalizado como entregue` });
+        } catch (error) {
+          notification.warning({
+            message: "Venda registrada",
+            description: `Não foi possível marcar o pedido WhatsApp nº ${whatsappOrder.number} como entregue. Faça isso na tela de pedidos.`,
+          });
+        }
+        setWhatsappOrder(null);
+      }
+
       // Limpar estados
       setVenda([]);
       setFormaPagamento([]);
@@ -631,6 +670,7 @@ const Checkout = () => {
     selectedCliente,
     isMobile,
     canSellProduct,
+    whatsappOrder,
   ]);
 
   // Abrir caixa
@@ -1028,6 +1068,29 @@ const Checkout = () => {
             flexDirection: "column",
           }}
         >
+          {whatsappOrder && (
+            <div
+              style={{
+                background: "#f6ffed",
+                border: "1px solid #b7eb8f",
+                borderRadius: 8,
+                padding: "8px 12px",
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <Text>
+                <b>Pedido WhatsApp nº {whatsappOrder.number}</b> · {whatsappOrder.customerName || whatsappOrder.customerPhone}
+                {whatsappOrder.customerNote ? ` · Recado: ${whatsappOrder.customerNote}` : ""} — ao finalizar a venda o pedido fica como entregue.
+              </Text>
+              <Button size="small" onClick={() => setWhatsappOrder(null)}>
+                Desvincular
+              </Button>
+            </div>
+          )}
           <div
             style={{
               flex: 1,
