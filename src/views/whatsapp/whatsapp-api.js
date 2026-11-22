@@ -31,6 +31,7 @@ export const whatsappApi = {
   disconnect: () => data(api.post("/whatsapp/desconectar", {}, { timeout: 30000 })),
   setBot: (enabled) => data(api.post("/whatsapp/bot", { enabled }, { timeout: 30000 })),
   conversations: () => data(api.get("/whatsapp/conversas")),
+  conversationMessages: (conversationId) => data(api.get(`/whatsapp/conversas/${conversationId}/mensagens`)),
   pauseAi: (conversationId) => data(api.post(`/whatsapp/conversas/${conversationId}/pausar-ia`, {})),
   resumeAi: (conversationId) => data(api.post(`/whatsapp/conversas/${conversationId}/retomar-ia`, {})),
 

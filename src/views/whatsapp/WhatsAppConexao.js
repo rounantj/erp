@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Col, Empty, List, Popconfirm, Row, Space, Spin, Switch, Tag, Typography, message } from "antd";
-import { QrcodeOutlined, ReloadOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Input, Modal, Segmented, Spin, Switch, Tag, Typography, message } from "antd";
+import { DisconnectOutlined, QrcodeOutlined, ReloadOutlined, RobotOutlined, SearchOutlined, WhatsAppOutlined } from "@ant-design/icons";
 import moment from "moment";
+import ConversationModal from "./ConversationModal";
 import { errorMessage, whatsappApi } from "./whatsapp-api";
 
-const { Text, Title, Paragraph } = Typography;
+import "./WhatsAppConexao.css";
+
+const { Text, Title } = Typography;
 
 const QR_REFRESH_MS = 40000;
 const STATUS_POLL_MS = 3000;
@@ -15,12 +18,46 @@ const formatPhone = (phone) => {
   return phone || "";
 };
 
+const SENDER_LABEL = { customer: "Cliente", automation: "Assistente", human: "Atendente" };
+const MEDIA_LABEL = { audio: "🎤 Áudio", image: "📷 Imagem", document: "📄 Documento", video: "🎬 Vídeo", sticker: "Figurinha" };
+const AVATAR_COLORS = ["#25D366", "#1677ff", "#722ed1", "#eb2f96", "#fa8c16", "#13c2c2", "#2f54eb", "#a0d911"];
+
+const normalize = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const initials = (name) => {
+  const words = String(name || "").replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "?";
+  return (words[0][0] + (words.length > 1 ? words[words.length - 1][0] : "")).toUpperCase();
+};
+
+const avatarColor = (key) => {
+  let hash = 0;
+  for (const ch of String(key)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+};
+
+const formatWhen = (date) => {
+  if (!date) return "";
+  const m = moment(date);
+  if (m.isSame(moment(), "day")) return m.format("HH:mm");
+  if (m.isSame(moment().subtract(1, "day"), "day")) return "Ontem";
+  return m.format("DD/MM");
+};
+
 function WhatsAppConexao({ isAdmin }) {
   const [status, setStatus] = useState(null);
   const [qr, setQr] = useState(null);
   const [busy, setBusy] = useState(false);
   const [conversations, setConversations] = useState([]);
+  const [openConversation, setOpenConversation] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const qrTimer = useRef(null);
+  const [modal, modalContext] = Modal.useModal();
 
   const loadStatus = useCallback(async () => {
     try {
@@ -114,6 +151,17 @@ function WhatsAppConexao({ isAdmin }) {
     }
   };
 
+  // Popconfirm abre fora da tela no build de produção; o modal é centralizado e não depende do alinhamento.
+  const confirmDisconnect = () =>
+    modal.confirm({
+      title: "Desconectar o WhatsApp?",
+      content: "O assistente para de responder. Para voltar será preciso ler um novo QR Code.",
+      okText: "Desconectar",
+      okButtonProps: { danger: true },
+      cancelText: "Voltar",
+      onOk: disconnect,
+    });
+
   const resume = async (id) => {
     try {
       await whatsappApi.resumeAi(id);
@@ -134,132 +182,213 @@ function WhatsAppConexao({ isAdmin }) {
     }
   };
 
+  const term = normalize(search.trim());
+  const humanCount = conversations.filter((c) => c.paused).length;
+  const visible = conversations.filter((c) => {
+    if (filter === "human" && !c.paused) return false;
+    if (filter === "bot" && c.paused) return false;
+    if (!term) return true;
+    return [c.name, c.phone, formatPhone(c.phone), c.last_text].some((v) => normalize(v).includes(term));
+  });
+
   if (!status) return <Spin />;
 
+  const connected = status.connected;
+
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} lg={12}>
-        <Card title={<><WhatsAppOutlined style={{ color: "#25D366" }} /> Conexão do WhatsApp</>} extra={<Button size="small" icon={<ReloadOutlined />} onClick={loadStatus} />}>
-          {status.error && <Alert type="error" showIcon message={status.error} style={{ marginBottom: 16 }} />}
+    <div>
+      {modalContext}
+      <ConversationModal
+        conversationId={openConversation}
+        open={!!openConversation}
+        onClose={() => setOpenConversation(null)}
+        formatPhone={formatPhone}
+      />
+      <Modal open={!!qr} onCancel={cancelQr} footer={null} title="Conectar o WhatsApp da loja" width={420} centered>
+        <div className="wa-qr-box">
+          {qr && <img src={qr} alt="QR Code do WhatsApp" />}
+          <Text>
+            No celular da loja, abra o WhatsApp → <b>Configurações</b> → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> e
+            aponte a câmera para o código.
+          </Text>
+          <Text type="secondary">O código é renovado automaticamente. Esta janela fecha sozinha quando conectar.</Text>
+        </div>
+      </Modal>
 
-          {status.connected ? (
-            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-              <Space>
-                <Tag color="green">Conectado</Tag>
-                <Text strong>{formatPhone(status.phone)}</Text>
-                {status.profileName && <Text type="secondary">{status.profileName}</Text>}
-              </Space>
+      <div className={`wa-conn-bar${connected ? "" : " is-off"}`}>
+        <div className="wa-conn-identity">
+          <div className="wa-conn-logo">
+            <WhatsAppOutlined />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div>
+              <span className="wa-dot" style={{ background: connected ? "#52c41a" : "#bfbfbf" }} />
+              <Text strong>{connected ? "Conectado" : "Desconectado"}</Text>
+              {connected && <Text style={{ marginLeft: 8 }}>{formatPhone(status.phone)}</Text>}
+            </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {connected
+                ? status.profileName || "WhatsApp da loja"
+                : isAdmin
+                ? "Conecte o WhatsApp da loja para o assistente atender e registrar pedidos."
+                : "Peça a um administrador para conectar o WhatsApp da loja."}
+            </Text>
+          </div>
+        </div>
 
-              <Space align="center">
-                <Switch checked={status.botEnabled} onChange={toggleBot} loading={busy} disabled={!isAdmin} />
-                <Text>{status.botEnabled ? "Atendimento automático ligado" : "Atendimento automático desligado"}</Text>
-              </Space>
-              {!status.botEnabled && (
-                <Text type="secondary">
-                  Com o atendimento desligado, as mensagens continuam chegando no celular normalmente, mas o assistente não responde.
-                </Text>
-              )}
-
-              {isAdmin && (
-                <Popconfirm
-                  title="Desconectar o WhatsApp?"
-                  description="O assistente para de responder. Para voltar será preciso ler um novo QR Code."
-                  okText="Desconectar"
-                  cancelText="Voltar"
-                  onConfirm={disconnect}
-                >
-                  <Button danger loading={busy}>
-                    Desconectar
-                  </Button>
-                </Popconfirm>
-              )}
-            </Space>
-          ) : qr ? (
-            <Space direction="vertical" align="center" style={{ width: "100%" }}>
-              <img src={qr} alt="QR Code do WhatsApp" style={{ width: 280, height: 280 }} />
-              <Paragraph style={{ textAlign: "center", marginBottom: 0 }}>
-                No celular da loja, abra o WhatsApp → <b>Configurações</b> → <b>Aparelhos conectados</b> →{" "}
-                <b>Conectar um aparelho</b> e aponte a câmera para o código.
-              </Paragraph>
-              <Text type="secondary">O código é renovado automaticamente.</Text>
-              <Button onClick={cancelQr}>Cancelar</Button>
-            </Space>
-          ) : (
-            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-              <Tag color="default">Desconectado</Tag>
-              {isAdmin ? (
-                <>
-                  <Text>Conecte o WhatsApp da loja para o assistente atender os clientes e registrar pedidos.</Text>
-                  <Button type="primary" icon={<QrcodeOutlined />} loading={busy} onClick={generateQr}>
-                    Gerar QR Code
-                  </Button>
-                </>
-              ) : (
-                <Text type="secondary">Peça a um administrador para conectar o WhatsApp da loja.</Text>
-              )}
-            </Space>
+        <div className="wa-conn-actions">
+          {connected && (
+            <div className="wa-bot-toggle">
+              <RobotOutlined style={{ color: status.botEnabled ? "#25D366" : "#bfbfbf" }} />
+              <Text style={{ fontSize: 13 }}>Assistente automático</Text>
+              <Switch size="small" checked={status.botEnabled} onChange={toggleBot} loading={busy} disabled={!isAdmin} />
+            </div>
           )}
-        </Card>
-      </Col>
+          <Button icon={<ReloadOutlined />} onClick={loadStatus} />
+          {isAdmin &&
+            (connected ? (
+              <Button danger icon={<DisconnectOutlined />} loading={busy} onClick={confirmDisconnect}>
+                Desconectar
+              </Button>
+            ) : (
+              <Button type="primary" icon={<QrcodeOutlined />} loading={busy} onClick={generateQr} style={{ background: "#25D366", borderColor: "#25D366" }}>
+                Conectar WhatsApp
+              </Button>
+            ))}
+        </div>
+      </div>
 
-      <Col xs={24} lg={12}>
-        <Card title="Conversas" extra={<Button size="small" icon={<ReloadOutlined />} onClick={loadConversations} />}>
-          <Paragraph type="secondary">
-            Quando alguém da loja responde um cliente pelo celular, o assistente fica em silêncio naquela conversa por um tempo
-            (definido na configuração). Aqui você pode devolver a conversa ao assistente ou pausá-lo manualmente.
-          </Paragraph>
-          <List
-            locale={{ emptyText: <Empty description="Nenhuma conversa ainda." /> }}
-            dataSource={conversations}
-            renderItem={(c) => (
-              <List.Item
-                actions={[
-                  c.paused ? (
-                    <Button key="resume" size="small" type="primary" onClick={() => resume(c.id)}>
-                      Devolver ao assistente
-                    </Button>
-                  ) : (
-                    <Button key="pause" size="small" onClick={() => pause(c.id)}>
-                      Pausar assistente
-                    </Button>
-                  ),
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Space size={6} wrap>
-                      <Text strong>{c.name || formatPhone(c.phone)}</Text>
-                      {c.name && <Text type="secondary">{formatPhone(c.phone)}</Text>}
-                      {c.paused ? (
-                        <Tag color="orange">Atendente humano até {moment(c.human_takeover_until).format("HH:mm")}</Tag>
-                      ) : (
-                        <Tag color="green">Assistente</Tag>
-                      )}
-                    </Space>
-                  }
-                  description={
-                    c.last_message_at && (
-                      <Text type="secondary" ellipsis style={{ maxWidth: 360, display: "inline-block" }}>
-                        {moment(c.last_message_at).format("DD/MM HH:mm")} ·{" "}
-                        {c.last_sender === "customer" ? "Cliente" : c.last_sender === "human" ? "Atendente" : "Assistente"}:{" "}
-                        {c.last_text || `[${c.last_type}]`}
-                      </Text>
-                    )
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      </Col>
-      {!isAdmin && (
-        <Col span={24}>
-          <Title level={5} type="secondary" style={{ fontWeight: 400 }}>
-            Somente administradores podem conectar, desconectar ou ligar o atendimento automático.
-          </Title>
-        </Col>
+      {status.error && <Alert type="error" showIcon message={status.error} style={{ marginTop: 12 }} />}
+      {connected && !status.botEnabled && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginTop: 12 }}
+          message="Assistente automático desligado: as mensagens continuam chegando no celular, mas ninguém responde automaticamente."
+        />
       )}
-    </Row>
+
+      <div className="wa-panel">
+        <div className="wa-panel-header">
+          <div>
+            <Title level={5} style={{ margin: 0 }}>
+              Conversas
+            </Title>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Clique numa conversa para ver o histórico completo. Quando alguém da loja responde pelo celular, o assistente fica em
+              silêncio naquela conversa por um tempo.
+            </Text>
+          </div>
+          <div className="wa-counters">
+            <span className="wa-counter">{conversations.length} conversas</span>
+            {humanCount > 0 && <span className="wa-counter is-human">{humanCount} com atendente humano</span>}
+          </div>
+        </div>
+
+        <div className="wa-toolbar">
+          <Input
+            allowClear
+            prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+            placeholder="Buscar por nome, telefone ou mensagem"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, minWidth: 220 }}
+          />
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { label: "Todas", value: "all" },
+              { label: "Assistente", value: "bot" },
+              { label: `Atendente humano${humanCount ? ` (${humanCount})` : ""}`, value: "human" },
+            ]}
+          />
+          <Button icon={<ReloadOutlined />} onClick={loadConversations}>
+            Atualizar
+          </Button>
+        </div>
+
+        <div className="wa-conv-list">
+          {!visible.length ? (
+            <Empty
+              style={{ padding: "48px 0" }}
+              description={conversations.length ? "Nenhuma conversa encontrada com esse filtro." : "Nenhuma conversa ainda."}
+            />
+          ) : (
+            visible.map((c) => {
+              const title = c.name || formatPhone(c.phone);
+              return (
+                <div key={c.id} className={`wa-conv${c.paused ? " is-human" : ""}`} onClick={() => setOpenConversation(c.id)}>
+                  <div className="wa-avatar" style={{ background: avatarColor(c.phone || c.id) }}>
+                    {initials(title)}
+                  </div>
+                  <div className="wa-conv-main">
+                    <div className="wa-conv-top">
+                      <span className="wa-conv-name">{title}</span>
+                      {c.name && (
+                        <Text type="secondary" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                          {formatPhone(c.phone)}
+                        </Text>
+                      )}
+                      <span className="wa-conv-time">{formatWhen(c.last_message_at)}</span>
+                    </div>
+                    <div className="wa-conv-preview">
+                      {c.last_message_at ? (
+                        <>
+                          <b style={{ fontWeight: 500, color: "#595959" }}>{SENDER_LABEL[c.last_sender] || "Cliente"}:</b>{" "}
+                          {c.last_text || MEDIA_LABEL[c.last_type] || "[mídia]"}
+                        </>
+                      ) : (
+                        "Sem mensagens"
+                      )}
+                    </div>
+                  </div>
+                  <div className="wa-conv-side">
+                    {c.paused ? (
+                      <Tag className="wa-conv-tag" color="orange" style={{ margin: 0 }}>
+                        Humano até {moment(c.human_takeover_until).format("HH:mm")}
+                      </Tag>
+                    ) : (
+                      <Tag className="wa-conv-tag" color="green" style={{ margin: 0 }}>
+                        Assistente
+                      </Tag>
+                    )}
+                    {c.paused ? (
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          resume(c.id);
+                        }}
+                      >
+                        Devolver ao assistente
+                      </Button>
+                    ) : (
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          pause(c.id);
+                        }}
+                      >
+                        Pausar assistente
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {!isAdmin && (
+        <Text type="secondary" style={{ display: "block", marginTop: 12 }}>
+          Somente administradores podem conectar, desconectar ou ligar o atendimento automático.
+        </Text>
+      )}
+    </div>
   );
 }
 

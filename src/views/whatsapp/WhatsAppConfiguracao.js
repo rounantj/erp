@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Card, Col, Divider, Form, Input, InputNumber, List, Popconfirm, Row, Space, Spin, Switch, Tag, Typography, message } from "antd";
+import { Button, Card, Col, Divider, Form, Input, InputNumber, List, Modal, Row, Space, Spin, Switch, Tag, Typography, message } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { errorMessage, whatsappApi } from "./whatsapp-api";
@@ -80,6 +80,7 @@ function HoursEditor({ initialWeekly }) {
 function ExceptionsEditor({ initialExceptions }) {
   const [exceptions, setExceptions] = useState(initialExceptions);
   const [form] = Form.useForm();
+  const [modal, modalContext] = Modal.useModal();
   const [saving, setSaving] = useState(false);
   const closed = Form.useWatch("closed", form);
 
@@ -108,6 +109,7 @@ function ExceptionsEditor({ initialExceptions }) {
 
   return (
     <>
+      {modalContext}
       <Form form={form} layout="inline" onFinish={add} initialValues={{ closed: true }} style={{ rowGap: 8, marginBottom: 12 }}>
         <Form.Item name="localDate" rules={[{ required: true, message: "Informe a data" }]}>
           <Input type="date" />
@@ -141,9 +143,15 @@ function ExceptionsEditor({ initialExceptions }) {
         renderItem={(e) => (
           <List.Item
             actions={[
-              <Popconfirm key="del" title="Remover esta data?" onConfirm={() => remove(e.id)} okText="Remover" cancelText="Voltar">
-                <Button size="small" type="text" icon={<DeleteOutlined />} />
-              </Popconfirm>,
+              <Button
+                key="del"
+                size="small"
+                type="text"
+                icon={<DeleteOutlined />}
+                onClick={() =>
+                  modal.confirm({ title: "Remover esta data?", okText: "Remover", cancelText: "Voltar", onOk: () => remove(e.id) })
+                }
+              />,
             ]}
           >
             <Space>
