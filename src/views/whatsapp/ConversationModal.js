@@ -120,7 +120,6 @@ function ConversationModal({ conversationId, open, onClose, formatPhone }) {
     setSearch("");
     setData(null);
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, conversationId]);
 
   const term = normalize(search.trim());

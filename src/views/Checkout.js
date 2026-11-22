@@ -37,6 +37,8 @@ import moment from "moment";
 import { toSaoPauloTime } from "helpers/formatters";
 import { calcularTotalItens } from "./Vendas";
 import { useCupomGenerator } from "components/cupomGenerator";
+import { fiscalApi } from "views/fiscal/fiscal-api";
+import FiscalSaleModal from "views/fiscal/FiscalSaleModal";
 
 // Componentes
 import CheckoutHeader from "components/Checkout/CheckoutHeader";
@@ -207,6 +209,13 @@ const Checkout = () => {
   const [cupomCnpj, setCupomCnpj] = useState("");
   const [cupomObs, setCupomObs] = useState("");
 
+  // Nota fiscal
+  const [fiscalReady, setFiscalReady] = useState(false);
+  const [fiscalDefault, setFiscalDefault] = useState(false);
+  const [emitirNota, setEmitirNota] = useState(false);
+  const [notaDocumento, setNotaDocumento] = useState("");
+  const [fiscalSale, setFiscalSale] = useState(null);
+
   // Estados para busca
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("todos");
@@ -216,6 +225,19 @@ const Checkout = () => {
 
   // Pedido do WhatsApp trazido para o caixa pela tela de pedidos.
   const [whatsappOrder, setWhatsappOrder] = useState(null);
+
+  useEffect(() => {
+    fiscalApi
+      .getConfig()
+      .then((config) => {
+        const ready = !!(config.ready?.nfce || config.ready?.nfe || config.ready?.nfse);
+        const byDefault = ready && !!config.settings?.emitir_automaticamente;
+        setFiscalReady(ready);
+        setFiscalDefault(byDefault);
+        setEmitirNota(byDefault);
+      })
+      .catch(() => setFiscalReady(false));
+  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem(CHECKOUT_IMPORT_KEY);
@@ -616,6 +638,15 @@ const Checkout = () => {
         }
       }
 
+      if (emitirNota && vendaSalva?.data?.id) {
+        setFiscalSale({
+          vendaId: vendaSalva.data.id,
+          documento: notaDocumento || selectedCliente?.cpf_cnpj || "",
+          nome: selectedCliente?.nome || "",
+          troco,
+        });
+      }
+
       if (whatsappOrder) {
         try {
           await whatsappApi.markSold(whatsappOrder.orderId, vendaSalva?.data?.id);
@@ -637,6 +668,8 @@ const Checkout = () => {
       setGerarCupomState(false);
       setCupomCnpj("");
       setCupomObs("");
+      setEmitirNota(fiscalDefault);
+      setNotaDocumento("");
       setSelectedCliente(null);
       setModalPagamentoVisible(false);
 
@@ -671,6 +704,9 @@ const Checkout = () => {
     isMobile,
     canSellProduct,
     whatsappOrder,
+    emitirNota,
+    notaDocumento,
+    fiscalDefault,
   ]);
 
   // Abrir caixa
@@ -989,6 +1025,15 @@ const Checkout = () => {
           </div>
 
           {/* Modais */}
+      <FiscalSaleModal
+        open={!!fiscalSale}
+        vendaId={fiscalSale?.vendaId}
+        documento={fiscalSale?.documento}
+        nome={fiscalSale?.nome}
+        troco={fiscalSale?.troco}
+        autoEmit
+        onClose={() => setFiscalSale(null)}
+      />
           <PaymentModal
             visible={modalPagamentoVisible}
             onCancel={() => setModalPagamentoVisible(false)}
@@ -1009,6 +1054,11 @@ const Checkout = () => {
             setCupomCnpj={setCupomCnpj}
             cupomObs={cupomObs}
             setCupomObs={setCupomObs}
+            fiscalReady={fiscalReady}
+            emitirNota={emitirNota}
+            setEmitirNota={setEmitirNota}
+            notaDocumento={notaDocumento}
+            setNotaDocumento={setNotaDocumento}
             loading={loading}
           />
 
@@ -1162,6 +1212,15 @@ const Checkout = () => {
       </Layout>
 
       {/* Modais */}
+      <FiscalSaleModal
+        open={!!fiscalSale}
+        vendaId={fiscalSale?.vendaId}
+        documento={fiscalSale?.documento}
+        nome={fiscalSale?.nome}
+        troco={fiscalSale?.troco}
+        autoEmit
+        onClose={() => setFiscalSale(null)}
+      />
       <PaymentModal
         visible={modalPagamentoVisible}
         onCancel={() => setModalPagamentoVisible(false)}
@@ -1182,6 +1241,11 @@ const Checkout = () => {
         setCupomCnpj={setCupomCnpj}
         cupomObs={cupomObs}
         setCupomObs={setCupomObs}
+        fiscalReady={fiscalReady}
+        emitirNota={emitirNota}
+        setEmitirNota={setEmitirNota}
+        notaDocumento={notaDocumento}
+        setNotaDocumento={setNotaDocumento}
         loading={loading}
       />
 

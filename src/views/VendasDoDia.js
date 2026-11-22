@@ -1,1253 +1,252 @@
-import { getSells } from "helpers/api-integrator";
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useHistory } from "react-router-dom";
+import { Button, Input, Skeleton, notification } from "antd";
 import {
-  Layout,
-  Table,
-  Typography,
-  Card,
-  Statistic,
-  Row,
-  Col,
-  Divider,
-  Space,
-  Empty,
-  Spin,
-  notification,
-  Button,
-  Modal,
-  Form,
-  Input,
-  Tag,
-  Tooltip,
-  Popconfirm,
-  ConfigProvider,
-} from "antd";
-const { Search } = Input;
-import {
-  DollarOutlined,
-  UserOutlined,
-  DeleteOutlined,
-  ExclamationCircleOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EyeOutlined,
-  CalendarOutlined,
-  CreditCardOutlined,
-  WalletOutlined,
-  BankOutlined,
+  InboxOutlined,
   ReloadOutlined,
-  MenuOutlined,
+  SearchOutlined,
+  ShoppingCartOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
-import moment from "moment";
-import { UserContext } from "context/UserContext";
-import { getResumoVendas } from "helpers/caixa.adapter";
+import dayjs from "dayjs";
+import SimplePage, { Chips, EmptyState, Section, StatCard, useIsMobile } from "components/simple/SimplePage";
+import SaleList, { useSaleNotes } from "components/simple/SaleList";
+import useSaleExclusion from "components/simple/useSaleExclusion";
+import { PAYMENTS, fetchSales, money, saleTotal, totalsByPayment } from "components/simple/sales";
 import { getCaixaEmAberto } from "helpers/caixa.adapter";
-import { calcularTotal } from "./Vendas";
-import {
-  toMoneyFormat,
-  toDateFormat,
-  toSaoPauloTime,
-  nowSaoPaulo,
-} from "helpers/formatters";
-import { solicitaExclusaoVenda } from "helpers/api-integrator";
-import {
-  aprovaExclusaoVenda,
-  rejeitaExclusaoVenda,
-} from "helpers/api-integrator";
 import SaleDetailsModal from "components/modalVenda";
-import { useThemeColor, quietMobileStyles } from "helpers/theme";
-import "./admin-ui.css";
+import FiscalSaleModal from "views/fiscal/FiscalSaleModal";
 
-const { Content } = Layout;
-const { Text, Paragraph } = Typography;
-const { TextArea } = Input;
-
-
-const requestVendaExclusion = async (vendaId, motivo) => {
-  return await solicitaExclusaoVenda(vendaId, motivo);
+const matches = (venda, term) => {
+  if (!term) return true;
+  const t = term.toLowerCase().trim();
+  return (
+    String(venda.id).includes(t) ||
+    (venda.nome_cliente || "").toLowerCase().includes(t) ||
+    saleTotal(venda).toFixed(2).replace(".", ",").includes(t.replace("r$", "").trim())
+  );
 };
 
 const VendasDoDia = () => {
-  const { primary, theme, pageStyle } = useThemeColor();
-  const mobileStyles = useMemo(() => quietMobileStyles(primary), [primary]);
+  const history = useHistory();
+  const isMobile = useIsMobile();
+  const [loading, setLoading] = useState(true);
+  const [caixa, setCaixa] = useState(null);
   const [vendas, setVendas] = useState([]);
-  const { user } = useContext(UserContext);
-  const [caixaAberto, setCaixaAberto] = useState(false);
-  const [caixa, setCaixa] = useState();
-  const [horaAbertura, setHoraAbertura] = useState(null);
-  const [valorAbertura, setValorAbertura] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [loadingVendas, setLoadingVendas] = useState(false);
-  const [resumoVendas, setResumoVendas] = useState({
-    dinheiro: 0,
-    pix: 0,
-    credito: 0,
-    debito: 0,
-    total: 0,
-    totalVendas: 0,
-  });
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [filter, setFilter] = useState("todas");
+  const [search, setSearch] = useState("");
+  const [details, setDetails] = useState(null);
+  const [notaVendaId, setNotaVendaId] = useState(null);
+  const [notesKey, setNotesKey] = useState(0);
 
-  // Estados para a exclusão
-  const [exclusionModalVisible, setExclusionModalVisible] = useState(false);
-  const [selectedVenda, setSelectedVenda] = useState(null);
-  const [exclusionLoading, setExclusionLoading] = useState(false);
-  const [exclusionForm] = Form.useForm();
-
-  // Estados para o modal de detalhes da venda
-  const [showModalVenda, setShowModalVenda] = useState(false);
-
-  // 2. Adicione estados para o modal de revisão
-  const [reviewModalVisible, setReviewModalVisible] = useState(false);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewForm] = Form.useForm();
-
-  // Estado para busca/filtro mobile
-  const [searchFilter, setSearchFilter] = useState("");
-
-  // 3. Função para abrir o modal de revisão
-  const openReviewModal = (venda) => {
-    setSelectedVenda(venda);
-    setReviewModalVisible(true);
-    reviewForm.resetFields();
-  };
-
-  // Função para abrir o modal de detalhes
-  const openDetailsModal = (venda) => {
-    setSelectedVenda(venda);
-    setShowModalVenda(true);
-  };
-
-  // 4. Função para aprovar solicitação
-  const handleApproveExclusion = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setReviewLoading(true);
-      const observacoes = reviewForm.getFieldValue("observacoes") || "";
-
-      const response = await aprovaExclusaoVenda(
-        selectedVenda.id,
-        observacoes,
-        user.user.id
-      );
-
-      if (response.success) {
-        notification.success({
-          message: "Exclusão aprovada",
-          description: "A venda será removida do sistema.",
-        });
-
-        setVendas((prev) =>
-          prev.map((v) =>
-            v.id === selectedVenda.id
-              ? {
-                  ...v,
-                  exclusionStatus: "approved",
-                  exclusionReviewedAt: new Date(),
-                  exclusionReviewNotes: observacoes,
-                }
-              : v
-          )
-        );
-
-        setReviewModalVisible(false);
-        await getVendas();
-      }
+      const res = await getCaixaEmAberto();
+      const abertos = Array.isArray(res?.data) ? res.data : [];
+      const cx = abertos.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0] || null;
+      setCaixa(cx);
+      const start = cx ? dayjs(cx.createdAt) : dayjs().startOf("day");
+      setVendas(await fetchSales(start, dayjs().endOf("day")));
     } catch (error) {
-      notification.error({
-        message: "Erro",
-        description: error.message || "Falha ao aprovar exclusão",
-      });
-    } finally {
-      setReviewLoading(false);
-    }
-  };
-
-  // 5. Função para rejeitar solicitação
-  const handleRejectExclusion = async () => {
-    try {
-      await reviewForm.validateFields();
-      const values = reviewForm.getFieldsValue();
-
-      setReviewLoading(true);
-
-      const response = await rejeitaExclusaoVenda(
-        selectedVenda.id,
-        values.observacoes,
-        user.user.id
-      );
-
-      if (response.success) {
-        notification.success({
-          message: "Exclusão rejeitada",
-          description: "A solicitação de exclusão foi rejeitada.",
-        });
-
-        setVendas((prev) =>
-          prev.map((v) =>
-            v.id === selectedVenda.id
-              ? {
-                  ...v,
-                  exclusionStatus: "rejected",
-                  exclusionReviewedAt: new Date(),
-                  exclusionReviewNotes: values.observacoes,
-                }
-              : v
-          )
-        );
-
-        setReviewModalVisible(false);
-      }
-    } catch (error) {
-      notification.error({
-        message: "Erro",
-        description: error.message || "Falha ao rejeitar exclusão",
-      });
-    } finally {
-      setReviewLoading(false);
-    }
-  };
-
-  // Monitora o tamanho da tela para responsividade
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Buscar vendas do dia atual
-  const getVendas = async () => {
-    try {
-      setLoadingVendas(true);
-      const formattedStart = nowSaoPaulo().format("YYYY-MM-DD 00:00:00");
-      const formattedEnd = nowSaoPaulo().format("YYYY-MM-DD 23:59:59");
-      const items = await getSells(formattedStart, formattedEnd);
-
-      if (items.success) {
-        const vendas = items.data.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setVendas(vendas);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar vendas:", error);
-    } finally {
-      setLoadingVendas(false);
-    }
-  };
-
-  // Buscar resumo do caixa
-  const getResumoCaixa = async (caixaID) => {
-    try {
-      setLoading(true);
-      const result = await getResumoVendas(caixaID);
-      if (result.data) {
-        setResumoVendas(result.data);
-      } else {
-        notification.error({
-          message: "Erro",
-          description: "Problema ao buscar resumo de vendas!",
-        });
-      }
-    } catch (error) {
-      notification.error({
-        message: "Erro",
-        description:
-          "Não foi possível obter o resumo do caixa: " + error.message,
-      });
+      notification.error({ message: "Não foi possível carregar o resumo", description: "Confira sua internet e toque em Atualizar." });
     } finally {
       setLoading(false);
     }
-  };
-
-  // Verificar se existe caixa aberto
-  const caixaEmAberto = async () => {
-    try {
-      setLoading(true);
-      const resultCx = await getCaixaEmAberto();
-
-      if (!resultCx || !resultCx.data) {
-        notification.warning({
-          message: "Atenção!",
-          description: "Abra um caixa para começar a vender.",
-        });
-        return;
-      }
-
-      const caixas = Array.isArray(resultCx.data) ? resultCx.data : [];
-
-      if (caixas.length === 0) {
-        notification.warning({
-          message: "Atenção!",
-          description: "Abra um caixa para começar a vender.",
-        });
-        return;
-      }
-
-      if (caixas.length > 1) {
-        notification.warning({
-          message: "Atenção!",
-          description: "Existe um caixa aberto de um dia anterior.",
-        });
-      }
-
-      const cx = caixas[caixas.length - 1];
-      if (cx) {
-        setCaixa(cx);
-        setCaixaAberto(true);
-        setHoraAbertura(
-          toSaoPauloTime(cx.createdAt).format("DD/MM/YYYY HH:mm")
-        );
-        setValorAbertura(cx.saldoInicial || 0);
-        await getResumoCaixa(cx.id);
-        await getVendas();
-      }
-    } catch (error) {
-      console.error("Erro ao verificar caixa:", error);
-      notification.error({
-        message: "Erro",
-        description:
-          "Não foi possível verificar o caixa: " +
-          (error?.message || "Erro desconhecido"),
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carregar dados iniciais
-  useEffect(() => {
-    caixaEmAberto();
-    getVendas();
   }, []);
 
-  // Abrir modal de solicitação de exclusão
-  const openExclusionModal = (venda) => {
-    setSelectedVenda(venda);
-    setExclusionModalVisible(true);
-    exclusionForm.resetFields();
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // Função para solicitar exclusão
-  const handleExclusionRequest = async () => {
-    try {
-      await exclusionForm.validateFields();
-      const values = exclusionForm.getFieldsValue();
+  const exclusion = useSaleExclusion(load);
+  const notas = useSaleNotes(vendas, notesKey);
 
-      setExclusionLoading(true);
+  const totals = useMemo(() => totalsByPayment(vendas), [vendas]);
+  const total = useMemo(() => vendas.reduce((acc, v) => acc + saleTotal(v), 0), [vendas]);
+  const pendentes = vendas.filter((v) => v.exclusionRequested && v.exclusionStatus === "pending");
+  const trocoInicial = Number(caixa?.saldoInicial) || 0;
+  const abertoDesde = caixa ? dayjs(caixa.createdAt) : null;
+  const caixaDeOutroDia = abertoDesde && !abertoDesde.isSame(dayjs(), "day");
 
-      const response = await requestVendaExclusion(
-        selectedVenda.id,
-        values.motivo
-      );
+  const lista = vendas.filter((v) => (filter === "pedidos" ? pendentes.includes(v) : true)).filter((v) => matches(v, search));
 
-      if (response.success) {
-        notification.success({
-          message: "Solicitação enviada",
-          description:
-            "Sua solicitação de exclusão foi enviada para aprovação.",
-        });
+  const subtitle = loading
+    ? "Carregando..."
+    : caixa
+    ? `Caixa aberto desde ${abertoDesde.format(caixaDeOutroDia ? "DD/MM [às] HH:mm" : "HH:mm")}`
+    : `Caixa fechado · ${dayjs().format("DD/MM/YYYY")}`;
 
-        setVendas((prev) =>
-          prev.map((v) =>
-            v.id === selectedVenda.id
-              ? {
-                  ...v,
-                  exclusionRequested: true,
-                  exclusionStatus: "pending",
-                  exclusionRequestedAt: new Date(),
-                  exclusionReason: values.motivo,
-                }
-              : v
-          )
-        );
+  const refresh = (
+    <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>
+      Atualizar
+    </Button>
+  );
 
-        setExclusionModalVisible(false);
+  const goCaixa = () => history.push("/admin/checkout");
+
+  return (
+    <SimplePage
+      title="Resumo do dia"
+      subtitle={subtitle}
+      actions={
+        <>
+          {refresh}
+          <Button type="primary" icon={<ShoppingCartOutlined />} onClick={goCaixa}>
+            Ir para o caixa
+          </Button>
+        </>
       }
-    } catch (error) {
-      notification.error({
-        message: "Erro",
-        description: error.message || "Falha ao solicitar exclusão",
-      });
-    } finally {
-      setExclusionLoading(false);
-    }
-  };
-
-  // Renderizar tags de status de exclusão
-  const renderExclusionStatus = (venda) => {
-    if (!venda.exclusionRequested) return null;
-
-    if (venda.exclusionStatus === "pending") {
-      return <span className="qui-status qui-status--warn">Aguardando</span>;
-    }
-    if (venda.exclusionStatus === "approved") {
-      return <span className="qui-status qui-status--ok">Aprovada</span>;
-    }
-    if (venda.exclusionStatus === "rejected") {
-      return <span className="qui-status qui-status--danger">Negada</span>;
-    }
-    return null;
-  };
-
-  // Formatar moeda
-  const formatCurrency = (value) => {
-    return `R$ ${(parseFloat(value) || 0).toFixed(2).replace(".", ",")}`;
-  };
-
-  // Obter cor do método de pagamento
-  const getPaymentColor = (method) => {
-    const colors = {
-      dinheiro: "#52c41a",
-      pix: "#1890ff",
-      credito: "#722ed1",
-      debito: "#fa8c16",
-    };
-    return colors[method] || "#666";
-  };
-
-  // Verificar se é admin
-  const isAdmin = user?.user?.role === "admin";
-
-  // Filtrar vendas para mobile
-  const filteredVendas = vendas.filter((venda) => {
-    if (!searchFilter) return true;
-    const searchLower = searchFilter.toLowerCase();
-    return (
-      venda.id.toString().includes(searchFilter) ||
-      (venda.nome_cliente &&
-        venda.nome_cliente.toLowerCase().includes(searchLower)) ||
-      (venda.metodoPagamento &&
-        venda.metodoPagamento.toLowerCase().includes(searchLower)) ||
-      calcularTotal(venda.total, venda.desconto)
-        .toFixed(2)
-        .includes(searchFilter)
-    );
-  });
-
-  // Configuração de colunas para tabela de vendas (Desktop)
-  const columnsVendas = [
-    {
-      title: "Número",
-      dataIndex: "id",
-      key: "id",
-      sorter: (a, b) => a.id - b.id,
-      responsive: ["sm"],
-    },
-    {
-      title: "Data",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      render: (text) => toDateFormat(text, !isMobile),
-      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
-      responsive: ["md"],
-    },
-    {
-      title: "Total",
-      key: "totalComDesconto",
-      render: (_, record) => {
-        const total = calcularTotal(record.total, record.desconto);
-        return (
-          <>
-            <Text strong>{toMoneyFormat(total)}</Text>
-            <span
-              className="qui-status qui-status--muted"
-              style={{ float: "right" }}
-            >
-              {record?.metodoPagamento}
-            </span>
-          </>
-        );
-      },
-      sorter: (a, b) =>
-        calcularTotal(a.total, a.desconto) - calcularTotal(b.total, b.desconto),
-    },
-    {
-      title: "Status",
-      key: "status",
-      render: (_, record) => renderExclusionStatus(record),
-    },
-    {
-      title: "Ações",
-      key: "actions",
-      width: 180,
-      render: (_, record) => {
-        const renderActionButtons = () => {
-          const buttons = [];
-
-          buttons.push(
-            <Tooltip title="Ver detalhes da venda" key="details">
-              <Button
-                className="qui-icon-btn"
-                icon={<EyeOutlined />}
-                size="middle"
-                onClick={() => openDetailsModal(record)}
-              />
-            </Tooltip>
-          );
-
-          if (
-            record.exclusionRequested &&
-            record.exclusionStatus === "pending" &&
-            isAdmin
-          ) {
-            buttons.push(
-              <Tooltip title="Revisar solicitação" key="review">
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  size="middle"
-                  onClick={() => openReviewModal(record)}
-                />
-              </Tooltip>
-            );
-            return buttons;
-          }
-
-          if (
-            record.exclusionRequested &&
-            record.exclusionStatus === "pending"
-          ) {
-            buttons.push(
-              <Tooltip title="Solicitação de exclusão pendente" key="pending">
-                <Button icon={<DeleteOutlined />} disabled size="middle" />
-              </Tooltip>
-            );
-            return buttons;
-          }
-
-          if (record.exclusionStatus === "approved") {
-            buttons.push(
-              <Tooltip title="Exclusão aprovada" key="approved">
-                <Button icon={<DeleteOutlined />} disabled size="middle" />
-              </Tooltip>
-            );
-            return buttons;
-          }
-
-          if (
-            !record.exclusionRequested ||
-            record.exclusionStatus === "rejected"
-          ) {
-            buttons.push(
-              <Tooltip title="Solicitar exclusão" key="delete">
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => openExclusionModal(record)}
-                  size="middle"
-                />
-              </Tooltip>
-            );
-          }
-
-          return buttons;
-        };
-
-        return <Space size="small">{renderActionButtons()}</Space>;
-      },
-    },
-  ];
-
-  // ========== RENDER MOBILE ==========
-  if (isMobile) {
-    return (
-      <ConfigProvider theme={theme}>
-        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
-          {/* Header Mobile */}
-          <div style={mobileStyles.header}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                }}
-              >
-                {/* Botão Menu */}
-                <div
-                  onClick={() => {
-                    const isOpen =
-                      document.documentElement.classList.contains("nav-open");
-                    if (isOpen) {
-                      document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick =
-                        document.getElementById("bodyClick");
-                      if (existingBodyClick)
-                        existingBodyClick.parentElement.removeChild(
-                          existingBodyClick
-                        );
-                    } else {
-                      document.documentElement.classList.add("nav-open");
-                      const existingBodyClick =
-                        document.getElementById("bodyClick");
-                      if (existingBodyClick)
-                        existingBodyClick.parentElement.removeChild(
-                          existingBodyClick
-                        );
-                      var node = document.createElement("div");
-                      node.id = "bodyClick";
-                      node.style.cssText =
-                        "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
-                      node.onclick = function () {
-                        this.parentElement.removeChild(this);
-                        document.documentElement.classList.remove("nav-open");
-                      };
-                      document.body.appendChild(node);
-                    }
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.12)",
-                    borderRadius: "8px",
-                    padding: "8px 10px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
-                </div>
-                <div>
-                  <h1 style={mobileStyles.headerTitle}>Resumo do dia</h1>
-                  <Text style={mobileStyles.headerSubtitle}>
-                    {nowSaoPaulo().format("DD/MM/YYYY")} • {vendas.length}{" "}
-                    vendas
-                  </Text>
-                </div>
-              </div>
-              <Button
-                type="primary"
-                icon={<ReloadOutlined />}
-                onClick={() => {
-                  caixaEmAberto();
-                  getVendas();
-                }}
-                loading={loading || loadingVendas}
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  border: "none",
-                  borderRadius: "8px",
-                }}
+      mobileActions={
+        <button type="button" className="sp-round" aria-label="Atualizar" onClick={load}>
+          <ReloadOutlined spin={loading} />
+        </button>
+      }
+    >
+      {loading && !vendas.length && !caixa ? (
+        <div className="sp-card">
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </div>
+      ) : (
+        <div className="sp-stack">
+          {!caixa && (
+            <div className="sp-card">
+              <EmptyState
+                icon={<InboxOutlined />}
+                title="O caixa está fechado"
+                text="Para começar a vender, abra o caixa informando quanto dinheiro tem de troco na gaveta."
+                action={
+                  <Button type="primary" size="large" icon={<ShoppingCartOutlined />} onClick={goCaixa}>
+                    Abrir o caixa
+                  </Button>
+                }
               />
             </div>
+          )}
 
-            {/* Summary Cards */}
-            {caixaAberto && (
-              <>
-                <div style={mobileStyles.summaryGrid}>
-                  <div style={mobileStyles.summaryCard}>
-                    <WalletOutlined
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: "4px",
-                      }}
-                    />
-                    <span style={mobileStyles.summaryValue}>
-                      {formatCurrency(resumoVendas.dinheiro).replace("R$ ", "")}
-                    </span>
-                    <span style={mobileStyles.summaryLabel}>Dinheiro</span>
-                  </div>
-                  <div style={mobileStyles.summaryCard}>
-                    <BankOutlined
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: "4px",
-                      }}
-                    />
-                    <span style={mobileStyles.summaryValue}>
-                      {formatCurrency(resumoVendas.pix).replace("R$ ", "")}
-                    </span>
-                    <span style={mobileStyles.summaryLabel}>PIX</span>
-                  </div>
-                  <div style={mobileStyles.summaryCard}>
-                    <CreditCardOutlined
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: "4px",
-                      }}
-                    />
-                    <span style={mobileStyles.summaryValue}>
-                      {formatCurrency(resumoVendas.credito).replace("R$ ", "")}
-                    </span>
-                    <span style={mobileStyles.summaryLabel}>Crédito</span>
-                  </div>
-                  <div style={mobileStyles.summaryCard}>
-                    <CreditCardOutlined
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: "4px",
-                      }}
-                    />
-                    <span style={mobileStyles.summaryValue}>
-                      {formatCurrency(resumoVendas.debito).replace("R$ ", "")}
-                    </span>
-                    <span style={mobileStyles.summaryLabel}>Débito</span>
-                  </div>
-                </div>
+          {caixaDeOutroDia && (
+            <div className="sp-note" style={{ marginTop: 0 }}>
+              <ClockCircleOutlined /> Este caixa foi aberto em {abertoDesde.format("DD/MM")} e ainda não foi fechado. Os números abaixo
+              somam tudo desde aquele dia. Feche o caixa no fim do expediente para começar o próximo dia zerado.{" "}
+              <Button size="small" onClick={goCaixa} style={{ marginTop: 6 }}>
+                Fechar o caixa
+              </Button>
+            </div>
+          )}
 
-                {/* Total Card */}
-                <div style={mobileStyles.totalCard}>
-                  <span style={mobileStyles.totalLabel}>TOTAL DO DIA</span>
-                  <span style={mobileStyles.totalValue}>
-                    {formatCurrency(resumoVendas.total)}
-                  </span>
-                </div>
-              </>
-            )}
+          {exclusion.isAdmin && pendentes.length > 0 && filter !== "pedidos" && (
+            <div className="sp-note" style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ flex: "1 1 220px" }}>
+                {pendentes.length === 1 ? "1 pedido de exclusão de venda espera" : `${pendentes.length} pedidos de exclusão de venda esperam`} sua resposta.
+              </span>
+              <Button size="small" onClick={() => setFilter("pedidos")}>
+                Ver pedidos
+              </Button>
+            </div>
+          )}
+
+          {(caixa || vendas.length > 0) && (
+          <>
+          <div className="sp-hero">
+            <small>{caixa ? "Vendido desde que o caixa abriu" : "Vendido hoje"}</small>
+            <b>{money(total)}</b>
+            <span>
+              {vendas.length === 0
+                ? "Nenhuma venda ainda"
+                : `${vendas.length} ${vendas.length === 1 ? "venda" : "vendas"} · valor médio ${money(total / vendas.length)}`}
+            </span>
           </div>
 
-          {/* Content Area */}
-          <div style={mobileStyles.content}>
-            {/* Barra de Busca Mobile */}
-            {caixaAberto && vendas.length > 0 && (
-              <div style={{ marginBottom: "12px", flexShrink: 0 }}>
-                <Search
-                  placeholder="Buscar por ID, cliente, valor..."
-                  allowClear
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  style={{ width: "100%" }}
-                  size="middle"
-                />
-                {searchFilter && (
-                  <Text
-                    type="secondary"
-                    style={{
-                      fontSize: "11px",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    {filteredVendas.length} de {vendas.length} vendas
-                  </Text>
-                )}
-              </div>
-            )}
+          <div className="sp-stats">
+            {Object.entries(PAYMENTS).map(([key, p]) => (
+              <StatCard key={key} icon={p.icon} tone={p.tone} label={p.short || p.label} value={money(totals[key])} />
+            ))}
+            {totals.misto > 0 && <StatCard tone="gray" label="Pagamento misto" value={money(totals.misto)} hint="Mais de uma forma" />}
+          </div>
+          </>
+          )}
 
-            {!caixaAberto ? (
-              <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                <Empty
-                  description="Abra o caixa para visualizar as vendas"
-                  style={{ margin: "40px 0" }}
-                />
-              </div>
-            ) : loadingVendas ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>
-                <Spin size="large" />
-                <div style={{ marginTop: "12px" }}>
-                  <Text type="secondary">Carregando vendas...</Text>
+          {caixa && (
+            <Section
+              icon={<WalletOutlined />}
+              title="Dinheiro que deve ter na gaveta"
+              subtitle="Confira na hora de fechar o caixa. Pix e cartão não entram aqui."
+            >
+              <div className="sp-bars">
+                <div className="sp-bar-row" style={{ gridTemplateColumns: "1fr auto" }}>
+                  <span>Troco que já estava na abertura</span>
+                  <span className="sp-bar-value">{money(trocoInicial)}</span>
+                </div>
+                <div className="sp-bar-row" style={{ gridTemplateColumns: "1fr auto" }}>
+                  <span>+ Vendas em dinheiro</span>
+                  <span className="sp-bar-value">{money(totals.dinheiro)}</span>
+                </div>
+                <div
+                  className="sp-bar-row"
+                  style={{ gridTemplateColumns: "1fr auto", borderTop: "1px solid #e7e5e4", paddingTop: 10, fontSize: 15 }}
+                >
+                  <b>= Total na gaveta</b>
+                  <b style={{ fontSize: 18 }}>{money(trocoInicial + totals.dinheiro)}</b>
                 </div>
               </div>
-            ) : filteredVendas.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  searchFilter
-                    ? "Nenhuma venda encontrada"
-                    : "Nenhuma venda realizada hoje"
-                }
-                style={{ marginTop: "40px" }}
+              {totals.misto > 0 && (
+                <div className="sp-note is-info">
+                  Há {money(totals.misto)} em vendas com mais de uma forma de pagamento. Some a parte paga em dinheiro.
+                </div>
+              )}
+            </Section>
+          )}
+
+          <div className="sp-toolbar" style={{ justifyContent: "space-between" }}>
+            <h3 className="sp-card-title" style={{ margin: 0 }}>
+              Vendas {caixa ? "deste caixa" : "de hoje"}
+            </h3>
+            {vendas.length > 0 && (
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder="Buscar nº da venda, cliente ou valor"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: isMobile ? "100%" : 320 }}
               />
-            ) : (
-              <div
-                style={{
-                  flex: 1,
-                  overflow: "auto",
-                  minHeight: 0,
-                  WebkitOverflowScrolling: "touch",
-                }}
-              >
-                {filteredVendas.map((venda) => {
-                  const total = calcularTotal(venda.total, venda.desconto);
-                  return (
-                    <div key={venda.id} style={mobileStyles.saleCard}>
-                      <div style={mobileStyles.saleHeader}>
-                        <div>
-                          <Text style={mobileStyles.saleId}>
-                            Venda #{venda.id}
-                          </Text>
-                          <Text
-                            style={{
-                              ...mobileStyles.saleTime,
-                              display: "block",
-                            }}
-                          >
-                            {toSaoPauloTime(venda.createdAt).format("HH:mm")}
-                          </Text>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <Text style={mobileStyles.saleTotal}>
-                            {formatCurrency(total)}
-                          </Text>
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span className="qui-status qui-status--muted">
-                          {venda.metodoPagamento}
-                        </span>
-                        {renderExclusionStatus(venda)}
-                      </div>
-
-                      <div style={mobileStyles.saleActions}>
-                        <Button
-                          type="primary"
-                          icon={<EyeOutlined />}
-                          size="small"
-                          onClick={() => openDetailsModal(venda)}
-                          style={{ flex: 1, borderRadius: "8px" }}
-                        >
-                          Ver
-                        </Button>
-
-                        {venda.exclusionRequested &&
-                        venda.exclusionStatus === "pending" &&
-                        isAdmin ? (
-                          <Button
-                            type="primary"
-                            icon={<CheckCircleOutlined />}
-                            size="small"
-                            onClick={() => openReviewModal(venda)}
-                            style={{ flex: 1, borderRadius: "8px" }}
-                          >
-                            Revisar
-                          </Button>
-                        ) : !venda.exclusionRequested ||
-                          venda.exclusionStatus === "rejected" ? (
-                          <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            size="small"
-                            onClick={() => openExclusionModal(venda)}
-                            style={{ flex: 1, borderRadius: "8px" }}
-                          >
-                            Excluir
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             )}
           </div>
 
-          {/* Modais */}
-          <Modal
-            title="Solicitar exclusão"
-            open={exclusionModalVisible}
-            onCancel={() => setExclusionModalVisible(false)}
-            wrapClassName="qui-sheet"
-            classNames={{ mask: "qui-dialog-mask" }}
-            width="100%"
-            centered={false}
-            footer={[
-              <Button
-                key="cancel"
-                onClick={() => setExclusionModalVisible(false)}
-              >
-                Cancelar
-              </Button>,
-              <Button
-                key="submit"
-                type="primary"
-                danger
-                loading={exclusionLoading}
-                onClick={handleExclusionRequest}
-              >
-                Solicitar
-              </Button>,
-            ]}
-            destroyOnClose
-          >
-            <Form form={exclusionForm} layout="vertical">
-              {selectedVenda && (
-                <div
-                  style={{
-                    marginBottom: 16,
-                    background: "#f5f5f5",
-                    padding: 12,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text strong>Venda #{selectedVenda.id}</Text>
-                  <br />
-                  <Text type="secondary">
-                    {formatCurrency(
-                      calcularTotal(selectedVenda.total, selectedVenda.desconto)
-                    )}
-                  </Text>
-                </div>
-              )}
-              <Form.Item
-                name="motivo"
-                label="Motivo da Exclusão"
-                rules={[
-                  { required: true, message: "Informe o motivo" },
-                  { min: 10, message: "Mínimo 10 caracteres" },
-                ]}
-              >
-                <TextArea
-                  rows={3}
-                  placeholder="Descreva o motivo..."
-                  maxLength={500}
-                  showCount
-                />
-              </Form.Item>
-            </Form>
-          </Modal>
+          {pendentes.length > 0 && (
+            <Chips
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "todas", label: "Todas", count: vendas.length },
+                { value: "pedidos", label: "Pedidos de exclusão", count: pendentes.length },
+              ]}
+            />
+          )}
 
-          <Modal
-            title="Revisar exclusão"
-            open={reviewModalVisible}
-            onCancel={() => setReviewModalVisible(false)}
-            footer={null}
-            destroyOnClose
-            wrapClassName="qui-sheet"
-            classNames={{ mask: "qui-dialog-mask" }}
-            width="100%"
-            centered={false}
-          >
-            <Form form={reviewForm} layout="vertical">
-              {selectedVenda && (
-                <div
-                  style={{
-                    marginBottom: 16,
-                    background: "#f5f5f5",
-                    padding: 12,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text strong>Venda #{selectedVenda.id}</Text>
-                  <br />
-                  <Text type="secondary">
-                    Motivo: {selectedVenda.exclusionReason}
-                  </Text>
-                </div>
-              )}
-              <Form.Item name="observacoes" label="Observações">
-                <TextArea
-                  rows={2}
-                  placeholder="Observações..."
-                  maxLength={500}
-                />
-              </Form.Item>
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Button
-                    danger
-                    block
-                    loading={reviewLoading}
-                    onClick={handleRejectExclusion}
-                  >
-                    Rejeitar
-                  </Button>
-                </Col>
-                <Col span={12}>
-                  <Button
-                    type="primary"
-                    block
-                    loading={reviewLoading}
-                    onClick={handleApproveExclusion}
-                  >
-                    Aprovar
-                  </Button>
-                </Col>
-              </Row>
-            </Form>
-          </Modal>
-
-          <SaleDetailsModal
-            visible={showModalVenda}
-            onClose={setShowModalVenda}
-            saleData={selectedVenda}
+          <SaleList
+            vendas={lista}
+            notasPorVenda={notas}
+            onDetails={setDetails}
+            onNota={(v) => setNotaVendaId(v.id)}
+            exclusion={exclusion}
+            emptyText={search ? "Nenhuma venda encontrada com essa busca." : "Nenhuma venda por enquanto. Elas aparecem aqui assim que forem feitas no caixa."}
           />
         </div>
-      </ConfigProvider>
-    );
-  }
+      )}
 
-  // ========== RENDER DESKTOP ==========
-  return (
-    <ConfigProvider theme={theme}>
-    <Layout className="qui-page" style={{ minHeight: "auto", ...pageStyle }}>
-      <Layout>
-        {caixaAberto ? (
-          <>
-            <Content style={{ padding: 0, background: "transparent" }}>
-              <div className="qui-header">
-                <div>
-                  <h1>Resumo do dia</h1>
-                  <p>{nowSaoPaulo().format("DD/MM/YYYY")}</p>
-                </div>
-              </div>
-              <Row gutter={[16, 16]}>
-                {resumoVendas.total > 0 && (
-                  <Col span={24}>
-                    <div className="qui-stats">
-                      <div className="qui-stat">
-                        <small>Dinheiro</small>
-                        <b>{formatCurrency(resumoVendas.dinheiro)}</b>
-                      </div>
-                      <div className="qui-stat">
-                        <small>PIX</small>
-                        <b>{formatCurrency(resumoVendas.pix)}</b>
-                      </div>
-                      <div className="qui-stat">
-                        <small>Crédito</small>
-                        <b>{formatCurrency(resumoVendas.credito)}</b>
-                      </div>
-                      <div className="qui-stat">
-                        <small>Débito</small>
-                        <b>{formatCurrency(resumoVendas.debito)}</b>
-                      </div>
-                    </div>
-                    <div className="qui-stat" style={{ marginBottom: 16 }}>
-                      <small>Total do dia</small>
-                      <b className="is-theme">{formatCurrency(resumoVendas.total)}</b>
-                    </div>
-                  </Col>
-                )}
-              </Row>
-              <div className="qui-panel">
-                <Table
-                  columns={columnsVendas}
-                  dataSource={vendas.map((venda) => ({
-                    ...venda,
-                    key: venda.id,
-                  }))}
-                  pagination={{ pageSize: 50 }}
-                  loading={loadingVendas}
-                  size="middle"
-                  locale={{
-                    emptyText: "Sem dados para o período selecionado",
-                  }}
-                />
-              </div>
-            </Content>
-          </>
-        ) : (
-          <Content
-            style={{
-              padding: "48px 0",
-              background: "transparent",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Spin spinning={loading}>
-              <Empty
-                description="Abra o caixa para visualizar as vendas do dia"
-                style={{ margin: "40px 0" }}
-              />
-            </Spin>
-          </Content>
-        )}
-      </Layout>
-
-      {/* Modal de Solicitação de Exclusão - Desktop */}
-      <Modal
-        title="Solicitar exclusão"
-        open={exclusionModalVisible}
-        onCancel={() => setExclusionModalVisible(false)}
-        wrapClassName="qui-dialog"
-        classNames={{ mask: "qui-dialog-mask" }}
-        centered
-        footer={[
-          <Button key="cancel" onClick={() => setExclusionModalVisible(false)}>
-            Cancelar
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            danger
-            loading={exclusionLoading}
-            onClick={handleExclusionRequest}
-          >
-            Solicitar Exclusão
-          </Button>,
-        ]}
-        destroyOnClose
-      >
-        <Form form={exclusionForm} layout="vertical" requiredMark="optional">
-          {selectedVenda && (
-            <div style={{ marginBottom: 16 }}>
-              <Paragraph>
-                <Text strong>Venda ID:</Text> {selectedVenda.id}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Cliente:</Text> {selectedVenda.nome_cliente}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Valor:</Text>{" "}
-                {toMoneyFormat(
-                  calcularTotal(selectedVenda.total, selectedVenda.desconto)
-                )}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Data:</Text>{" "}
-                {toDateFormat(selectedVenda.createdAt, true)}
-              </Paragraph>
-            </div>
-          )}
-
-          <Paragraph type="secondary">
-            A solicitação de exclusão será enviada para aprovação do
-            administrador. Por favor, informe detalhadamente o motivo da
-            exclusão.
-          </Paragraph>
-
-          <Form.Item
-            name="motivo"
-            label="Motivo da Exclusão"
-            rules={[
-              {
-                required: true,
-                message: "Por favor, informe o motivo da exclusão",
-              },
-              { min: 10, message: "O motivo deve ter no mínimo 10 caracteres" },
-            ]}
-          >
-            <TextArea
-              rows={4}
-              placeholder="Descreva o motivo da exclusão..."
-              maxLength={500}
-              showCount
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Modal de Revisão de Exclusão - Desktop */}
-      <Modal
-        title="Revisar exclusão"
-        open={reviewModalVisible}
-        onCancel={() => setReviewModalVisible(false)}
-        footer={null}
-        destroyOnClose
-        wrapClassName="qui-dialog"
-        classNames={{ mask: "qui-dialog-mask" }}
-        centered
-      >
-        <Form form={reviewForm} layout="vertical" requiredMark="optional">
-          {selectedVenda && (
-            <div style={{ marginBottom: 16 }}>
-              <Paragraph>
-                <Text strong>Venda ID:</Text> {selectedVenda.id}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Cliente:</Text> {selectedVenda.nome_cliente}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Valor:</Text>{" "}
-                {toMoneyFormat(
-                  calcularTotal(selectedVenda.total, selectedVenda.desconto)
-                )}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Data:</Text>{" "}
-                {toDateFormat(selectedVenda.createdAt, true)}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Motivo da solicitação:</Text>{" "}
-                {selectedVenda.exclusionReason}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Solicitado por:</Text>{" "}
-                {selectedVenda.exclusionRequestedByUser?.name || "Usuário"}
-              </Paragraph>
-              <Paragraph>
-                <Text strong>Data da solicitação:</Text>{" "}
-                {selectedVenda.exclusionRequestedAt
-                  ? toDateFormat(selectedVenda.exclusionRequestedAt, true)
-                  : "Não disponível"}
-              </Paragraph>
-            </div>
-          )}
-
-          <Divider />
-
-          <Form.Item
-            name="observacoes"
-            label="Observações (opcional para aprovação, obrigatório para rejeição)"
-            rules={[
-              {
-                required: false,
-                message: "Por favor, informe o motivo da rejeição",
-              },
-            ]}
-          >
-            <TextArea
-              rows={3}
-              placeholder="Adicione observações ou motivo da rejeição..."
-              maxLength={500}
-              showCount
-            />
-          </Form.Item>
-
-          <Row gutter={16} justify="end">
-            <Col>
-              <Button onClick={() => setReviewModalVisible(false)}>
-                Cancelar
-              </Button>
-            </Col>
-            <Col>
-              <Popconfirm
-                title="Rejeitar solicitação"
-                description="Tem certeza que deseja rejeitar esta solicitação?"
-                onConfirm={handleRejectExclusion}
-                okText="Sim"
-                cancelText="Não"
-                okButtonProps={{ danger: true }}
-              >
-                <Button danger loading={reviewLoading}>
-                  Rejeitar
-                </Button>
-              </Popconfirm>
-            </Col>
-            <Col>
-              <Popconfirm
-                title="Aprovar exclusão"
-                description="Tem certeza que deseja aprovar a exclusão desta venda?"
-                onConfirm={handleApproveExclusion}
-                okText="Sim"
-                cancelText="Não"
-              >
-                <Button type="primary" loading={reviewLoading}>
-                  Aprovar
-                </Button>
-              </Popconfirm>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
-
-      {/* Modal de Detalhes da Venda */}
-      <SaleDetailsModal
-        visible={showModalVenda}
-        onClose={setShowModalVenda}
-        saleData={selectedVenda}
+      {exclusion.modals}
+      <SaleDetailsModal visible={!!details} onClose={() => setDetails(null)} saleData={details} />
+      <FiscalSaleModal
+        open={!!notaVendaId}
+        vendaId={notaVendaId}
+        onClose={() => {
+          setNotaVendaId(null);
+          setNotesKey((k) => k + 1);
+        }}
       />
-    </Layout>
-    </ConfigProvider>
+    </SimplePage>
   );
 };
 

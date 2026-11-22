@@ -15,43 +15,10 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
+import "./resize-observer-fix";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
-
-// Suprimir erro inofensivo do ResizeObserver (comum com Ant Design)
-const resizeObserverErr = (e) => {
-  if (e.message && e.message.includes("ResizeObserver loop")) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-    return false;
-  }
-};
-window.addEventListener("error", resizeObserverErr);
-
-// O overlay de erros do dev server registra seu listener antes deste arquivo, então o filtro acima
-// não o alcança; adiar as notificações para o próximo frame evita que o aviso seja disparado.
-if (process.env.NODE_ENV === "development" && window.ResizeObserver) {
-  const NativeResizeObserver = window.ResizeObserver;
-  window.ResizeObserver = class extends NativeResizeObserver {
-    constructor(callback) {
-      super((entries, observer) => window.requestAnimationFrame(() => callback(entries, observer)));
-    }
-  };
-}
-
-// Também suprimir no console
-const originalError = console.error;
-console.error = (...args) => {
-  if (
-    args[0] &&
-    typeof args[0] === "string" &&
-    args[0].includes("ResizeObserver")
-  ) {
-    return;
-  }
-  originalError(...args);
-};
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./assets/css/animate.min.css";

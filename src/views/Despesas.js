@@ -1,967 +1,422 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Radio, Skeleton, notification } from "antd";
 import {
-  Card,
-  Table,
-  Form,
-  Input,
-  Button,
-  Modal,
-  DatePicker,
-  Select,
-  Checkbox,
-  Space,
-  Tag,
-  Tooltip,
-  Statistic,
-  Row,
-  Col,
-  Divider,
-  Typography,
-  notification,
-  Popconfirm,
-  InputNumber,
-  ConfigProvider,
-  Spin,
-  Empty,
-  FloatButton,
-} from "antd";
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-  SearchOutlined,
+  CheckOutlined,
+  DeleteOutlined,
   DownloadOutlined,
-  FilterOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
+  FileTextOutlined,
+  PlusOutlined,
+  RetweetOutlined,
+  SearchOutlined,
   WalletOutlined,
-  ReloadOutlined,
-  MenuOutlined,
 } from "@ant-design/icons";
-import { updateDespesa, getDespesas, delDepesa } from "helpers/api-integrator";
-import moment from "moment";
-import { CSVLink } from "react-csv";
-import { useThemeColor, quietMobileStyles } from "helpers/theme";
-import "./admin-ui.css";
+import dayjs from "dayjs";
+import SimplePage, { Chips, EmptyState, Icon, StatCard, useIsMobile } from "components/simple/SimplePage";
+import { money } from "components/simple/sales";
+import { delDepesa, getDespesas, updateDespesa } from "helpers/api-integrator";
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-const { Search } = Input;
+const SUGESTOES = ["Aluguel", "Conta de luz", "Conta de água", "Internet", "Fornecedor", "Salário", "Contador", "Impostos (DAS)"];
+
+const dueDate = (d) => dayjs(String(d.vencimento).slice(0, 10));
+const isPaid = (d) => d.status === "Pago";
+const daysLeft = (d) => dueDate(d).diff(dayjs().startOf("day"), "day");
+
+const situacao = (d) => {
+  if (isPaid(d)) return { tone: "green", text: `Paga · vencia em ${dueDate(d).format("DD/MM/YYYY")}` };
+  const n = daysLeft(d);
+  if (n < 0) return { tone: "red", text: `Atrasada · venceu há ${-n} ${n === -1 ? "dia" : "dias"} (${dueDate(d).format("DD/MM")})` };
+  if (n === 0) return { tone: "orange", text: "Vence hoje" };
+  if (n === 1) return { tone: "orange", text: "Vence amanhã" };
+  if (n <= 7) return { tone: "orange", text: `Vence em ${n} dias (${dueDate(d).format("DD/MM")})` };
+  return { tone: "gray", text: `Vence em ${dueDate(d).format("DD/MM/YYYY")}` };
+};
+
+const FILTERS = {
+  pagar: { label: "A pagar", test: (d) => !isPaid(d) },
+  atrasadas: { label: "Atrasadas", test: (d) => !isPaid(d) && daysLeft(d) < 0 },
+  semana: { label: "Vencem em 7 dias", test: (d) => !isPaid(d) && daysLeft(d) >= 0 && daysLeft(d) <= 7 },
+  pagas: { label: "Pagas", test: isPaid },
+  todas: { label: "Todas", test: () => true },
+};
+
+const sum = (list) => list.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
 
 function Despesas() {
-  const { primary, theme, pageStyle } = useThemeColor();
-  const mobileStyles = useMemo(
-    () => ({
-      ...quietMobileStyles(primary),
-      totalCard: {
-        ...quietMobileStyles(primary).totalCard,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        textAlign: "left",
-      },
-    }),
-    [primary]
-  );
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  // Detectar mobile
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const [despesas, setDespesas] = useState([]);
-  const [filteredDespesas, setFilteredDespesas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Todos");
-  const [tipoFilter, setTipoFilter] = useState("Todos");
-
-  // Estatísticas
-  const [estatisticas, setEstatisticas] = useState({
-    totalDespesas: 0,
-    despesasFixas: 0,
-    despesasVariaveis: 0,
-    despesasPagas: 0,
-    despesasPendentes: 0,
-    totalValorPago: 0,
-    totalValorPendente: 0,
-  });
-
-  // Modal de cadastro/edição
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const isMobile = useIsMobile();
   const [form] = Form.useForm();
-  const [editingId, setEditingId] = useState(null);
+  const [despesas, setDespesas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+  const [filter, setFilter] = useState("pagar");
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null);
 
-  // Obtém as despesas da API
-  const getFullDespesas = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const request = await getDespesas();
-      if (request && request.data) {
-        setDespesas(request.data);
-        setFilteredDespesas(request.data);
-        calcularEstatisticas(request.data);
-      }
-    } catch (error) {
-      notification.error({
-        message: "Erro ao buscar despesas",
-        description:
-          "Não foi possível carregar as despesas. Tente novamente mais tarde.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Calcular estatísticas
-  const calcularEstatisticas = (data) => {
-    const stats = {
-      totalDespesas: data.length,
-      despesasFixas: data.filter((d) => d.fixa).length,
-      despesasVariaveis: data.filter((d) => !d.fixa).length,
-      despesasPagas: data.filter((d) => d.status === "Pago").length,
-      despesasPendentes: data.filter((d) => d.status === "Em Aberto").length,
-      totalValorPago: data
-        .filter((d) => d.status === "Pago")
-        .reduce((acc, curr) => acc + curr.valor, 0),
-      totalValorPendente: data
-        .filter((d) => d.status === "Em Aberto")
-        .reduce((acc, curr) => acc + curr.valor, 0),
-    };
-    setEstatisticas(stats);
-  };
-
-  // Filtrar despesas
-  useEffect(() => {
-    const filtrarDespesas = () => {
-      let dadosFiltrados = [...despesas];
-
-      // Filtro de texto (descrição)
-      if (searchText) {
-        dadosFiltrados = dadosFiltrados.filter((item) =>
-          item.descricao.toLowerCase().includes(searchText.toLowerCase())
-        );
-      }
-
-      // Filtro de status
-      if (statusFilter !== "Todos") {
-        dadosFiltrados = dadosFiltrados.filter(
-          (item) => item.status === statusFilter
-        );
-      }
-
-      // Filtro de tipo (fixa ou variável)
-      if (tipoFilter !== "Todos") {
-        const isFixa = tipoFilter === "Fixa";
-        dadosFiltrados = dadosFiltrados.filter((item) => item.fixa === isFixa);
-      }
-
-      setFilteredDespesas(dadosFiltrados);
-    };
-
-    filtrarDespesas();
-  }, [despesas, searchText, statusFilter, tipoFilter]);
-
-  // Carregar dados ao iniciar
-  useEffect(() => {
-    getFullDespesas();
+    const res = await getDespesas();
+    if (res?.success) setDespesas(Array.isArray(res.data) ? res.data : []);
+    else notification.error({ message: "Não foi possível carregar as despesas", description: "Confira sua internet e tente de novo." });
+    setLoading(false);
   }, []);
 
-  // Abrir modal para criar nova despesa
-  const showCreateModal = () => {
-    form.resetFields();
-    setEditingId(null);
-    setIsModalVisible(true);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const grupos = useMemo(() => {
+    const out = {};
+    Object.entries(FILTERS).forEach(([key, f]) => (out[key] = despesas.filter(f.test)));
+    return out;
+  }, [despesas]);
+
+  const pagoNoMes = useMemo(() => grupos.pagas.filter((d) => dueDate(d).isSame(dayjs(), "month")), [grupos]);
+
+  const lista = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    return grupos[filter]
+      .filter((d) => !term || (d.descricao || "").toLowerCase().includes(term))
+      .sort((a, b) => (filter === "pagas" ? dueDate(b) - dueDate(a) : dueDate(a) - dueDate(b)));
+  }, [grupos, filter, search]);
+
+  const openForm = (despesa) => setEditing(despesa || {});
+
+  const initialValues = editing?.id
+    ? { descricao: editing.descricao, valor: editing.valor, vencimento: dueDate(editing), pago: isPaid(editing), fixa: !!editing.fixa }
+    : { descricao: "", valor: null, vencimento: dayjs(), pago: false, fixa: false };
+
+  const save = async (payload) => {
+    const res = await updateDespesa(payload);
+    if (!res?.success) {
+      notification.error({ message: "Não foi possível salvar", description: "Tente de novo em instantes." });
+      return false;
+    }
+    return true;
   };
 
-  // Abrir modal para editar despesa existente
-  const showEditModal = (record) => {
-    setEditingId(record.id);
-    form.setFieldsValue({
-      descricao: record.descricao,
-      valor: record.valor,
-      status: record.status,
-      fixa: record.fixa,
-      vencimento: moment(record.vencimento),
+  const submit = async () => {
+    const values = await form.validateFields();
+    setSaving(true);
+    const ok = await save({
+      ...(editing?.id ? { id: editing.id } : {}),
+      descricao: values.descricao.trim(),
+      valor: values.valor,
+      vencimento: values.vencimento.format("YYYY-MM-DD"),
+      status: values.pago ? "Pago" : "Em Aberto",
+      fixa: values.fixa,
     });
-    setIsModalVisible(true);
+    setSaving(false);
+    if (!ok) return;
+    notification.success({ message: editing?.id ? "Despesa atualizada" : "Despesa cadastrada" });
+    setEditing(null);
+    load();
   };
 
-  // Fechar modal
-  const handleCancel = () => {
-    form.resetFields();
-    setIsModalVisible(false);
+  const nextMonthExists = (d) => {
+    const next = dueDate(d).add(1, "month");
+    return despesas.some((x) => x.id !== d.id && x.descricao === d.descricao && dueDate(x).isSame(next, "month"));
   };
 
-  // Salvar despesa (criar ou atualizar)
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-
-      const despesa = {
-        id: editingId || despesas.length + 1,
-        descricao: values.descricao,
-        valor: values.valor,
-        status: values.status,
-        fixa: values.fixa || false,
-        vencimento: values.vencimento.format("YYYY-MM-DD"),
-        categoria: values.fixa ? "Recorrente" : "Passageira",
-      };
-
-      setLoading(true);
-      await updateDespesa(despesa);
-
-      notification.success({
-        message: editingId ? "Despesa atualizada" : "Despesa cadastrada",
-        description: `A despesa "${values.descricao}" foi ${
-          editingId ? "atualizada" : "cadastrada"
-        } com sucesso!`,
+  const markPaid = async (d) => {
+    setBusyId(d.id);
+    const ok = await save({ ...d, vencimento: dueDate(d).format("YYYY-MM-DD"), status: "Pago" });
+    setBusyId(null);
+    if (!ok) return;
+    notification.success({ message: `“${d.descricao}” marcada como paga` });
+    if (d.fixa && !nextMonthExists(d)) {
+      const next = dueDate(d).add(1, "month");
+      Modal.confirm({
+        title: "Deixar a do próximo mês cadastrada?",
+        icon: <RetweetOutlined />,
+        content: `“${d.descricao}” se repete todo mês. Quer que eu já cadastre a próxima, de ${money(d.valor)}, vencendo em ${next.format("DD/MM/YYYY")}?`,
+        okText: "Sim, cadastrar",
+        cancelText: "Agora não",
+        onOk: async () => {
+          if (await save({ descricao: d.descricao, valor: d.valor, fixa: true, status: "Em Aberto", vencimento: next.format("YYYY-MM-DD") })) {
+            notification.success({ message: "Próxima conta cadastrada" });
+          }
+          load();
+        },
+        onCancel: load,
       });
-
-      setIsModalVisible(false);
-      form.resetFields();
-      getFullDespesas();
-    } catch (error) {
-      notification.error({
-        message: "Erro ao salvar",
-        description: "Verifique os campos e tente novamente.",
-      });
-    } finally {
-      setLoading(false);
+    } else {
+      load();
     }
   };
 
-  // Excluir despesa
-  const handleDelete = async (id) => {
-    setLoading(true);
-    try {
-      await delDepesa(id);
-      notification.success({
-        message: "Despesa removida",
-        description: "A despesa foi removida com sucesso!",
-      });
-      getFullDespesas();
-    } catch (error) {
-      notification.error({
-        message: "Erro ao remover",
-        description: "Não foi possível remover a despesa. Tente novamente.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Configuração das colunas da tabela
-  const columns = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 60,
-      sorter: (a, b) => a.id - b.id,
-    },
-    {
-      title: "Descrição",
-      dataIndex: "descricao",
-      key: "descricao",
-      sorter: (a, b) => a.descricao.localeCompare(b.descricao),
-    },
-    {
-      title: "Valor",
-      dataIndex: "valor",
-      key: "valor",
-      render: (valor) =>
-        `R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      sorter: (a, b) => a.valor - b.valor,
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (status) => (
-        <span
-          className={`qui-status ${
-            status === "Pago" ? "qui-status--ok" : "qui-status--warn"
-          }`}
-        >
-          {status}
-        </span>
-      ),
-      filters: [
-        { text: "Pago", value: "Pago" },
-        { text: "Em Aberto", value: "Em Aberto" },
-      ],
-      onFilter: (value, record) => record.status === value,
-    },
-    {
-      title: "Tipo",
-      dataIndex: "fixa",
-      key: "fixa",
-      render: (fixa) => (
-        <span className="qui-status qui-status--muted">
-          {fixa ? "Fixa" : "Variável"}
-        </span>
-      ),
-      filters: [
-        { text: "Fixa", value: true },
-        { text: "Variável", value: false },
-      ],
-      onFilter: (value, record) => record.fixa === value,
-    },
-    {
-      title: "Vencimento",
-      dataIndex: "vencimento",
-      key: "vencimento",
-      render: (vencimento) => {
-        const date = moment(vencimento);
-        const isLate = date.isBefore(moment(), "day") && status !== "Pago";
-        return (
-          <span style={{ color: isLate ? "red" : "inherit" }}>
-            {date.format("DD/MM/YYYY")}
-            {isLate && (
-              <ExclamationCircleOutlined
-                style={{ marginLeft: 8, color: "red" }}
-              />
-            )}
-          </span>
-        );
+  const remove = (d) =>
+    Modal.confirm({
+      title: "Excluir esta despesa?",
+      content: `“${d.descricao}” de ${money(d.valor)} será apagada da lista.`,
+      okText: "Excluir",
+      okButtonProps: { danger: true },
+      cancelText: "Voltar",
+      onOk: async () => {
+        const res = await delDepesa(d.id);
+        if (!res?.success) {
+          notification.error({ message: "Não foi possível excluir" });
+          return;
+        }
+        notification.success({ message: "Despesa excluída" });
+        load();
       },
-      sorter: (a, b) =>
-        moment(a.vencimento).unix() - moment(b.vencimento).unix(),
-    },
-    {
-      title: "Ações",
-      key: "actions",
-      width: 120,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Editar">
-            <Button
-              className="qui-icon-btn"
-              icon={<EditOutlined />}
-              size="small"
-              onClick={() => showEditModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Excluir">
-            <Popconfirm
-              title="Tem certeza que deseja excluir esta despesa?"
-              onConfirm={() => handleDelete(record.id)}
-              okText="Sim"
-              cancelText="Não"
-            >
-              <Button
-                className="qui-icon-btn"
-                danger
-                icon={<DeleteOutlined />}
-                size="small"
-              />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
+    });
 
-  // Preparar dados para exportação CSV
-  const csvData = filteredDespesas.map((item) => ({
-    ID: item.id,
-    Descrição: item.descricao,
-    Valor: item.valor,
-    Status: item.status,
-    Tipo: item.fixa ? "Fixa" : "Variável",
-    Vencimento: moment(item.vencimento).format("DD/MM/YYYY"),
-  }));
-
-  // Formatar moeda
-  const formatCurrency = (value) => {
-    return `R$ ${(parseFloat(value) || 0).toFixed(2).replace(".", ",")}`;
+  const exportar = () => {
+    if (!despesas.length) return notification.info({ message: "Ainda não há despesas para baixar." });
+    const rows = [...despesas]
+      .sort((a, b) => dueDate(a) - dueDate(b))
+      .map((d) => ({
+        Despesa: d.descricao,
+        Valor: Number(d.valor) || 0,
+        Vencimento: dueDate(d).format("DD/MM/YYYY"),
+        Situação: isPaid(d) ? "Paga" : daysLeft(d) < 0 ? "Atrasada" : "A pagar",
+        "Repete todo mês": d.fixa ? "Sim" : "Não",
+      }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 16 }];
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, "Despesas");
+    XLSX.writeFile(book, `despesas_${dayjs().format("DD-MM-YYYY")}.xlsx`);
   };
 
-  // ========== RENDER MOBILE ==========
-  if (isMobile) {
-    return (
-      <ConfigProvider theme={theme}>
-        <div className="qui-page" style={{ ...mobileStyles.container, ...pageStyle }}>
-          {/* Header Mobile */}
-          <div style={mobileStyles.header}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                {/* Botão Menu */}
-                <div
-                  onClick={() => {
-                    const isOpen = document.documentElement.classList.contains("nav-open");
-                    if (isOpen) {
-                      document.documentElement.classList.remove("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
-                    } else {
-                      document.documentElement.classList.add("nav-open");
-                      const existingBodyClick = document.getElementById("bodyClick");
-                      if (existingBodyClick) existingBodyClick.parentElement.removeChild(existingBodyClick);
-                      var node = document.createElement("div");
-                      node.id = "bodyClick";
-                      node.style.cssText = "position:fixed;top:0;left:0;right:250px;bottom:0;z-index:9999;";
-                      node.onclick = function () {
-                        this.parentElement.removeChild(this);
-                        document.documentElement.classList.remove("nav-open");
-                      };
-                      document.body.appendChild(node);
-                    }
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.2)",
-                    borderRadius: "10px",
-                    padding: "8px 10px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <MenuOutlined style={{ color: "#fff", fontSize: "18px" }} />
-                </div>
-                <div>
-                  <h1 style={mobileStyles.headerTitle}>Despesas</h1>
-                  <Text style={mobileStyles.headerSubtitle}>
-                    {estatisticas.totalDespesas} despesas cadastradas
-                  </Text>
-                </div>
-              </div>
-              <div
-                onClick={getFullDespesas}
-                style={{
-                  background: "rgba(255,255,255,0.2)",
-                  border: "none",
-                  borderRadius: "10px",
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                }}
-              >
-                <ReloadOutlined spin={loading} style={{ color: "#fff" }} />
-              </div>
-            </div>
+  const novaBtn = (
+    <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()} size={isMobile ? "large" : "middle"} block={isMobile}>
+      Nova despesa
+    </Button>
+  );
 
-            {/* Summary Cards */}
-            <div style={mobileStyles.summaryGrid}>
-              <div style={mobileStyles.summaryCard}>
-                <ClockCircleOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
-                <span style={mobileStyles.summaryValue}>{estatisticas.despesasPendentes}</span>
-                <span style={mobileStyles.summaryLabel}>Pendentes</span>
-              </div>
-              <div style={mobileStyles.summaryCard}>
-                <CheckCircleOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
-                <span style={mobileStyles.summaryValue}>{estatisticas.despesasPagas}</span>
-                <span style={mobileStyles.summaryLabel}>Pagas</span>
-              </div>
-              <div style={mobileStyles.summaryCard}>
-                <ExclamationCircleOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
-                <span style={mobileStyles.summaryValue}>
-                  {formatCurrency(estatisticas.totalValorPendente).replace("R$ ", "")}
-                </span>
-                <span style={mobileStyles.summaryLabel}>Valor Pendente</span>
-              </div>
-              <div style={mobileStyles.summaryCard}>
-                <CheckCircleOutlined style={{ color: "rgba(255,255,255,0.8)", marginBottom: "4px" }} />
-                <span style={mobileStyles.summaryValue}>
-                  {formatCurrency(estatisticas.totalValorPago).replace("R$ ", "")}
-                </span>
-                <span style={mobileStyles.summaryLabel}>Valor Pago</span>
-              </div>
-            </div>
+  return (
+    <SimplePage
+      title="Despesas"
+      subtitle="Contas da loja: aluguel, luz, fornecedores..."
+      actions={
+        <>
+          <Button icon={<DownloadOutlined />} onClick={exportar}>
+            Baixar planilha
+          </Button>
+          {novaBtn}
+        </>
+      }
+      mobileActions={
+        <button type="button" className="sp-round" aria-label="Baixar planilha" onClick={exportar}>
+          <DownloadOutlined />
+        </button>
+      }
+    >
+      <div className="sp-stack">
+        {isMobile && novaBtn}
 
-            {/* Total Card */}
-            <div style={mobileStyles.totalCard}>
-              <div>
-                <span style={mobileStyles.totalLabel}>PENDENTE</span>
-                <span style={mobileStyles.totalValue}>
-                  {formatCurrency(estatisticas.totalValorPendente)}
-                </span>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <span style={mobileStyles.totalLabel}>PAGO</span>
-                <span style={{ ...mobileStyles.totalValue, color: "rgba(255,255,255,0.9)" }}>
-                  {formatCurrency(estatisticas.totalValorPago)}
-                </span>
-              </div>
-            </div>
+        {loading && !despesas.length ? (
+          <div className="sp-card">
+            <Skeleton active paragraph={{ rows: 6 }} />
           </div>
-
-          {/* Content Area */}
-          <div style={mobileStyles.content}>
-            {/* Search */}
-            <div style={mobileStyles.searchContainer}>
-              <Search
-                placeholder="Buscar despesa..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-                size="large"
-                style={{ flex: 1, borderRadius: "12px" }}
+        ) : !despesas.length ? (
+          <div className="sp-card">
+            <EmptyState
+              icon={<FileTextOutlined />}
+              title="Nenhuma despesa cadastrada"
+              text="Cadastre as contas da loja (aluguel, luz, fornecedores) para nunca esquecer um vencimento e saber quanto sobra no fim do mês."
+              action={!isMobile && novaBtn}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="sp-stats">
+              <StatCard
+                icon={<WalletOutlined />}
+                label="Total a pagar"
+                value={money(sum(grupos.pagar))}
+                hint={`${grupos.pagar.length} ${grupos.pagar.length === 1 ? "conta" : "contas"}`}
+                onClick={() => setFilter("pagar")}
+                active={filter === "pagar"}
+              />
+              <StatCard
+                icon={<ExclamationCircleOutlined />}
+                tone="red"
+                label="Atrasadas"
+                value={money(sum(grupos.atrasadas))}
+                hint={grupos.atrasadas.length ? `${grupos.atrasadas.length} vencida(s)` : "Nenhuma, tudo em dia"}
+                onClick={() => setFilter("atrasadas")}
+                active={filter === "atrasadas"}
+              />
+              <StatCard
+                icon={<CalendarOutlined />}
+                tone="orange"
+                label="Vencem em 7 dias"
+                value={money(sum(grupos.semana))}
+                hint={`${grupos.semana.length} ${grupos.semana.length === 1 ? "conta" : "contas"}`}
+                onClick={() => setFilter("semana")}
+                active={filter === "semana"}
+              />
+              <StatCard
+                icon={<CheckCircleOutlined />}
+                tone="green"
+                label="Pago este mês"
+                value={money(sum(pagoNoMes))}
+                hint={`${pagoNoMes.length} ${pagoNoMes.length === 1 ? "conta" : "contas"}`}
+                onClick={() => setFilter("pagas")}
+                active={filter === "pagas"}
               />
             </div>
 
-            {/* Filters */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexShrink: 0 }}>
-              <Select
-                size="small"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                style={{ flex: 1 }}
-              >
-                <Option value="Todos">Todos</Option>
-                <Option value="Pago">Pago</Option>
-                <Option value="Em Aberto">Pendente</Option>
-              </Select>
-              <Select
-                size="small"
-                value={tipoFilter}
-                onChange={setTipoFilter}
-                style={{ flex: 1 }}
-              >
-                <Option value="Todos">Todos</Option>
-                <Option value="Fixa">Fixa</Option>
-                <Option value="Variável">Variável</Option>
-              </Select>
+            <div className="sp-toolbar" style={{ justifyContent: "space-between" }}>
+              <Chips
+                value={filter}
+                onChange={setFilter}
+                options={Object.entries(FILTERS).map(([value, f]) => ({ value, label: f.label, count: grupos[value].length }))}
+              />
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder="Buscar despesa"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: isMobile ? "100%" : 260 }}
+              />
             </div>
 
-            {/* Despesas List */}
-            <div style={{ 
-              flex: 1, 
-              overflow: "auto",
-              minHeight: 0,
-              WebkitOverflowScrolling: "touch",
-            }}>
-              {loading ? (
-                <div style={{ textAlign: "center", padding: "40px" }}>
-                  <Spin size="large" />
-                  <div style={{ marginTop: "12px" }}>
-                    <Text type="secondary">Carregando despesas...</Text>
-                  </div>
-                </div>
-              ) : filteredDespesas.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Nenhuma despesa encontrada"
-                  style={{ marginTop: "40px" }}
-                />
-              ) : (
-                filteredDespesas.map((despesa) => {
-                  const isLate = moment(despesa.vencimento).isBefore(moment(), "day") && despesa.status !== "Pago";
+            {!lista.length ? (
+              <div className="sp-card" style={{ textAlign: "center", color: "#78716c", padding: 28 }}>
+                {search
+                  ? "Nenhuma despesa encontrada com essa busca."
+                  : filter === "atrasadas"
+                  ? "Nenhuma conta atrasada. Tudo em dia! 🎉"
+                  : filter === "pagar"
+                  ? "Nenhuma conta a pagar. Tudo pago! 🎉"
+                  : filter === "semana"
+                  ? "Nenhuma conta vence nos próximos 7 dias."
+                  : "Nenhuma despesa aqui."}
+              </div>
+            ) : (
+              <div className="sp-list">
+                {lista.map((d) => {
+                  const s = situacao(d);
                   return (
-                    <div key={despesa.id} style={mobileStyles.despesaCard}>
-                      <div style={mobileStyles.despesaHeader}>
-                        <div style={{ flex: 1 }}>
-                          <div style={mobileStyles.despesaName}>
-                            {despesa.descricao}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-                            <span
-                              className={`qui-status ${
-                                despesa.status === "Pago"
-                                  ? "qui-status--ok"
-                                  : "qui-status--warn"
-                              }`}
-                            >
-                              {despesa.status}
-                            </span>
-                            <span className="qui-status qui-status--muted">
-                              {despesa.fixa ? "Fixa" : "Variável"}
-                            </span>
-                            {isLate && (
-                              <span className="qui-status qui-status--danger">
-                                Atrasada
-                              </span>
-                            )}
-                          </div>
-                          <Text style={{ fontSize: "11px", color: "#999", display: "block", marginTop: "4px" }}>
-                            Venc: {moment(despesa.vencimento).format("DD/MM/YYYY")}
-                          </Text>
+                    <div className="sp-item" key={d.id}>
+                      <Icon tone={s.tone} size={40}>
+                        {isPaid(d) ? <CheckOutlined /> : s.tone === "red" ? <ExclamationCircleOutlined /> : <CalendarOutlined />}
+                      </Icon>
+                      <div className="sp-item-main">
+                        <div className="sp-item-top">
+                          <span className="sp-item-title">{d.descricao}</span>
+                          <span className="sp-item-value">{money(d.valor)}</span>
                         </div>
-                        <div style={{ textAlign: "right" }}>
-                          <Text style={mobileStyles.despesaValue}>
-                            {formatCurrency(despesa.valor)}
-                          </Text>
+                        <div className="sp-item-meta">
+                          <span style={{ color: { red: "#dc2626", orange: "#b45309", green: "#15803d" }[s.tone], fontWeight: 500 }}>
+                            {s.text}
+                          </span>
+                          {d.fixa && (
+                            <span>
+                              <RetweetOutlined /> Todo mês
+                            </span>
+                          )}
                         </div>
-                      </div>
-
-                      <div style={mobileStyles.despesaActions}>
-                        <Button
-                          type="primary"
-                          icon={<EditOutlined />}
-                          size="small"
-                          onClick={() => showEditModal(despesa)}
-                          style={{ flex: 1, borderRadius: "8px" }}
-                        >
-                          Editar
-                        </Button>
-                        <Popconfirm
-                          title="Excluir despesa?"
-                          onConfirm={() => handleDelete(despesa.id)}
-                          okText="Sim"
-                          cancelText="Não"
-                        >
-                          <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            size="small"
-                            style={{ flex: 1, borderRadius: "8px" }}
-                          >
+                        <div className="sp-item-actions">
+                          {!isPaid(d) && (
+                            <Button type="primary" icon={<CheckOutlined />} loading={busyId === d.id} onClick={() => markPaid(d)}>
+                              Marcar como paga
+                            </Button>
+                          )}
+                          <Button icon={<EditOutlined />} onClick={() => openForm(d)}>
+                            Editar
+                          </Button>
+                          <Button danger icon={<DeleteOutlined />} onClick={() => remove(d)}>
                             Excluir
                           </Button>
-                        </Popconfirm>
+                        </div>
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
-
-            {/* Results count */}
-            {!loading && filteredDespesas.length > 0 && (
-              <div style={{ 
-                textAlign: "center", 
-                padding: "8px 0",
-                flexShrink: 0,
-              }}>
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  {filteredDespesas.length} {filteredDespesas.length === 1 ? "despesa" : "despesas"}
-                </Text>
+                })}
               </div>
             )}
-          </div>
-
-          {/* Floating Add Button */}
-          <FloatButton
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={showCreateModal}
-            style={{
-              right: 20,
-              bottom: 20,
-              width: 56,
-              height: 56,
-            }}
-          />
-
-          {/* Modal de Cadastro/Edição */}
-          <Modal
-            title={editingId ? "Editar despesa" : "Nova despesa"}
-            open={isModalVisible}
-            onCancel={handleCancel}
-            footer={null}
-            destroyOnClose
-            wrapClassName="qui-sheet"
-            classNames={{ mask: "qui-dialog-mask" }}
-            width="100%"
-            centered={false}
-          >
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSave}
-              initialValues={{
-                status: "Em Aberto",
-                fixa: false,
-                vencimento: moment(),
-              }}
-            >
-              <Form.Item
-                name="descricao"
-                label="Descrição"
-                rules={[{ required: true, message: "Informe a descrição" }]}
-              >
-                <Input placeholder="Ex.: Conta de luz" size="large" />
-              </Form.Item>
-
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item
-                    name="valor"
-                    label="Valor (R$)"
-                    rules={[{ required: true, message: "Informe o valor" }]}
-                  >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      placeholder="0,00"
-                      precision={2}
-                      min={0}
-                      size="large"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="status"
-                    label="Status"
-                    rules={[{ required: true }]}
-                  >
-                    <Select placeholder="Status" size="large">
-                      <Option value="Pago">Pago</Option>
-                      <Option value="Em Aberto">Em Aberto</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item
-                    name="vencimento"
-                    label="Vencimento"
-                    rules={[{ required: true }]}
-                  >
-                    <DatePicker
-                      style={{ width: "100%" }}
-                      format="DD/MM/YYYY"
-                      size="large"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="fixa"
-                    valuePropName="checked"
-                    style={{ marginTop: 29 }}
-                  >
-                    <Checkbox>Despesa Fixa</Checkbox>
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Form.Item style={{ marginBottom: 0, marginTop: "16px" }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  block
-                  size="large"
-                  loading={loading}
-                  style={{ height: "48px", borderRadius: "12px" }}
-                >
-                  {editingId ? "Atualizar" : "Cadastrar"}
-                </Button>
-              </Form.Item>
-            </Form>
-          </Modal>
-        </div>
-      </ConfigProvider>
-    );
-  }
-
-  // ========== RENDER DESKTOP ==========
-  return (
-    <ConfigProvider theme={theme}>
-    <div className="qui-page" style={pageStyle}>
-      <div className="qui-header">
-        <div>
-          <h1>Despesas</h1>
-          <p>Contas a pagar e recorrentes</p>
-        </div>
-        <Button type="primary" onClick={showCreateModal} icon={<PlusOutlined />}>
-          Nova despesa
-        </Button>
-      </div>
-      <div className="qui-stats">
-        <div className="qui-stat">
-          <small>Cadastradas</small>
-          <b>{estatisticas.totalDespesas}</b>
-        </div>
-        <div className="qui-stat">
-          <small>Pendente</small>
-          <b>{formatCurrency(estatisticas.totalValorPendente)}</b>
-        </div>
-        <div className="qui-stat">
-          <small>Pago</small>
-          <b>{formatCurrency(estatisticas.totalValorPago)}</b>
-        </div>
-        <div className="qui-stat">
-          <small>Fixas</small>
-          <b>
-            {estatisticas.despesasFixas}/{estatisticas.totalDespesas}
-          </b>
-        </div>
-      </div>
-      <div className="qui-panel" style={{ padding: 16 }}>
-
-        {/* Filtros */}
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={8}>
-            <Input
-              placeholder="Buscar por descrição"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              prefix={<SearchOutlined />}
-              allowClear
-            />
-          </Col>
-          <Col span={5}>
-            <Select
-              style={{ width: "100%" }}
-              placeholder="Status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-            >
-              <Option value="Todos">Todos os status</Option>
-              <Option value="Pago">Pago</Option>
-              <Option value="Em Aberto">Em Aberto</Option>
-            </Select>
-          </Col>
-          <Col span={5}>
-            <Select
-              style={{ width: "100%" }}
-              placeholder="Tipo"
-              value={tipoFilter}
-              onChange={setTipoFilter}
-            >
-              <Option value="Todos">Todos os tipos</Option>
-              <Option value="Fixa">Fixa</Option>
-              <Option value="Variável">Variável</Option>
-            </Select>
-          </Col>
-          <Col span={6} style={{ textAlign: "right" }}>
-            <CSVLink
-              data={csvData}
-              filename="despesas.csv"
-              className="ant-btn ant-btn-default"
-              style={{ marginRight: 8 }}
-            >
-              <DownloadOutlined /> Exportar CSV
-            </CSVLink>
-          </Col>
-        </Row>
-
-        {/* Tabela de Despesas */}
-        <Table
-          columns={columns}
-          dataSource={filteredDespesas}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total de ${total} despesas`,
-          }}
-        />
+          </>
+        )}
       </div>
 
-      {/* Modal de Cadastro/Edição */}
       <Modal
-        title={editingId ? "Editar despesa" : "Nova despesa"}
-        open={isModalVisible}
-        onCancel={handleCancel}
-        wrapClassName="qui-dialog"
-        classNames={{ mask: "qui-dialog-mask" }}
-        centered
+        open={!!editing}
+        title={editing?.id ? "Editar despesa" : "Nova despesa"}
+        onCancel={() => setEditing(null)}
+        destroyOnClose
         footer={[
-          <Button key="cancel" onClick={handleCancel}>
+          <Button key="cancel" onClick={() => setEditing(null)}>
             Cancelar
           </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={loading}
-            onClick={handleSave}
-          >
-            {editingId ? "Atualizar" : "Cadastrar"}
+          <Button key="ok" type="primary" icon={<CheckOutlined />} loading={saving} onClick={submit}>
+            Salvar
           </Button>,
         ]}
-        width={600}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            status: "Em Aberto",
-            fixa: false,
-            vencimento: moment(),
-          }}
-        >
-          <Form.Item
-            name="descricao"
-            label="Descrição"
-            rules={[
-              {
-                required: true,
-                message: "Por favor, informe a descrição da despesa",
-              },
-            ]}
-          >
-            <Input placeholder="Ex.: Conta de luz" maxLength={100} />
+        <Form form={form} layout="vertical" requiredMark={false} preserve={false} initialValues={initialValues}>
+          <Form.Item name="descricao" label="O que é essa conta?" rules={[{ required: true, whitespace: true, message: "Escreva o nome da conta" }]}>
+            <Input size="large" placeholder="Ex.: Aluguel, Conta de luz" maxLength={100} />
           </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="valor"
-                label="Valor (R$)"
-                rules={[
-                  { required: true, message: "Por favor, informe o valor" },
-                ]}
-              >
-                <InputNumber
-                  style={{ width: "100%" }}
-                  placeholder="0,00"
-                  precision={2}
-                  min={0}
-                  formatter={(value) =>
-                    `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-                  }
-                  parser={(value) =>
-                    value.replace(/R\$\s?|(\.)/g, "").replace(",", ".")
-                  }
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="status"
-                label="Status"
-                rules={[{ required: true, message: "Selecione o status" }]}
-              >
-                <Select placeholder="Selecione o status">
-                  <Option value="Pago">Pago</Option>
-                  <Option value="Em Aberto">Em Aberto</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="vencimento"
-                label="Data de Vencimento"
-                rules={[
-                  { required: true, message: "Selecione a data de vencimento" },
-                ]}
-              >
-                <DatePicker
-                  style={{ width: "100%" }}
-                  format="DD/MM/YYYY"
-                  placeholder="Selecione a data"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="fixa"
-                valuePropName="checked"
-                style={{ marginTop: 29 }}
-              >
-                <Checkbox>Despesa Fixa (recorrente)</Checkbox>
-              </Form.Item>
-            </Col>
-          </Row>
+          {!editing?.id && (
+            <Form.Item noStyle shouldUpdate={(a, b) => a.descricao !== b.descricao}>
+              {() => (
+                <div className="sp-chips" style={{ flexWrap: "wrap", margin: "-12px 0 16px" }}>
+                  {SUGESTOES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`sp-chip${form.getFieldValue("descricao") === s ? " is-active" : ""}`}
+                      style={{ padding: "4px 12px", fontSize: 13 }}
+                      onClick={() => form.setFieldsValue({ descricao: s, fixa: ["Aluguel", "Conta de luz", "Conta de água", "Internet", "Salário", "Contador", "Impostos (DAS)"].includes(s) })}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Form.Item>
+          )}
+          <div className="sp-grid-2" style={{ gap: 12, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+            <Form.Item name="valor" label="Valor" rules={[{ required: true, message: "Informe o valor" }]}>
+              <InputNumber
+                size="large"
+                prefix="R$"
+                min={0}
+                precision={2}
+                decimalSeparator=","
+                placeholder="0,00"
+                inputMode="decimal"
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+            <Form.Item name="vencimento" label="Quando vence?" rules={[{ required: true, message: "Escolha a data" }]}>
+              <DatePicker size="large" format="DD/MM/YYYY" allowClear={false} inputReadOnly={isMobile} style={{ width: "100%" }} />
+            </Form.Item>
+          </div>
+          <Form.Item name="pago" label="Já está paga?">
+            <Radio.Group optionType="button" buttonStyle="solid" style={{ display: "flex" }}>
+              <Radio.Button value={false} style={{ flex: 1, textAlign: "center" }}>
+                Ainda não
+              </Radio.Button>
+              <Radio.Button value={true} style={{ flex: 1, textAlign: "center" }}>
+                Sim, já paguei
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item name="fixa" label="Essa conta se repete todo mês?" style={{ marginBottom: 0 }}>
+            <Radio.Group optionType="button" buttonStyle="solid" style={{ display: "flex" }}>
+              <Radio.Button value={false} style={{ flex: 1, textAlign: "center" }}>
+                Não, só desta vez
+              </Radio.Button>
+              <Radio.Button value={true} style={{ flex: 1, textAlign: "center" }}>
+                Sim, todo mês
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
         </Form>
       </Modal>
-    </div>
-    </ConfigProvider>
+    </SimplePage>
   );
 }
 

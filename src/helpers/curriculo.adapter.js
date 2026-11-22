@@ -13,11 +13,21 @@ export const makeCurriculum = async (personalData) => {
   return response;
 };
 
-export const createdCurriculum = async (content, usingAi, prompt) => {
+export const createdCurriculum = async (content, usingAi, prompt, id) => {
   const response = await axios.post(
     `${urlBase}/fofa-ai/created-curriculo`,
-    { content, usingAi, prompt },
+    { content, usingAi, prompt, id },
     { headers }
   );
   return response;
+};
+
+export const listCurriculums = async (search) => {
+  const { data } = await axios.get(`${urlBase}/fofa-ai/curriculos`, { params: { search }, headers });
+  return Array.isArray(data) ? data : [];
+};
+
+export const getCurriculum = async (id) => {
+  const { data } = await axios.get(`${urlBase}/fofa-ai/curriculos/${id}`, { headers });
+  return data;
 };

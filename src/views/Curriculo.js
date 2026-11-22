@@ -1,2295 +1,862 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AutoComplete, Button, Form, Input, Modal, Skeleton, Spin, Switch, notification } from "antd";
 import {
-  Layout,
-  Typography,
-  Form,
-  Input,
-  Button,
-  Card,
-  Divider,
-  Row,
-  Col,
-  Select,
-  DatePicker,
-  Space,
-  message,
-  Checkbox,
-  Upload,
-  Radio,
-  Steps,
-  Alert,
-  Modal,
-  notification,
-  Tooltip,
-  Spin,
-} from "antd";
-import {
-  UserOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  HomeOutlined,
-  ToolOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  PrinterOutlined,
-  DownloadOutlined,
-  SaveOutlined,
-  CheckCircleOutlined,
-  InfoCircleOutlined,
-  WarningOutlined,
   ArrowLeftOutlined,
   ArrowRightOutlined,
-  EyeOutlined,
+  BookOutlined,
+  CameraOutlined,
+  CheckOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
+  EyeOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
+  PlusOutlined,
+  PrinterOutlined,
+  SearchOutlined,
+  StarOutlined,
+  ToolOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import locale from "antd/es/date-picker/locale/pt_BR";
-import Paragraph from "antd/es/typography/Paragraph";
-import CurriculoAICard from "components/currriculo-ai";
-import { SpaceContext } from "antd/es/space";
-import { createdCurriculum } from "helpers/curriculo.adapter";
+import SimplePage, { Chips, EmptyState, Icon, useIsMobile } from "components/simple/SimplePage";
+import { createdCurriculum, getCurriculum, listCurriculums } from "helpers/curriculo.adapter";
+import CurriculoDocumento, { A4_HEIGHT, A4_WIDTH, MODELOS } from "./curriculo/CurriculoDocumento";
+import { HABILIDADES_COMUNS, PROFISSOES_COMUNS } from "./curriculo/data";
 
-const { Header, Content, Footer } = Layout;
-const { Title, Text } = Typography;
-const { Option } = Select;
-const { TextArea } = Input;
-const { Step } = Steps;
-const { RangePicker } = DatePicker;
-
-// Listas de profissões comuns
-const PROFISSOES_COMUNS = [
-  // Indústria e Construção
-  "Mecânico",
-  "Soldador",
-  "Pedreiro",
-  "Ajudante Geral",
-  "Auxiliar de Produção",
-  "Eletricista",
-  "Operador de Máquinas",
-  "Carpinteiro",
-  "Pintor",
-  "Encanador",
-  "Serralheiro",
-  "Marceneiro",
-  "Marmorista",
-  "Vidraceiro",
-  "Operador de Empilhadeira",
-  "Técnico em Manutenção",
-  "Montador Industrial",
-  "Gesseiro",
-  "Azulejista",
-  "Torneiro Mecânico",
-
-  // Comércio e Serviços
-  "Vendedor",
-  "Caixa de Supermercado",
-  "Repositor de Mercadorias",
-  "Atendente de Loja",
-  "Balconista",
-  "Gerente de Loja",
-  "Estoquista",
-  "Consultor de Vendas",
-  "Operador de Telemarketing",
-  "Recepcionista",
-  "Promotor de Vendas",
-  "Fiscal de Loja",
-  "Atendente de Farmácia",
-  "Visual Merchandiser",
-  "Vendedor Externo",
-
-  // Alimentação
-  "Ajudante de Cozinha",
-  "Cozinheiro(a)",
-  "Chef de Cozinha",
-  "Garçom/Garçonete",
-  "Barista",
-  "Confeiteiro(a)",
-  "Padeiro(a)",
-  "Pizzaiolo(a)",
-  "Açougueiro(a)",
-  "Auxiliar de Confeitaria",
-  "Sushiman",
-  "Chapeiro",
-  "Doceiro(a)",
-  "Bartender",
-
-  // Serviços Domésticos e Limpeza
-  "Zelador",
-  "Auxiliar de Serviços Gerais",
-  "Faxineiro(a)",
-  "Empregado(a) Doméstico(a)",
-  "Diarista",
-  "Jardineiro",
-  "Babá",
-  "Cuidador(a) de Idosos",
-  "Governanta",
-  "Lavador(a) de Roupas",
-  "Passador(a) de Roupas",
-
-  // Transporte e Logística
-  "Motorista",
-  "Entregador",
-  "Motoboy",
-  "Motorista de Aplicativo",
-  "Motorista de Caminhão",
-  "Motorista de Ônibus",
-  "Auxiliar de Logística",
-  "Conferente de Mercadorias",
-  "Despachante",
-  "Ajudante de Carga e Descarga",
-  "Controlador de Tráfego",
-
-  // Beleza e Estética
-  "Cabeleireiro(a)",
-  "Manicure/Pedicure",
-  "Barbeiro",
-  "Esteticista",
-  "Maquiador(a)",
-  "Massagista",
-  "Designer de Sobrancelhas",
-  "Depilador(a)",
-  "Tatuador(a)",
-
-  // Têxtil
-  "Costureiro(a)",
-  "Alfaiate",
-  "Modelista",
-  "Estilista",
-  "Cortador de Tecidos",
-  "Bordador(a)",
-  "Operador de Máquina de Costura Industrial",
-
-  // Saúde
-  "Técnico de Enfermagem",
-  "Auxiliar de Enfermagem",
-  "Enfermeiro(a)",
-  "Farmacêutico(a)",
-  "Fisioterapeuta",
-  "Auxiliar de Dentista",
-  "Socorrista",
-  "Agente Comunitário de Saúde",
-  "Técnico em Radiologia",
-  "Médico(a)",
-
-  // Educação
-  "Professor(a)",
-  "Auxiliar de Classe",
-  "Educador(a) Físico(a)",
-  "Pedagogo(a)",
-  "Bibliotecário(a)",
-  "Monitor(a) de Recreação",
-  "Instrutor(a) de Cursos Livres",
-
-  // Tecnologia
-  "Técnico de Informática",
-  "Desenvolvedor(a) de Software",
-  "Analista de Sistemas",
-  "Designer Gráfico",
-  "Técnico de Redes",
-  "Suporte Técnico",
-  "Web Designer",
-
-  // Segurança
-  "Segurança",
-  "Vigilante",
-  "Porteiro",
-  "Bombeiro Civil",
-  "Agente de Segurança",
-
-  // Setor Público
-  "Servidor Público",
-  "Agente Administrativo",
-  "Auxiliar Administrativo",
-  "Agente de Trânsito",
-  "Carteiro",
-
-  // Outros
-  "Fotógrafo(a)",
-  "Artesão(ã)",
-  "Florista",
-  "Guia Turístico",
-  "Intérprete",
-  "Tradutor(a)",
-  "Agricultor(a)",
-  "Pescador(a)",
-  "Veterinário(a)",
-  "Apicultor(a)",
-  "Astrônomo(a)",
-  "Geólogo(a)",
-  "Piloto",
-
-  // Profissões Liberais
-  "Advogado(a)",
-  "Contador(a)",
-  "Arquiteto(a)",
-  "Engenheiro(a)",
-  "Psicólogo(a)",
-  "Corretor(a) de Imóveis",
-  "Dentista",
-  "Jornalista",
-  "Economista",
-
-  // Finalização com opção genérica
-  "Outro",
-];
-
-// Habilidades por categoria
-const HABILIDADES_COMUNS = {
-  Mecânico: [
-    "Manutenção de motores",
-    "Troca de óleo",
-    "Freios",
-    "Suspensão",
-    "Elétrica automotiva",
-    "Injeção eletrônica",
-    "Alinhamento e balanceamento",
-    "Diagnóstico de problemas",
-  ],
-  Soldador: [
-    "Solda MIG",
-    "Solda TIG",
-    "Solda com eletrodo revestido",
-    "Interpretação de desenhos técnicos",
-    "Corte com plasma",
-    "Solda em aço inoxidável",
-    "Solda em alumínio",
-  ],
-  "Ajudante Geral": [
-    "Carregamento de materiais",
-    "Organização de estoque",
-    "Limpeza de ambientes",
-    "Manutenção básica",
-    "Auxílio em entregas",
-    "Montagem de produtos",
-  ],
-  Pedreiro: [
-    "Assentamento de tijolos",
-    "Reboco",
-    "Construção de alvenaria",
-    "Assentamento de pisos",
-    "Instalações hidráulicas básicas",
-    "Leitura de plantas",
-  ],
-  "Auxiliar de Produção": [
-    "Operação de máquinas",
-    "Controle de qualidade",
-    "Montagem de peças",
-    "Embalagem de produtos",
-    "Organização da linha de produção",
-    "Etiquetagem",
-  ],
-  Motorista: [
-    "Carteira de Habilitação B",
-    "Carteira de Habilitação C",
-    "Carteira de Habilitação D",
-    "Conhecimento de mecânica básica",
-    "Experiência com entregas",
-    "Conhecimento das vias da cidade",
-  ],
-  Eletricista: [
-    "Instalações elétricas",
-    "Manutenção preventiva",
-    "Reparo de equipamentos",
-    "Leitura de diagramas elétricos",
-    "Instalação de dispositivos",
-    "Normas de segurança elétrica",
-  ],
-  "Ajudante de Cozinha": [
-    "Preparação de alimentos",
-    "Higienização de utensílios",
-    "Organização da cozinha",
-    "Cortes de legumes e carnes",
-    "Apoio ao cozinheiro",
-    "Controle de estoque",
-  ],
-  "Operador de Máquinas": [
-    "Torno mecânico",
-    "Fresa",
-    "Empilhadeira",
-    "Retroescavadeira",
-    "Calibração de equipamentos",
-    "Manutenção preventiva básica",
-  ],
-  Outro: [],
-};
-
-// Modelos de currículo
-const MODELOS_CURRICULO = [
-  { key: "simples", nome: "Simples", cor: "#1890ff" },
-  { key: "basico", nome: "Básico", cor: "#52c41a" },
-  { key: "tradicional", nome: "Tradicional", cor: "#faad14" },
-];
-
-// Níveis de escolaridade
 const ESCOLARIDADE = [
   "Ensino Fundamental Incompleto",
   "Ensino Fundamental Completo",
   "Ensino Médio Incompleto",
   "Ensino Médio Completo",
+  "Ensino Médio Cursando",
   "Curso Técnico",
   "Ensino Superior Incompleto",
+  "Ensino Superior Cursando",
   "Ensino Superior Completo",
 ];
 
-// Estilos modernos para UX/UI melhorada
-const modernStyles = {
-  // Layout principal
-  container: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "32px",
-  },
-  background: {
-    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-    minHeight: "100vh",
-  },
-  // Header
-  header: {
-    background: "linear-gradient(135deg, #1890ff 0%, #096dd9 100%)",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    height: 72,
-    padding: "0 32px",
-  },
-  // Cards
-  card: {
-    borderRadius: 16,
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-    border: "none",
-    padding: "32px",
-  },
-  // Inputs
-  input: {
-    fontSize: 16,
-    height: 48,
-    padding: "14px 16px",
-    borderRadius: 12,
-    border: "2px solid #E5E7EB",
-    transition: "all 0.3s ease",
-    color: "#000000",
-    fontWeight: 700,
-  },
-  inputFocus: {
-    borderColor: "#1890ff",
-    boxShadow: "0 0 0 3px rgba(24, 144, 255, 0.1)",
-  },
-  // TextArea
-  textArea: {
-    fontSize: 16,
-    minHeight: 120,
-    padding: "14px 16px",
-    borderRadius: 12,
-    border: "2px solid #E5E7EB",
-    transition: "all 0.3s ease",
-    color: "#000000",
-    fontWeight: 700,
-    lineHeight: 1.6,
-  },
-  // Select
-  select: {
-    fontSize: 16,
-    height: 48,
-    borderRadius: 12,
-    border: "2px solid #E5E7EB",
-    transition: "all 0.3s ease",
-  },
-  // Labels
-  label: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#374151",
-    marginBottom: 8,
-  },
-  // Botões
-  button: {
-    height: 48,
-    fontSize: 16,
-    fontWeight: 600,
-    borderRadius: 10,
-    transition: "all 0.3s ease",
-  },
-  buttonPrimary: {
-    height: 48,
-    fontSize: 16,
-    fontWeight: 600,
-    borderRadius: 10,
-    boxShadow: "0 4px 12px rgba(24, 144, 255, 0.3)",
-    transition: "all 0.3s ease",
-  },
-  // Cards de experiência
-  experienceCard: {
-    background: "#FAFBFC",
-    border: "2px solid #E5E7EB",
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 20,
-    transition: "all 0.3s ease",
-  },
-  experienceCardHover: {
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-    transform: "translateY(-2px)",
-  },
-  // Steps
-  stepsCard: {
-    borderRadius: 16,
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-    border: "none",
-    padding: "24px 32px",
-    background: "#FFFFFF",
-    marginBottom: 24,
-  },
-  // Placeholder
-  placeholder: {
-    color: "#9CA3AF",
-  },
-  // Ícones
-  icon: {
-    color: "#1890ff",
-  },
-  // Espaçamento
-  fieldSpacing: {
-    marginBottom: 20,
-  },
-  sectionSpacing: {
-    marginBottom: 32,
-  },
+const HABILIDADES_GERAIS = [
+  "Pontualidade",
+  "Trabalho em equipe",
+  "Responsabilidade",
+  "Organização",
+  "Proatividade",
+  "Facilidade de aprendizado",
+  "Boa comunicação",
+  "Atendimento ao cliente",
+  "Informática básica",
+];
+
+const EXTRAS = ["CNH categoria B", "CNH categoria A", "Disponibilidade de horário", "Disponível para trabalhar aos fins de semana", "Disponível para viagens", "Moro perto"];
+
+const STEPS = [
+  { title: "Dados pessoais", icon: <UserOutlined /> },
+  { title: "Experiência", icon: <ToolOutlined /> },
+  { title: "Estudos", icon: <BookOutlined /> },
+  { title: "Habilidades", icon: <StarOutlined /> },
+];
+
+const PEDIR_AO_CLIENTE = `📄 *Para fazer seu currículo, me mande:*
+
+*1. Seus dados*
+- Nome completo
+- Telefone
+- Bairro e cidade
+
+*2. Trabalho que procura*
+- Ex.: auxiliar de serviços gerais, vendedora...
+
+*3. Onde já trabalhou*
+- Nome da empresa, cargo, quanto tempo e o que fazia
+
+*4. Estudos*
+- Até que série estudou e o nome da escola
+- Cursos que fez (onde e quando)
+
+*5. O que você sabe fazer bem*
+
+Se quiser, mande também uma foto de rosto com fundo claro. 😊`;
+
+const EMPTY_CV = {
+  modelo: "simples",
+  experiencias: [{}],
+  cursos: [],
+  habilidades: [],
+  semExperiencia: false,
 };
 
-const CriadorCurriculo = () => {
-  // Desabilitar interação durante impressão
-  useEffect(() => {
-    const handleBeforePrint = () => {
-      const elements = document.querySelectorAll(
-        "button, input, select, textarea"
-      );
-      elements.forEach((el) => (el.style.display = "none"));
+const text = (v) => (Array.isArray(v) ? v.filter(Boolean).join(", ") : v ? String(v) : "");
+const digits = (v) => String(v || "").replace(/\D/g, "");
 
-      // Ocultar header, footer e outros elementos que não devem aparecer na impressão
-      document
-        .querySelectorAll(".ant-layout-header, .ant-layout-footer, .ant-card")
-        .forEach((el) => (el.style.display = "none"));
+const formatPhone = (v) => {
+  const d = digits(v).slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
+const yearOf = (v) => {
+  if (!v) return "";
+  const s = String(v);
+  if (/^\d{4}$/.test(s)) return s;
+  const d = dayjs(s);
+  return d.isValid() ? d.format("YYYY") : s;
+};
+
+const clean = (s) => String(s || "").trim();
+
+// Aceita tanto o formato novo quanto currículos antigos (profissão/escolaridade em lista, ano como data).
+const normalizeCv = (raw = {}) => ({
+  ...EMPTY_CV,
+  nome: text(raw.nome),
+  telefone: text(raw.telefone),
+  email: text(raw.email),
+  endereco: text(raw.endereco),
+  profissao: text(raw.profissao),
+  foto: raw.foto || null,
+  objetivo: text(raw.objetivo),
+  semExperiencia: !!raw.semExperiencia,
+  experiencias: Array.isArray(raw.experiencias) && raw.experiencias.length ? raw.experiencias.map((e) => ({ ...e })) : [{}],
+  escolaridade: text(raw.escolaridade),
+  instituicaoEnsino: text(raw.instituicaoEnsino),
+  anoConclusao: yearOf(raw.anoConclusao),
+  cursos: Array.isArray(raw.cursos) ? raw.cursos.filter((c) => c && (c.nome || c.instituicao)) : [],
+  habilidades: Array.isArray(raw.habilidades) ? raw.habilidades.filter(Boolean) : [],
+  informacoesAdicionais: text(raw.informacoesAdicionais),
+  modelo: MODELOS.some((m) => m.key === raw.modelo) ? raw.modelo : "simples",
+});
+
+const finalCv = (values) => {
+  const cv = normalizeCv(values);
+  return {
+    ...cv,
+    nome: clean(cv.nome),
+    experiencias: cv.semExperiencia ? [] : cv.experiencias.map((e) => ({ empresa: clean(e.empresa), cargo: clean(e.cargo), periodo: clean(e.periodo), descricao: clean(e.descricao) })).filter((e) => e.empresa || e.cargo),
+    cursos: cv.cursos.map((c) => ({ nome: clean(c.nome), instituicao: clean(c.instituicao), ano: clean(c.ano) })).filter((c) => c.nome),
+  };
+};
+
+const resizePhoto = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const size = 360;
+        const scale = Math.min(1, size / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result;
     };
+    reader.readAsDataURL(file);
+  });
 
-    const handleAfterPrint = () => {
-      const elements = document.querySelectorAll(
-        "button, input, select, textarea"
-      );
-      elements.forEach((el) => (el.style.display = ""));
+const objetivoPronto = (profissao) =>
+  profissao
+    ? `Busco uma oportunidade como ${profissao}, onde eu possa contribuir com dedicação e responsabilidade, aprender coisas novas e crescer junto com a empresa.`
+    : "Busco uma oportunidade de trabalho onde eu possa contribuir com dedicação e responsabilidade, aprender coisas novas e crescer junto com a empresa.";
 
-      // Restaurar elementos ocultos
-      document
-        .querySelectorAll(".ant-layout-header, .ant-layout-footer, .ant-card")
-        .forEach((el) => (el.style.display = ""));
-    };
+function ChoiceChips({ options, value = [], onToggle }) {
+  return (
+    <div className="sp-chips" style={{ flexWrap: "wrap" }}>
+      {options.map((opt) => {
+        const active = value.includes(opt);
+        return (
+          <button key={opt} type="button" className={`sp-chip${active ? " is-active" : ""}`} style={{ padding: "5px 12px", fontSize: 13 }} onClick={() => onToggle(opt)}>
+            {active ? <CheckOutlined style={{ marginRight: 4 }} /> : <PlusOutlined style={{ marginRight: 4, opacity: 0.6 }} />}
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-    window.addEventListener("beforeprint", handleBeforePrint);
-    window.addEventListener("afterprint", handleAfterPrint);
+function SkillsField({ value = [], onChange, suggestions }) {
+  const [draft, setDraft] = useState("");
+  const toggle = (s) => onChange(value.includes(s) ? value.filter((x) => x !== s) : [...value, s]);
+  const add = () => {
+    const items = draft
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s && !value.includes(s));
+    if (items.length) onChange([...value, ...items]);
+    setDraft("");
+  };
+  const custom = value.filter((v) => !suggestions.includes(v));
+  return (
+    <div className="sp-stack" style={{ gap: 10 }}>
+      <ChoiceChips options={[...custom, ...suggestions]} value={value} onToggle={toggle} />
+      <Input.Search size="large" placeholder="Outra habilidade" enterButton="Adicionar" value={draft} onChange={(e) => setDraft(e.target.value)} onSearch={add} />
+    </div>
+  );
+}
 
-    return () => {
-      window.removeEventListener("beforeprint", handleBeforePrint);
-      window.removeEventListener("afterprint", handleAfterPrint);
-    };
+function PhotoField({ value, onChange }) {
+  const ref = useRef(null);
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return notification.warning({ message: "Escolha uma foto (imagem)." });
+    onChange(await resizePhoto(file));
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: 12,
+          background: "#fafaf9",
+          border: "1px dashed #d6d3d1",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {value ? <img src={value} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <UserOutlined style={{ fontSize: 26, color: "#d6d3d1" }} />}
+      </div>
+      <input ref={ref} type="file" accept="image/*" onChange={pick} style={{ display: "none" }} />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Button icon={<CameraOutlined />} onClick={() => ref.current?.click()}>
+          {value ? "Trocar foto" : "Colocar foto"}
+        </Button>
+        {value && (
+          <Button type="text" danger onClick={() => onChange(null)}>
+            Tirar
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function A4Preview({ cv, docRef, fullSize }) {
+  const boxRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const update = () => setScale(Math.min(1, el.clientWidth / A4_WIDTH));
+    update();
+    const ro = new ResizeObserver(() => window.requestAnimationFrame(update));
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
+  const s = fullSize ? 1 : scale;
+  return (
+    <div ref={boxRef} style={{ width: "100%", overflow: fullSize ? "visible" : "hidden" }}>
+      <div style={{ width: A4_WIDTH * s, margin: "0 auto", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: "1px solid #e7e5e4", overflow: fullSize ? "visible" : "hidden" }}>
+        <div style={{ width: A4_WIDTH, transform: `scale(${s})`, transformOrigin: "top left", height: fullSize ? "auto" : undefined }}>
+          <CurriculoDocumento ref={docRef} cv={cv} />
+        </div>
+        {!fullSize && <ScaleSpacer docRef={docRef} scale={s} />}
+      </div>
+    </div>
+  );
+}
+
+// Compensa a altura perdida pelo transform: scale(), que não encolhe o espaço ocupado.
+function ScaleSpacer({ docRef, scale }) {
+  const [h, setH] = useState(A4_HEIGHT);
+  useLayoutEffect(() => {
+    const el = docRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(() => setH(el.offsetHeight));
+    ro.observe(el);
+    setH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [docRef]);
+  return <div style={{ marginTop: -(h * (1 - scale)) }} />;
+}
+
+export default function Curriculo() {
+  const isMobile = useIsMobile();
   const [form] = Form.useForm();
-  const curriculoRef = useRef(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [fotoCandidata, setFotoCandidata] = useState(null);
-  const [mostrarPreview, setMostrarPreview] = useState(false);
-  const [modeloSelecionado, setModeloSelecionado] = useState("simples");
-  const [profissaoSelecionada, setProfissaoSelecionada] = useState(null);
-  const [aiData, setAiData] = useState();
+  const docRef = useRef(null);
+  const [tab, setTab] = useState("novo");
+  const [step, setStep] = useState(0);
+  const [preview, setPreview] = useState(null);
+  const [savedId, setSavedId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
-  // 2. Add state variables for custom professions
-  const [customProfissao, setCustomProfissao] = useState("");
-  const [customProfissoes, setCustomProfissoes] = useState([]);
+  const [history, setHistory] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
+  const [opening, setOpening] = useState(null);
 
-  // 3. Add function to handle adding custom professions
-  const addCustomProfissao = () => {
-    if (
-      customProfissao &&
-      !PROFISSOES_COMUNS.includes(customProfissao) &&
-      !customProfissoes.includes(customProfissao)
-    ) {
-      setCustomProfissoes([...customProfissoes, customProfissao]);
-      form.setFieldsValue({ profissao: customProfissao });
-      setProfissaoSelecionada(customProfissao);
-      setCustomProfissao("");
+  const profissao = Form.useWatch("profissao", form);
+  const semExperiencia = Form.useWatch("semExperiencia", form);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      setHistory(await listCurriculums());
+    } catch (e) {
+      notification.error({ message: "Não foi possível carregar os currículos feitos" });
+      setHistory([]);
     }
-  };
-
-  const [modalVisible, setModalVisible] = useState(false);
-
-  // Substitua a função reiniciarCriacao pelo código abaixo
-  const reiniciarCriacao = () => {
-    setModalVisible(true);
-  };
-
-  // Adicione estas funções para manipular o modal
-  const handleConfirmReset = () => {
-    // Resetar todos os dados
-    form.resetFields();
-    setExperiencias([{ empresa: "", cargo: "", periodo: "", descricao: "" }]);
-    setCursos([{ nome: "", instituicao: "", ano: "" }]);
-    setHabilidades([]);
-    setFotoCandidata(null);
-    setProfissaoSelecionada(null);
-    setCurrentStep(0);
-    setMostrarPreview(false);
-
-    // Fechar o modal
-    setModalVisible(false);
-  };
-
-  const handleCancelReset = () => {
-    setModalVisible(false);
-  };
-
-  const [experiencias, setExperiencias] = useState([
-    { empresa: "", cargo: "", periodo: "", descricao: "" },
-  ]);
-  const [cursos, setCursos] = useState([
-    { nome: "", instituicao: "", ano: "" },
-  ]);
-  const setPersonalData = (field, value) => {
-    setDadosCurriculo({ ...dadosCurriculo, [field]: value });
-  };
-  const [habilidades, setHabilidades] = useState([]);
-  const [dadosCurriculo, setDadosCurriculo] = useState({});
-  const [carregando, setCarregando] = useState(false);
-
-  // 4. Update the handleProfissaoChange function
-  const handleProfissaoChange = (value) => {
-    setProfissaoSelecionada(value);
-    setHabilidades([]);
-    // Ensure the form field is updated
-    form.setFieldsValue({ profissao: value });
-  };
+    setHistoryLoading(false);
+  }, []);
 
   useEffect(() => {
-    console.log({
-      dadosCurriculo,
-      txt: JSON.stringify({ ...dadosCurriculo, foto: null }),
+    loadHistory();
+  }, [loadHistory]);
+
+  const filteredHistory = useMemo(() => {
+    const term = historySearch.trim().toLowerCase();
+    const num = digits(historySearch);
+    return (history || []).filter(
+      (c) => !term || c.nome.toLowerCase().includes(term) || c.profissao.toLowerCase().includes(term) || (num.length >= 3 && digits(c.telefone).includes(num))
+    );
+  }, [history, historySearch]);
+
+  const skillSuggestions = useMemo(() => {
+    const own = HABILIDADES_COMUNS[profissao] || [];
+    return [...own, ...HABILIDADES_GERAIS.filter((h) => !own.includes(h))];
+  }, [profissao]);
+
+  const startNew = () => {
+    form.resetFields();
+    form.setFieldsValue(EMPTY_CV);
+    setSavedId(null);
+    setPreview(null);
+    setStep(0);
+    setTab("novo");
+  };
+
+  const confirmNew = () => {
+    const nome = form.getFieldValue("nome");
+    if (!nome || preview) return startNew();
+    Modal.confirm({
+      title: "Começar outro currículo?",
+      content: `O que você preencheu de ${nome} será apagado.`,
+      okText: "Sim, começar outro",
+      cancelText: "Voltar",
+      onOk: startNew,
     });
-  }, [dadosCurriculo]);
-
-  // Adicionar nova experiência
-  const adicionarExperiencia = () => {
-    setExperiencias([
-      ...experiencias,
-      { empresa: "", cargo: "", periodo: "", descricao: "" },
-    ]);
   };
 
-  // Remover experiência
-  const removerExperiencia = (index) => {
-    const novasExperiencias = [...experiencias];
-    novasExperiencias.splice(index, 1);
-    setExperiencias(novasExperiencias);
-  };
-
-  // Adicionar novo curso
-  const adicionarCurso = () => {
-    setCursos([...cursos, { nome: "", instituicao: "", ano: "" }]);
-  };
-
-  // Remover curso
-  const removerCurso = (index) => {
-    const novosCursos = [...cursos];
-    novosCursos.splice(index, 1);
-    setCursos(novosCursos);
-  };
-
-  // Atualizar experiência
-  const atualizarExperiencia = (index, campo, valor) => {
-    const novasExperiencias = [...experiencias];
-    novasExperiencias[index][campo] = valor;
-    setExperiencias(novasExperiencias);
-  };
-
-  // Atualizar curso
-  const atualizarCurso = (index, campo, valor) => {
-    const novosCursos = [...cursos];
-    novosCursos[index][campo] = valor;
-    setCursos(novosCursos);
-  };
-
-  // Upload de foto
-  const handleFotoChange = (info) => {
-    console.log({ info });
-    if (info?.file?.originFileObj) {
-      // Converter para base64 para armazenar no estado
-      getBase64(info.file.originFileObj, (imageUrl) => {
-        setFotoCandidata(imageUrl);
-      });
-      message.success("Foto carregada com sucesso!");
-    } else if (info.file.status === "error") {
-      message.error("Erro ao carregar a foto.");
-    }
-  };
-
-  // Converter arquivo para base64
-  const getBase64 = (file, callback) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => callback(reader.result));
-    reader.readAsDataURL(file);
-  };
-
-  // Avançar para próxima etapa
-  const avancarEtapa = async () => {
+  const next = async () => {
     try {
-      const values = await form.validateFields();
-      // Normaliza o valor de escolaridade (converte array para string se necessário)
-      if (values.escolaridade) {
-        if (
-          Array.isArray(values.escolaridade) &&
-          values.escolaridade.length > 0
-        ) {
-          values.escolaridade = values.escolaridade[0];
-        }
-      }
-      setDadosCurriculo({
-        ...dadosCurriculo,
-        ...values,
-      });
-
-      if (currentStep < 3) {
-        setCurrentStep(currentStep + 1);
-      } else {
-        // Adicionar outros dados e mostrar preview
-        setDadosCurriculo((prevState) => ({
-          ...prevState,
-          experiencias,
-          cursos,
-          habilidades,
-          foto: fotoCandidata,
-        }));
-        setAiData({ usingAi: false, prompt: null });
-        setMostrarPreview(true);
-      }
-    } catch (error) {
-      // tratamento de erro
-    }
-  };
-
-  // Voltar para etapa anterior
-  const voltarEtapa = () => {
-    setCurrentStep(currentStep - 1);
-  };
-
-  // Verificar se existem campos obrigatórios vazios na etapa atual
-  const verificarCamposVazios = () => {
-    const fields = form.getFieldsValue();
-
-    if (currentStep === 0) {
-      return (
-        !fields.nome ||
-        !fields.telefone ||
-        !fields.endereco ||
-        !fields.profissao
-      );
-    }
-
-    if (currentStep === 1) {
-      return (
-        !fields.objetivo ||
-        experiencias[0].empresa === "" ||
-        experiencias[0].cargo === ""
-      );
-    }
-
-    if (currentStep === 2) {
-      const escolaridade = fields.escolaridade;
-      // Verifica se é array vazio, string vazia, ou undefined/null
-      if (Array.isArray(escolaridade)) {
-        return (
-          escolaridade.length === 0 ||
-          !escolaridade[0] ||
-          escolaridade[0].trim() === ""
-        );
-      }
-      return (
-        !escolaridade ||
-        (typeof escolaridade === "string" && escolaridade.trim() === "")
-      );
-    }
-
-    return false;
-  };
-
-  // Gerar alerta de campos faltantes
-  const gerarAlertaCamposFaltantes = () => {
-    let camposFaltantes = [];
-
-    if (currentStep === 0) {
-      const fields = form.getFieldsValue();
-      if (!fields.nome) camposFaltantes.push("Nome");
-      if (!fields.telefone) camposFaltantes.push("Telefone");
-      if (!fields.endereco) camposFaltantes.push("Endereço");
-      if (!fields.profissao) camposFaltantes.push("Profissão");
-    }
-
-    if (currentStep === 1) {
-      const fields = form.getFieldsValue();
-      if (!fields.objetivo) camposFaltantes.push("Objetivo");
-      if (experiencias[0].empresa === "") camposFaltantes.push("Empresa");
-      if (experiencias[0].cargo === "") camposFaltantes.push("Cargo");
-    }
-
-    if (currentStep === 2) {
-      const fields = form.getFieldsValue();
-      const escolaridade = fields.escolaridade;
-      // Verifica se é array vazio, string vazia, ou undefined/null
-      let isEmpty = false;
-      if (Array.isArray(escolaridade)) {
-        isEmpty =
-          escolaridade.length === 0 ||
-          !escolaridade[0] ||
-          escolaridade[0].trim() === "";
-      } else {
-        isEmpty =
-          !escolaridade ||
-          (typeof escolaridade === "string" && escolaridade.trim() === "");
-      }
-      if (isEmpty) camposFaltantes.push("Escolaridade");
-    }
-
-    if (camposFaltantes.length > 0) {
-      return (
-        <Alert
-          message="Campos Obrigatórios"
-          description={`Preencha os seguintes campos: ${camposFaltantes.join(
-            ", "
-          )}`}
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      );
-    }
-
-    return null;
-  };
-
-  // Imprimir currículo
-  const imprimirCurriculo = () => {
-    if (!curriculoRef.current) {
-      message.error("Não foi possível gerar o PDF. Tente novamente.");
+      await form.validateFields();
+    } catch (e) {
+      notification.warning({ message: "Falta preencher algo", description: "Os campos em vermelho são obrigatórios." });
       return;
     }
-
-    setCarregando(true);
-
-    const conteudo = curriculoRef.current;
-
-    // Adicionar uma pequena espera para garantir que o conteúdo seja renderizado
-    setTimeout(async () => {
-      html2canvas(conteudo, {
-        scale: 2, // Melhor resolução
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-      })
-        .then(async (canvas) => {
-          const imgData = canvas.toDataURL("image/png");
-          const pdf = new jsPDF("p", "mm", "a4");
-          const larguraPDF = pdf.internal.pageSize.getWidth();
-          const alturaPDF = pdf.internal.pageSize.getHeight();
-
-          pdf.addImage(imgData, "PNG", 0, 0, larguraPDF, alturaPDF);
-          pdf.save(
-            `curriculo_${
-              dadosCurriculo.nome?.replace(/\s+/g, "_") || "sem_nome"
-            }.pdf`
-          );
-
-          await createdCurriculum(
-            JSON.stringify(dadosCurriculo),
-            aiData?.usingAi,
-            aiData?.prompt
-          );
-
-          setCarregando(false);
-          notification.success({
-            message: "Currículo Salvo!",
-            description: "O currículo foi salvo com sucesso no formato PDF.",
-            icon: <CheckCircleOutlined style={{ color: "#52c41a" }} />,
-          });
-        })
-        .catch((error) => {
-          console.error("Erro ao gerar PDF:", error);
-          setCarregando(false);
-          message.error("Erro ao gerar o PDF. Tente novamente.");
-        });
-    }, 500);
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+      window.scrollTo({ top: 0 });
+      document.querySelector(".sp-mobile-body")?.scrollTo({ top: 0 });
+    } else {
+      setPreview(finalCv(form.getFieldsValue(true)));
+    }
   };
 
-  // Renderizar o conteúdo de cada etapa
-  const renderizarEtapa = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <Card
-            title="Dados Pessoais"
-            bordered={false}
-            style={modernStyles.card}
+  const openSaved = async (item, mode) => {
+    setOpening(item.id);
+    try {
+      const res = await getCurriculum(item.id);
+      const cv = normalizeCv(res.data);
+      form.resetFields();
+      form.setFieldsValue(cv);
+      setSavedId(item.id);
+      setTab("novo");
+      if (mode === "edit") {
+        setPreview(null);
+        setStep(0);
+      } else {
+        setPreview(finalCv(cv));
+      }
+    } catch (e) {
+      notification.error({ message: "Não foi possível abrir esse currículo" });
+    }
+    setOpening(null);
+  };
+
+  const buildPdf = async () => {
+    setExporting(true);
+    await new Promise((r) => setTimeout(r, 120));
+    try {
+      const canvas = await html2canvas(docRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const sliceH = Math.floor((canvas.width * pageH) / pageW);
+      for (let y = 0, i = 0; y < canvas.height; y += sliceH, i += 1) {
+        const h = Math.min(sliceH, canvas.height - y);
+        if (h < 40 && i > 0) break;
+        const part = document.createElement("canvas");
+        part.width = canvas.width;
+        part.height = h;
+        part.getContext("2d").drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(part.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageW, (h * pageW) / canvas.width);
+      }
+      return pdf;
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const save = async () => {
+    try {
+      const res = await createdCurriculum(JSON.stringify(preview), false, null, savedId || undefined);
+      if (res?.data?.id) setSavedId(res.data.id);
+      loadHistory();
+    } catch (e) {
+      // O PDF já foi gerado; não salvar no histórico não deve travar o atendimento.
+    }
+  };
+
+  const fileName = `curriculo_${(preview?.nome || "sem_nome").replace(/\s+/g, "_")}.pdf`;
+
+  const download = async () => {
+    try {
+      const pdf = await buildPdf();
+      pdf.save(fileName);
+      notification.success({ message: "PDF baixado", description: fileName });
+      save();
+    } catch (e) {
+      notification.error({ message: "Não foi possível gerar o PDF", description: "Tente de novo." });
+    }
+  };
+
+  const print = async () => {
+    const win = window.open("", "_blank");
+    try {
+      const pdf = await buildPdf();
+      pdf.autoPrint();
+      const url = pdf.output("bloburl");
+      if (win) win.location.href = url;
+      else pdf.save(fileName);
+      save();
+    } catch (e) {
+      win?.close();
+      notification.error({ message: "Não foi possível preparar a impressão", description: "Tente de novo." });
+    }
+  };
+
+  const copyAsk = () =>
+    navigator.clipboard
+      .writeText(PEDIR_AO_CLIENTE)
+      .then(() => notification.success({ message: "Mensagem copiada", description: "Cole no WhatsApp do cliente." }))
+      .catch(() => notification.error({ message: "Não foi possível copiar" }));
+
+  const toggleExtra = (extra) => {
+    const current = form.getFieldValue("informacoesAdicionais") || "";
+    const lines = current.split("\n").map((l) => l.trim()).filter(Boolean);
+    const nextLines = lines.includes(extra) ? lines.filter((l) => l !== extra) : [...lines, extra];
+    form.setFieldsValue({ informacoesAdicionais: nextLines.join("\n") });
+  };
+
+  const extrasWatch = Form.useWatch("informacoesAdicionais", form) || "";
+
+  const renderStep = () => {
+    if (step === 0)
+      return (
+        <>
+          <Form.Item name="nome" label="Nome completo" rules={[{ required: true, whitespace: true, message: "Escreva o nome completo" }]}>
+            <Input size="large" placeholder="Ex.: Maria Aparecida da Silva" autoComplete="off" />
+          </Form.Item>
+          <div className="sp-grid-2" style={{ gap: 12, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+            <Form.Item name="telefone" label="Telefone" normalize={formatPhone} rules={[{ required: true, message: "Coloque um telefone para a empresa ligar" }]}>
+              <Input size="large" placeholder="(27) 99999-9999" inputMode="tel" />
+            </Form.Item>
+            <Form.Item name="email" label="E-mail (se tiver)">
+              <Input size="large" placeholder="nome@email.com" inputMode="email" />
+            </Form.Item>
+          </div>
+          <Form.Item name="endereco" label="Onde mora" extra="Bairro e cidade já bastam. Não precisa do número da casa." rules={[{ required: true, whitespace: true, message: "Informe pelo menos bairro e cidade" }]}>
+            <Input size="large" placeholder="Ex.: Barra do Sahy, Aracruz - ES" />
+          </Form.Item>
+          <Form.Item name="profissao" label="Que trabalho procura?" extra="Escolha da lista ou escreva do seu jeito" rules={[{ required: true, whitespace: true, message: "Diga o trabalho que procura" }]}>
+            <AutoComplete
+              size="large"
+              options={PROFISSOES_COMUNS.map((p) => ({ value: p }))}
+              filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
+              placeholder="Ex.: Auxiliar de serviços gerais"
+            />
+          </Form.Item>
+          <Form.Item name="foto" label="Foto (opcional)" extra="De rosto, com fundo claro." style={{ marginBottom: 0 }}>
+            <PhotoField />
+          </Form.Item>
+        </>
+      );
+
+    if (step === 1)
+      return (
+        <>
+          <Form.Item
+            name="objetivo"
+            label={
+              <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                Objetivo
+                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => form.setFieldsValue({ objetivo: objetivoPronto(profissao) })}>
+                  Usar texto pronto
+                </Button>
+              </span>
+            }
+            rules={[{ required: true, whitespace: true, message: "Escreva o objetivo ou use o texto pronto" }]}
           >
-            <Form.Item
-              name="nome"
-              label="Nome Completo"
-              rules={[{ required: true, message: "Informe o nome completo" }]}
-              style={modernStyles.fieldSpacing}
-            >
-              <Input
-                placeholder="Ex: João da Silva"
-                prefix={<UserOutlined style={modernStyles.icon} />}
-                onChange={(e) => setPersonalData("nome", e.target.value)}
-                style={modernStyles.input}
-                styles={{
-                  input: {
-                    fontSize: 16,
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              />
+            <Input.TextArea rows={3} placeholder="O que a pessoa busca. Toque em “Usar texto pronto” se não souber o que escrever." />
+          </Form.Item>
+
+          <div className="sp-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, marginBottom: 16, background: "#fafaf9" }}>
+            <Form.Item name="semExperiencia" valuePropName="checked" noStyle>
+              <Switch />
             </Form.Item>
+            <span style={{ fontSize: 14 }}>
+              <b>É o primeiro emprego</b>
+              <br />
+              <span style={{ color: "#78716c" }}>Ainda não trabalhou com carteira ou em empresa</span>
+            </span>
+          </div>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="telefone"
-                  label="Telefone"
-                  rules={[{ required: true, message: "Informe o telefone" }]}
-                  style={modernStyles.fieldSpacing}
-                >
-                  <Input
-                    placeholder="Ex: (27) 99999-9999"
-                    prefix={<PhoneOutlined style={modernStyles.icon} />}
-                    onChange={(e) =>
-                      setPersonalData("telefone", e.target.value)
-                    }
-                    style={modernStyles.input}
-                    styles={{
-                      input: {
-                        fontSize: 16,
-                        color: "#1F2937",
-                      },
-                    }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="email"
-                  label="E-mail"
-                  style={modernStyles.fieldSpacing}
-                >
-                  <Input
-                    placeholder="Ex: joao@email.com"
-                    prefix={<MailOutlined style={modernStyles.icon} />}
-                    onChannge={(e) => setPersonalData("email", e.target.value)}
-                    style={modernStyles.input}
-                    styles={{
-                      input: {
-                        fontSize: 16,
-                        color: "#1F2937",
-                      },
-                    }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              name="endereco"
-              label="Endereço"
-              rules={[{ required: true, message: "Informe o endereço" }]}
-              style={modernStyles.fieldSpacing}
-            >
-              <Input
-                placeholder="Ex: Rua das Flores, 123, Bairro - Cidade/UF"
-                prefix={<HomeOutlined style={modernStyles.icon} />}
-                onChange={(e) => setPersonalData("endereco", e.target.value)}
-                style={modernStyles.input}
-                styles={{
-                  input: {
-                    fontSize: 16,
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="profissao"
-              label="Profissão Principal"
-              rules={[
-                { required: true, message: "Selecione ou digite a profissão" },
-              ]}
-              style={modernStyles.fieldSpacing}
-            >
-              <Select
-                placeholder="Selecione ou digite a profissão"
-                onChange={handleProfissaoChange}
-                showSearch
-                allowClear
-                optionFilterProp="children"
-                mode="tags"
-                maxTagCount={10}
-                maxTagPlaceholder={(omittedValues) =>
-                  `+${omittedValues.length}`
-                }
-                tokenSeparators={[","]}
-                style={modernStyles.select}
-                styles={{
-                  selector: {
-                    height: 48,
-                    fontSize: 16,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    border: "2px solid #E5E7EB",
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              >
-                {PROFISSOES_COMUNS.map((profissao) => (
-                  <Option key={profissao} value={profissao}>
-                    {profissao}
-                  </Option>
-                ))}
-              </Select>
-              <Text type="secondary">
-                Selecione uma opção da lista ou digite sua própria profissão
-              </Text>
-            </Form.Item>
-
-            <Form.Item name="foto" label="Foto (Opcional)">
-              <Upload
-                name="avatar"
-                listType="picture-card"
-                className="avatar-uploader"
-                showUploadList={false}
-                action="https://www.mocky.io/v2/5cc8019d300000980a055e76"
-                onChange={handleFotoChange}
-                beforeUpload={(file) => {
-                  const isJpgOrPng =
-                    file.type === "image/jpeg" || file.type === "image/png";
-                  if (!isJpgOrPng) {
-                    message.error("Você só pode enviar arquivos JPG/PNG!");
-                  }
-                  const isLt2M = file.size / 1024 / 1024 < 2;
-                  if (!isLt2M) {
-                    message.error("A imagem deve ser menor que 2MB!");
-                  }
-                  return isJpgOrPng && isLt2M;
-                }}
-              >
-                {fotoCandidata ? (
-                  <img
-                    src={fotoCandidata}
-                    alt="Foto"
-                    style={{ width: "100%" }}
-                  />
-                ) : (
-                  <div>
-                    <PlusOutlined />
-                    <div style={{ marginTop: 8 }}>Adicionar Foto</div>
-                  </div>
-                )}
-              </Upload>
-              <Text type="secondary">
-                Foto 3x4 ou similar, fundo neutro. Máximo 2MB.
-              </Text>
-            </Form.Item>
-          </Card>
-        );
-
-      case 1:
-        return (
-          <Card
-            title="Experiência Profissional"
-            bordered={false}
-            style={modernStyles.card}
-          >
-            <Form.Item
-              name="objetivo"
-              label="Objetivo Profissional"
-              rules={[
-                { required: true, message: "Informe o objetivo profissional" },
-              ]}
-              style={modernStyles.fieldSpacing}
-            >
-              <TextArea
-                onChange={(e) => setPersonalData("objetivo", e.target.value)}
-                rows={4}
-                placeholder="Ex: Procuro oportunidade como Mecânico onde possa aplicar minha experiência em manutenção de veículos..."
-                style={modernStyles.textArea}
-                styles={{
-                  textarea: {
-                    fontSize: 16,
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              />
-            </Form.Item>
-
-            <Divider orientation="left">Experiências</Divider>
-
-            {experiencias.map((exp, index) => (
-              <div
-                key={index}
-                style={modernStyles.experienceCard}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow =
-                    modernStyles.experienceCardHover.boxShadow;
-                  e.currentTarget.style.transform =
-                    modernStyles.experienceCardHover.transform;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "none";
-                }}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Empresa"
-                      required={index === 0}
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <Input
-                        value={exp.empresa}
-                        onChange={(e) =>
-                          atualizarExperiencia(index, "empresa", e.target.value)
-                        }
-                        placeholder="Nome da empresa"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Cargo"
-                      required={index === 0}
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <Input
-                        value={exp.cargo}
-                        onChange={(e) =>
-                          atualizarExperiencia(index, "cargo", e.target.value)
-                        }
-                        placeholder="Seu cargo"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Período"
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <Input
-                        value={exp.periodo}
-                        onChange={(e) =>
-                          atualizarExperiencia(index, "periodo", e.target.value)
-                        }
-                        placeholder="Ex: 2018 - 2021 ou 2018 - Atual"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Descrição das Atividades"
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <TextArea
-                        rows={3}
-                        value={exp.descricao}
-                        onChange={(e) =>
-                          atualizarExperiencia(
-                            index,
-                            "descricao",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Descreva suas principais atividades"
-                        style={modernStyles.textArea}
-                        styles={{
-                          textarea: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                {index > 0 && (
-                  <Button
-                    type="text"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => removerExperiencia(index)}
-                  >
-                    Remover
+          {!semExperiencia && (
+            <Form.List name="experiencias">
+              {(fields, { add, remove }) => (
+                <div className="sp-stack" style={{ gap: 12 }}>
+                  {fields.map((field, i) => (
+                    <div key={field.key} className="sp-card" style={{ padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <b>{i === 0 ? "Último trabalho" : `Trabalho ${i + 1}`}</b>
+                        {fields.length > 1 && (
+                          <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => remove(field.name)}>
+                            Tirar
+                          </Button>
+                        )}
+                      </div>
+                      <div className="sp-grid-2" style={{ gap: 12, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+                        <Form.Item name={[field.name, "empresa"]} label="Empresa" style={{ marginBottom: 12 }}>
+                          <Input size="large" placeholder="Nome da empresa" />
+                        </Form.Item>
+                        <Form.Item name={[field.name, "cargo"]} label="Cargo / função" style={{ marginBottom: 12 }}>
+                          <Input size="large" placeholder="Ex.: Auxiliar de limpeza" />
+                        </Form.Item>
+                      </div>
+                      <Form.Item name={[field.name, "periodo"]} label="Quanto tempo" style={{ marginBottom: 12 }}>
+                        <Input size="large" placeholder="Ex.: 2021 a 2023, ou 2 anos" />
+                      </Form.Item>
+                      <Form.Item name={[field.name, "descricao"]} label="O que fazia (opcional)" style={{ marginBottom: 0 }}>
+                        <Input.TextArea rows={2} placeholder="Ex.: limpeza dos setores, organização do estoque..." />
+                      </Form.Item>
+                    </div>
+                  ))}
+                  <Button type="dashed" size="large" icon={<PlusOutlined />} onClick={() => add({})} block>
+                    Adicionar outro trabalho
                   </Button>
-                )}
-              </div>
-            ))}
+                </div>
+              )}
+            </Form.List>
+          )}
+        </>
+      );
 
-            <Button
-              type="dashed"
-              onClick={adicionarExperiencia}
-              block
-              icon={<PlusOutlined />}
-              style={modernStyles.button}
-            >
-              Adicionar Experiência
-            </Button>
-          </Card>
-        );
+    if (step === 2)
+      return (
+        <>
+          <Form.Item name="escolaridade" label="Até onde estudou?" rules={[{ required: true, whitespace: true, message: "Escolha a escolaridade" }]}>
+            <AutoComplete size="large" options={ESCOLARIDADE.map((e) => ({ value: e }))} placeholder="Toque para escolher" filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())} />
+          </Form.Item>
+          <div className="sp-grid-2" style={{ gap: 12, gridTemplateColumns: isMobile ? "1fr" : "1fr 160px" }}>
+            <Form.Item name="instituicaoEnsino" label="Nome da escola (opcional)">
+              <Input size="large" placeholder="Ex.: EEEFM Primo Bitti" />
+            </Form.Item>
+            <Form.Item name="anoConclusao" label="Ano que terminou">
+              <Input size="large" placeholder="Ex.: 2019" inputMode="numeric" maxLength={4} />
+            </Form.Item>
+          </div>
 
-      case 2:
-        return (
-          <Card
-            title="Formação e Qualificações"
-            bordered={false}
-            style={modernStyles.card}
-          >
-            <Form.Item
-              name="escolaridade"
-              label="Escolaridade"
-              rules={[
-                {
-                  required: true,
-                  message: "Selecione ou digite a escolaridade",
-                  validator: (_, value) => {
-                    // Valida se é array vazio, string vazia, ou undefined/null
-                    if (Array.isArray(value)) {
-                      if (
-                        value.length === 0 ||
-                        !value[0] ||
-                        value[0].trim() === ""
-                      ) {
-                        return Promise.reject(
-                          new Error("Selecione ou digite a escolaridade")
-                        );
-                      }
-                    } else if (
-                      !value ||
-                      (typeof value === "string" && value.trim() === "")
-                    ) {
-                      return Promise.reject(
-                        new Error("Selecione ou digite a escolaridade")
-                      );
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-              style={modernStyles.fieldSpacing}
-            >
-              <Select
-                placeholder="Selecione ou digite sua escolaridade"
-                onChange={(value) => {
-                  // Se for array, pega o primeiro elemento ou converte para string
-                  const escolaridadeValue =
-                    Array.isArray(value) && value.length > 0
-                      ? value[0]
-                      : typeof value === "string"
-                      ? value
-                      : "";
-                  setPersonalData("escolaridade", escolaridadeValue);
-                  // Atualiza o form com o valor correto
-                  form.setFieldsValue({ escolaridade: value });
-                }}
-                showSearch
-                allowClear
-                optionFilterProp="children"
-                mode="tags"
-                maxTagCount={10}
-                maxTagPlaceholder={(omittedValues) =>
-                  `+${omittedValues.length}`
-                }
-                tokenSeparators={[","]}
-                style={modernStyles.select}
-                styles={{
-                  selector: {
-                    height: 48,
-                    fontSize: 16,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    border: "2px solid #E5E7EB",
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              >
-                {ESCOLARIDADE.map((nivel) => (
-                  <Option key={nivel} value={nivel}>
-                    {nivel}
-                  </Option>
+          <div style={{ fontWeight: 600, margin: "4px 0 10px" }}>Cursos (opcional)</div>
+          <Form.List name="cursos">
+            {(fields, { add, remove }) => (
+              <div className="sp-stack" style={{ gap: 12 }}>
+                {fields.map((field) => (
+                  <div key={field.key} className="sp-card" style={{ padding: 14 }}>
+                    <div style={{ display: "grid", gap: 12, gridTemplateColumns: isMobile ? "1fr" : "2fr 1.5fr 90px auto", alignItems: "end" }}>
+                      <Form.Item name={[field.name, "nome"]} label="Curso" style={{ marginBottom: 0 }}>
+                        <Input size="large" placeholder="Ex.: Informática básica" />
+                      </Form.Item>
+                      <Form.Item name={[field.name, "instituicao"]} label="Onde fez" style={{ marginBottom: 0 }}>
+                        <Input size="large" placeholder="Ex.: SENAI" />
+                      </Form.Item>
+                      <Form.Item name={[field.name, "ano"]} label="Ano" style={{ marginBottom: 0 }}>
+                        <Input size="large" inputMode="numeric" maxLength={4} />
+                      </Form.Item>
+                      <Button danger type="text" icon={<DeleteOutlined />} onClick={() => remove(field.name)} size="large">
+                        {isMobile && "Tirar curso"}
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </Select>
-              <Text type="secondary">
-                Selecione uma opção da lista ou digite sua própria escolaridade
-              </Text>
-            </Form.Item>
-
-            <Form.Item
-              name="instituicaoEnsino"
-              label="Instituição de Ensino"
-              style={modernStyles.fieldSpacing}
-            >
-              <Input
-                placeholder="Ex: E.E. Joaquim da Silva"
-                style={modernStyles.input}
-                styles={{
-                  input: {
-                    fontSize: 16,
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="anoConclusao"
-              label="Ano de Conclusão"
-              style={modernStyles.fieldSpacing}
-            >
-              <DatePicker
-                picker="year"
-                locale={locale}
-                placeholder="Selecione o ano"
-                style={{ width: "100%", ...modernStyles.input }}
-              />
-            </Form.Item>
-
-            <Divider orientation="left">Cursos e Certificações</Divider>
-
-            {cursos.map((curso, index) => (
-              <div
-                key={index}
-                style={modernStyles.experienceCard}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow =
-                    modernStyles.experienceCardHover.boxShadow;
-                  e.currentTarget.style.transform =
-                    modernStyles.experienceCardHover.transform;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "none";
-                }}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Nome do Curso"
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <Input
-                        value={curso.nome}
-                        onChange={(e) =>
-                          atualizarCurso(index, "nome", e.target.value)
-                        }
-                        placeholder="Ex: Mecânica Básica"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Instituição"
-                      style={modernStyles.fieldSpacing}
-                    >
-                      <Input
-                        value={curso.instituicao}
-                        onChange={(e) =>
-                          atualizarCurso(index, "instituicao", e.target.value)
-                        }
-                        placeholder="Ex: SENAI"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col span={12}>
-                    <Form.Item label="Ano" style={modernStyles.fieldSpacing}>
-                      <Input
-                        value={curso.ano}
-                        onChange={(e) =>
-                          atualizarCurso(index, "ano", e.target.value)
-                        }
-                        placeholder="Ex: 2020"
-                        style={modernStyles.input}
-                        styles={{
-                          input: {
-                            fontSize: 16,
-                            color: "#1F2937",
-                          },
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => removerCurso(index)}
-                >
-                  Remover
+                <Button type="dashed" size="large" icon={<PlusOutlined />} onClick={() => add({})} block>
+                  Adicionar curso
                 </Button>
               </div>
-            ))}
+            )}
+          </Form.List>
+        </>
+      );
 
-            <Button
-              type="dashed"
-              onClick={adicionarCurso}
-              block
-              icon={<PlusOutlined />}
-              style={modernStyles.button}
-            >
-              Adicionar Curso
-            </Button>
-          </Card>
-        );
-
-      case 3:
-        return (
-          <Card
-            title="Habilidades e Informações Adicionais"
-            bordered={false}
-            style={modernStyles.card}
-          >
-            <Form.Item
-              name="habilidades"
-              label="Habilidades e Competências"
-              style={modernStyles.fieldSpacing}
-            >
-              <Select
-                mode="tags"
-                placeholder="Selecione ou digite suas habilidades"
-                onChange={(values) => {
-                  setHabilidades(values);
-                  // Ensure form field is updated
-                  form.setFieldsValue({ habilidades: values });
-                }}
-                value={habilidades}
-                style={{ width: "100%", ...modernStyles.select }}
-                allowClear
-                maxTagCount={10}
-                maxTagPlaceholder={(omittedValues) =>
-                  `+${omittedValues.length}`
-                }
-                tokenSeparators={[","]}
-                styles={{
-                  selector: {
-                    minHeight: 48,
-                    fontSize: 16,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    border: "2px solid #E5E7EB",
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              >
-                {profissaoSelecionada &&
-                  HABILIDADES_COMUNS[profissaoSelecionada]?.map(
-                    (habilidade) => (
-                      <Option key={habilidade} value={habilidade}>
-                        {habilidade}
-                      </Option>
-                    )
-                  )}
-              </Select>
-              <Text type="secondary">
-                Selecione habilidades sugeridas ou digite suas próprias
-                habilidades separadas por vírgula
-              </Text>
-            </Form.Item>
-
-            <Form.Item
-              name="informacoesAdicionais"
-              label="Informações Adicionais"
-              style={modernStyles.fieldSpacing}
-            >
-              <TextArea
-                rows={4}
-                placeholder="Informações complementares como disponibilidade de horário, CNH, etc."
-                style={modernStyles.textArea}
-                styles={{
-                  textarea: {
-                    fontSize: 16,
-                    color: "#000000",
-                    fontWeight: 700,
-                  },
-                }}
-              />
-            </Form.Item>
-
-            <Divider orientation="left">Modelo do Currículo</Divider>
-
-            <Form.Item name="modelo">
-              <Radio.Group
-                onChange={(e) => setModeloSelecionado(e.target.value)}
-                value={modeloSelecionado}
-              >
-                <Space direction="vertical">
-                  {MODELOS_CURRICULO.map((modelo) => (
-                    <Radio key={modelo.key} value={modelo.key}>
-                      <Space>
-                        <div
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: "50%",
-                            background: modelo.cor,
-                          }}
-                        />
-                        {modelo.nome}
-                      </Space>
-                    </Radio>
-                  ))}
-                </Space>
-              </Radio.Group>
-            </Form.Item>
-          </Card>
-        );
-
-      default:
-        return null;
-    }
+    return (
+      <>
+        <Form.Item name="habilidades" label="O que a pessoa sabe fazer bem?" extra="Toque para marcar. Pode marcar várias.">
+          <SkillsField suggestions={skillSuggestions} />
+        </Form.Item>
+        <Form.Item label="Informações adicionais (opcional)" style={{ marginBottom: 8 }}>
+          <ChoiceChips options={EXTRAS} value={extrasWatch.split("\n").map((l) => l.trim())} onToggle={toggleExtra} />
+        </Form.Item>
+        <Form.Item name="informacoesAdicionais">
+          <Input.TextArea rows={3} placeholder="Ex.: CNH B, disponibilidade de horário..." />
+        </Form.Item>
+        <Form.Item name="modelo" label="Escolha o modelo" style={{ marginBottom: 0 }}>
+          <ModelPicker />
+        </Form.Item>
+      </>
+    );
   };
 
-  const makeWithAi = (data) => {
-    setDadosCurriculo(data);
-    setMostrarPreview(true);
-  };
-
-  // Renderizar preview do currículo
-  const renderizarPreviewCurriculo = () => {
-    // Encontrar modelo selecionado
-    const modelo =
-      MODELOS_CURRICULO.find((m) => m.key === modeloSelecionado) ||
-      MODELOS_CURRICULO[0];
-
-    switch (modeloSelecionado) {
-      case "simples":
-        return (
-          <div
-            ref={curriculoRef}
+  const progress = (
+    <div className="sp-card" style={{ padding: "14px 16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <span style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon size={30}>{STEPS[step].icon}</Icon>
+          {STEPS[step].title}
+        </span>
+        <span style={{ color: "#78716c", fontSize: 13, whiteSpace: "nowrap" }}>
+          Passo {step + 1} de {STEPS.length}
+        </span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${STEPS.length}, 1fr)`, gap: 6 }}>
+        {STEPS.map((s, i) => (
+          <button
+            key={s.title}
+            type="button"
+            aria-label={s.title}
+            onClick={() => i < step && setStep(i)}
             style={{
-              padding: 40,
-              background: "white",
-              border: "1px solid #d9d9d9",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-              width: "210mm",
-              minHeight: "297mm",
-              margin: "0 auto",
-              fontFamily: "Arial, sans-serif",
+              height: 6,
+              border: 0,
+              padding: 0,
+              borderRadius: 99,
+              background: i <= step ? "var(--sp-primary)" : "#e7e5e4",
+              cursor: i < step ? "pointer" : "default",
             }}
-          >
-            <Row gutter={16}>
-              <Col span={fotoCandidata ? 18 : 24}>
-                <Title level={2} style={{ marginBottom: 5, color: modelo.cor }}>
-                  {dadosCurriculo.nome?.toUpperCase()}
-                </Title>
-                <Title level={4} style={{ marginTop: 0, fontWeight: "normal" }}>
-                  {dadosCurriculo.profissao}
-                </Title>
+          />
+        ))}
+      </div>
+    </div>
+  );
 
-                <div style={{ marginBottom: 10 }}>
-                  <Text>
-                    <HomeOutlined /> {dadosCurriculo.endereco}
-                  </Text>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <Text>
-                    <PhoneOutlined /> {dadosCurriculo.telefone}
-                  </Text>
-                  {dadosCurriculo.email && (
-                    <Text style={{ marginLeft: 20 }}>
-                      <MailOutlined /> {dadosCurriculo.email}
-                    </Text>
-                  )}
-                </div>
-              </Col>
-
-              {fotoCandidata && (
-                <Col span={6} style={{ textAlign: "right" }}>
-                  <img
-                    src={fotoCandidata}
-                    alt="Foto"
-                    style={{
-                      width: 120,
-                      height: 120,
-                      objectFit: "cover",
-                      border: `2px solid ${modelo.cor}`,
-                      borderRadius: 4,
-                    }}
-                  />
-                </Col>
-              )}
-            </Row>
-
-            <Divider style={{ background: modelo.cor }} />
-
-            <Title level={4} style={{ color: modelo.cor }}>
-              <UserOutlined /> OBJETIVO
-            </Title>
-            <Paragraph>{dadosCurriculo.objetivo}</Paragraph>
-
-            <Title level={4} style={{ color: modelo.cor, marginTop: 25 }}>
-              <BookOutlined /> FORMAÇÃO ACADÊMICA
-            </Title>
-            <Paragraph>
-              <strong>{dadosCurriculo.escolaridade}</strong>
-              {dadosCurriculo.instituicaoEnsino && (
-                <div>Instituição: {dadosCurriculo.instituicaoEnsino}</div>
-              )}
-              {dadosCurriculo.anoConclusao && (
-                <div>
-                  Conclusão: {dayjs(dadosCurriculo.anoConclusao).format("YYYY")}
-                </div>
-              )}
-            </Paragraph>
-
-            <Title level={4} style={{ color: modelo.cor, marginTop: 25 }}>
-              <ToolOutlined /> EXPERIÊNCIA PROFISSIONAL
-            </Title>
-            {dadosCurriculo.experiencias?.map((exp, index) => (
-              <div key={index} style={{ marginBottom: 15 }}>
-                <Text strong>{exp.cargo}</Text>
-                <div>
-                  {exp.empresa} {exp.periodo && `(${exp.periodo})`}
-                </div>
-                {exp.descricao && <div>{exp.descricao}</div>}
-              </div>
-            ))}
-
-            {dadosCurriculo.cursos?.some((curso) => curso.nome) && (
-              <>
-                <Title level={4} style={{ color: modelo.cor, marginTop: 25 }}>
-                  <FileTextOutlined /> CURSOS E CERTIFICAÇÕES
-                </Title>
-                {dadosCurriculo.cursos?.map(
-                  (curso, index) =>
-                    curso.nome && (
-                      <div key={index} style={{ marginBottom: 10 }}>
-                        <Text strong>{curso.nome}</Text>
-                        <div>
-                          {curso.instituicao}
-                          {curso.ano && ` (${curso.ano})`}
-                        </div>
-                      </div>
-                    )
-                )}
-              </>
-            )}
-
-            {habilidades.length > 0 && (
-              <>
-                <Title level={4} style={{ color: modelo.cor, marginTop: 25 }}>
-                  <ToolOutlined /> HABILIDADES
-                </Title>
-                <ul style={{ paddingLeft: 20 }}>
-                  {habilidades.map((hab, index) => (
-                    <li key={index}>{hab}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {dadosCurriculo.informacoesAdicionais && (
-              <>
-                <Title level={4} style={{ color: modelo.cor, marginTop: 25 }}>
-                  <InfoCircleOutlined /> INFORMAÇÕES ADICIONAIS
-                </Title>
-                <Paragraph>{dadosCurriculo.informacoesAdicionais}</Paragraph>
-              </>
-            )}
-          </div>
-        );
-
-      case "basico":
-        return (
-          <div
-            ref={curriculoRef}
-            style={{
-              padding: 40,
-              background: "white",
-              border: "1px solid #d9d9d9",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-              width: "210mm",
-              minHeight: "297mm",
-              margin: "0 auto",
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            <div style={{ textAlign: "center", marginBottom: 30 }}>
-              <Title level={2} style={{ marginBottom: 5, color: modelo.cor }}>
-                {dadosCurriculo.nome}
-              </Title>
-              <Title level={4} style={{ margin: 0, fontWeight: "normal" }}>
-                {dadosCurriculo.profissao}
-              </Title>
-
-              <Divider style={{ background: modelo.cor, margin: "15px 0" }} />
-
-              <Row justify="center" gutter={[16, 8]}>
-                <Col>
-                  <Text>
-                    <HomeOutlined /> {dadosCurriculo.endereco}
-                  </Text>
-                </Col>
-                <Col>
-                  <Text>
-                    <PhoneOutlined /> {dadosCurriculo.telefone}
-                  </Text>
-                </Col>
-                {dadosCurriculo.email && (
-                  <Col>
-                    <Text>
-                      <MailOutlined /> {dadosCurriculo.email}
-                    </Text>
-                  </Col>
-                )}
-              </Row>
-
-              {fotoCandidata && (
-                <div style={{ margin: "20px auto", textAlign: "center" }}>
-                  <img
-                    src={fotoCandidata}
-                    alt="Foto"
-                    style={{
-                      width: 120,
-                      height: 120,
-                      objectFit: "cover",
-                      border: `2px solid ${modelo.cor}`,
-                      borderRadius: "50%",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                background: modelo.cor,
-                padding: "5px 10px",
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ color: "white" }}>
-                OBJETIVO
-              </Text>
-            </div>
-            <Paragraph style={{ marginBottom: 25 }}>
-              {dadosCurriculo.objetivo}
-            </Paragraph>
-
-            <div
-              style={{
-                background: modelo.cor,
-                padding: "5px 10px",
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ color: "white" }}>
-                FORMAÇÃO ACADÊMICA
-              </Text>
-            </div>
-            <Paragraph style={{ marginBottom: 25 }}>
-              <strong>{dadosCurriculo.escolaridade}</strong>
-              {dadosCurriculo.instituicaoEnsino && (
-                <div>Instituição: {dadosCurriculo.instituicaoEnsino}</div>
-              )}
-              {dadosCurriculo.anoConclusao && (
-                <div>
-                  Conclusão: {dayjs(dadosCurriculo.anoConclusao).format("YYYY")}
-                </div>
-              )}
-            </Paragraph>
-
-            <div
-              style={{
-                background: modelo.cor,
-                padding: "5px 10px",
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ color: "white" }}>
-                EXPERIÊNCIA PROFISSIONAL
-              </Text>
-            </div>
-            {dadosCurriculo.experiencias?.map((exp, index) => (
-              <div key={index} style={{ marginBottom: 15 }}>
-                <Text strong>{exp.cargo}</Text>
-                <div>
-                  {exp.empresa} {exp.periodo && `(${exp.periodo})`}
-                </div>
-                {exp.descricao && <div>{exp.descricao}</div>}
-              </div>
-            ))}
-
-            {dadosCurriculo.cursos?.some((curso) => curso.nome) && (
-              <>
-                <div
-                  style={{
-                    background: modelo.cor,
-                    padding: "5px 10px",
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ color: "white" }}>
-                    CURSOS E CERTIFICAÇÕES
-                  </Text>
-                </div>
-                {dadosCurriculo.cursos?.map(
-                  (curso, index) =>
-                    curso.nome && (
-                      <div key={index} style={{ marginBottom: 10 }}>
-                        <Text strong>{curso.nome}</Text>
-                        <div>
-                          {curso.instituicao}
-                          {curso.ano && ` (${curso.ano})`}
-                        </div>
-                      </div>
-                    )
-                )}
-              </>
-            )}
-
-            {habilidades.length > 0 && (
-              <>
-                <div
-                  style={{
-                    background: modelo.cor,
-                    padding: "5px 10px",
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ color: "white" }}>
-                    HABILIDADES
-                  </Text>
-                </div>
-                <ul style={{ paddingLeft: 20 }}>
-                  {habilidades.map((hab, index) => (
-                    <li key={index}>{hab}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {dadosCurriculo.informacoesAdicionais && (
-              <>
-                <div
-                  style={{
-                    background: modelo.cor,
-                    padding: "5px 10px",
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ color: "white" }}>
-                    INFORMAÇÕES ADICIONAIS
-                  </Text>
-                </div>
-                <Paragraph>{dadosCurriculo.informacoesAdicionais}</Paragraph>
-              </>
-            )}
-          </div>
-        );
-
-      case "tradicional":
-        return (
-          <div
-            ref={curriculoRef}
-            style={{
-              padding: 40,
-              background: "white",
-              border: "1px solid #d9d9d9",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-              width: "210mm",
-              minHeight: "297mm",
-              margin: "0 auto",
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            <Row>
-              <Col span={17}>
-                <Title level={2} style={{ marginBottom: 5 }}>
-                  {dadosCurriculo.nome}
-                </Title>
-                <Title
-                  level={4}
-                  style={{
-                    marginTop: 0,
-                    marginBottom: 20,
-                    fontWeight: "normal",
-                  }}
-                >
-                  {dadosCurriculo.profissao}
-                </Title>
-              </Col>
-              <Col span={7} style={{ textAlign: "right" }}>
-                {fotoCandidata && (
-                  <img
-                    src={fotoCandidata}
-                    alt="Foto"
-                    style={{
-                      width: 100,
-                      height: 130,
-                      objectFit: "cover",
-                      border: "1px solid #ccc",
-                    }}
-                  />
-                )}
-              </Col>
-            </Row>
-
-            <Row style={{ marginBottom: 20 }}>
-              <Col span={24}>
-                <div style={{ marginBottom: 5 }}>
-                  <Text>
-                    <HomeOutlined /> {dadosCurriculo.endereco}
-                  </Text>
-                </div>
-                <div>
-                  <Text>
-                    <PhoneOutlined /> {dadosCurriculo.telefone}
-                  </Text>
-                  {dadosCurriculo.email && (
-                    <Text style={{ marginLeft: 20 }}>
-                      <MailOutlined /> {dadosCurriculo.email}
-                    </Text>
-                  )}
-                </div>
-              </Col>
-            </Row>
-
-            <div
-              style={{
-                borderBottom: `2px solid ${modelo.cor}`,
-                paddingBottom: 8,
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ fontSize: 16 }}>
-                OBJETIVO
-              </Text>
-            </div>
-            <Paragraph style={{ marginBottom: 25 }}>
-              {dadosCurriculo.objetivo}
-            </Paragraph>
-
-            <div
-              style={{
-                borderBottom: `2px solid ${modelo.cor}`,
-                paddingBottom: 8,
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ fontSize: 16 }}>
-                FORMAÇÃO ACADÊMICA
-              </Text>
-            </div>
-            <Paragraph style={{ marginBottom: 25 }}>
-              <strong>{dadosCurriculo.escolaridade}</strong>
-              {dadosCurriculo.instituicaoEnsino && (
-                <div>Instituição: {dadosCurriculo.instituicaoEnsino}</div>
-              )}
-              {dadosCurriculo.anoConclusao && (
-                <div>
-                  Conclusão: {dayjs(dadosCurriculo.anoConclusao).format("YYYY")}
-                </div>
-              )}
-            </Paragraph>
-
-            <div
-              style={{
-                borderBottom: `2px solid ${modelo.cor}`,
-                paddingBottom: 8,
-                marginBottom: 15,
-              }}
-            >
-              <Text strong style={{ fontSize: 16 }}>
-                EXPERIÊNCIA PROFISSIONAL
-              </Text>
-            </div>
-            {dadosCurriculo.experiencias?.map((exp, index) => (
-              <div key={index} style={{ marginBottom: 15 }}>
-                <Text strong>{exp.cargo}</Text>
-                <div>
-                  {exp.empresa} {exp.periodo && `(${exp.periodo})`}
-                </div>
-                {exp.descricao && <div>{exp.descricao}</div>}
-              </div>
-            ))}
-
-            {dadosCurriculo.cursos?.some((curso) => curso.nome) && (
-              <>
-                <div
-                  style={{
-                    borderBottom: `2px solid ${modelo.cor}`,
-                    paddingBottom: 8,
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ fontSize: 16 }}>
-                    CURSOS E CERTIFICAÇÕES
-                  </Text>
-                </div>
-                {dadosCurriculo.cursos?.map(
-                  (curso, index) =>
-                    curso.nome && (
-                      <div key={index} style={{ marginBottom: 10 }}>
-                        <Text strong>{curso.nome}</Text>
-                        <div>
-                          {curso.instituicao}
-                          {curso.ano && ` (${curso.ano})`}
-                        </div>
-                      </div>
-                    )
-                )}
-              </>
-            )}
-
-            {habilidades.length > 0 && (
-              <>
-                <div
-                  style={{
-                    borderBottom: `2px solid ${modelo.cor}`,
-                    paddingBottom: 8,
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ fontSize: 16 }}>
-                    HABILIDADES
-                  </Text>
-                </div>
-                <Row gutter={[16, 8]}>
-                  {habilidades.map((hab, index) => (
-                    <Col span={12} key={index}>
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <div
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            background: modelo.cor,
-                            marginRight: 8,
-                          }}
-                        />
-                        {hab}
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </>
-            )}
-
-            {dadosCurriculo.informacoesAdicionais && (
-              <>
-                <div
-                  style={{
-                    borderBottom: `2px solid ${modelo.cor}`,
-                    paddingBottom: 8,
-                    marginBottom: 15,
-                    marginTop: 25,
-                  }}
-                >
-                  <Text strong style={{ fontSize: 16 }}>
-                    INFORMAÇÕES ADICIONAIS
-                  </Text>
-                </div>
-                <Paragraph>{dadosCurriculo.informacoesAdicionais}</Paragraph>
-              </>
-            )}
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+  const navButtons = (
+    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+      {step > 0 && (
+        <Button size="large" icon={<ArrowLeftOutlined />} onClick={() => setStep(step - 1)} style={isMobile ? { flex: 1 } : undefined}>
+          Voltar
+        </Button>
+      )}
+      <Button
+        size="large"
+        type="primary"
+        icon={step === STEPS.length - 1 ? <EyeOutlined /> : <ArrowRightOutlined />}
+        iconPosition={step === STEPS.length - 1 ? "start" : "end"}
+        onClick={next}
+        style={isMobile ? { flex: 2 } : undefined}
+      >
+        {step === STEPS.length - 1 ? "Ver currículo pronto" : "Próximo"}
+      </Button>
+    </div>
+  );
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <style>{`
-        .ant-form-item-label > label {
-          font-size: 14px !important;
-          font-weight: 600 !important;
-          color: #374151 !important;
-          margin-bottom: 8px;
-        }
-        .ant-input,
-        .ant-input-number-input,
-        .ant-select-selection-item,
-        .ant-select-selection-search-input {
-          color: #000000 !important;
-          font-weight: 700 !important;
-        }
-        .ant-input::placeholder,
-        .ant-input-number-input::placeholder,
-        .ant-select-selection-placeholder {
-          color: #9CA3AF !important;
-          font-weight: 400 !important;
-        }
-        .ant-input:focus,
-        .ant-input-number:focus,
-        .ant-select-focused .ant-select-selector {
-          border-color: #1890ff !important;
-          box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1) !important;
-        }
-        .ant-input:focus,
-        .ant-input-number-input:focus {
-          color: #000000 !important;
-          font-weight: 700 !important;
-        }
-        textarea.ant-input {
-          color: #000000 !important;
-          font-weight: 700 !important;
-        }
-        .ant-btn {
-          transition: all 0.3s ease !important;
-        }
-        .ant-btn:hover {
-          transform: translateY(-1px);
-        }
-        .ant-btn-primary:hover {
-          box-shadow: 0 6px 16px rgba(24, 144, 255, 0.4) !important;
-        }
-      `}</style>
-      <Header style={modernStyles.header}>
-        <Row align="middle" style={{ height: "100%" }}>
-          <Col>
-            <Title level={3} style={{ color: "white", margin: 0 }}>
-              <FileTextOutlined /> Criador de Currículo
-            </Title>
-          </Col>
-        </Row>
-      </Header>
-
-      <Content style={{ padding: "32px", ...modernStyles.background }}>
-        <div style={modernStyles.container}>
-          {mostrarPreview ? (
-            <div>
-              <Card
-                title="Visualização do Currículo"
-                bordered={false}
-                style={modernStyles.card}
-                extra={
-                  <Space>
-                    <Tooltip title="Editar">
-                      <Button
-                        icon={<EditOutlined />}
-                        onClick={() => setMostrarPreview(false)}
-                        style={modernStyles.button}
-                      >
-                        Editar
-                      </Button>
-                    </Tooltip>
-
-                    <Tooltip title="Salvar PDF">
-                      <Button
-                        type="primary"
-                        icon={<DownloadOutlined />}
-                        onClick={imprimirCurriculo}
-                        loading={carregando}
-                        style={modernStyles.buttonPrimary}
-                      >
-                        Salvar PDF
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Reiniciar">
-                      <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={reiniciarCriacao}
-                        style={modernStyles.button}
-                      >
-                        Reiniciar
-                      </Button>
-                    </Tooltip>
-                  </Space>
-                }
-              >
-                <div style={{ overflow: "auto" }}>
-                  {renderizarPreviewCurriculo()}
-                </div>
-              </Card>
-            </div>
-          ) : (
-            <div>
-              {/* Feature IA oculta
-              <div style={{ paddingBottom: 20 }}>
-                <CurriculoAICard
-                  setModeloSelecionado={setModeloSelecionado}
-                  modeloSelecionado={modeloSelecionado}
-                  setCurriculoData={makeWithAi}
-                  setAiData={setAiData}
-                  MODELOS_CURRICULO={MODELOS_CURRICULO}
-                />
-              </div>
-*/}
-              <Card bordered={false} style={modernStyles.stepsCard}>
-                <Steps current={currentStep} responsive={true}>
-                  <Step title="Dados Pessoais" icon={<UserOutlined />} />
-                  <Step title="Experiência" icon={<ToolOutlined />} />
-                  <Step title="Formação" icon={<BookOutlined />} />
-                  <Step title="Habilidades" icon={<FileTextOutlined />} />
-                </Steps>
-              </Card>
-
-              {gerarAlertaCamposFaltantes()}
-
-              <Form
-                form={form}
-                layout="vertical"
-                initialValues={{
-                  modelo: "simples",
-                  ...dadosCurriculo,
-                }}
-              >
-                {renderizarEtapa()}
-
-                <div style={{ marginTop: 32, textAlign: "right" }}>
-                  {currentStep > 0 && (
-                    <Button
-                      style={{ marginRight: 12, ...modernStyles.button }}
-                      onClick={voltarEtapa}
-                      icon={<ArrowLeftOutlined />}
-                    >
-                      Voltar
-                    </Button>
-                  )}
-
-                  <Button
-                    type="primary"
-                    onClick={avancarEtapa}
-                    icon={
-                      currentStep === 3 ? (
-                        <EyeOutlined />
-                      ) : (
-                        <ArrowRightOutlined />
-                      )
-                    }
-                    style={modernStyles.buttonPrimary}
-                  >
-                    {currentStep === 3 ? "Visualizar Currículo" : "Próximo"}
-                  </Button>
-                </div>
-              </Form>
-            </div>
+    <SimplePage
+      title="Currículos"
+      subtitle="Monte o currículo do cliente em 4 passos e imprima na hora"
+      actions={
+        <>
+          <Button icon={<CopyOutlined />} onClick={copyAsk}>
+            Copiar o que pedir ao cliente
+          </Button>
+          {(tab === "historico" || preview || step > 0) && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={confirmNew}>
+              Novo currículo
+            </Button>
           )}
-        </div>
-      </Content>
+        </>
+      }
+      mobileActions={
+        <button type="button" className="sp-round" aria-label="Copiar o que pedir ao cliente" onClick={copyAsk}>
+          <CopyOutlined />
+        </button>
+      }
+    >
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={EMPTY_CV}>
+      <div className="sp-stack">
+        <Chips
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "novo", label: savedId ? "Currículo aberto" : "Fazer currículo" },
+            { value: "historico", label: "Feitos antes", count: history ? history.length : undefined },
+          ]}
+        />
 
-      <Footer style={{ textAlign: "center" }}>
-        <Text type="secondary">
-          Criador de Currículo © {new Date().getFullYear()}
-        </Text>
-      </Footer>
+        {tab === "historico" ? (
+          <>
+            <Input allowClear size="large" prefix={<SearchOutlined />} placeholder="Buscar pelo nome, telefone ou profissão" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+            {historyLoading && !history ? (
+              <div className="sp-card">
+                <Skeleton active paragraph={{ rows: 5 }} />
+              </div>
+            ) : !history?.length ? (
+              <div className="sp-card">
+                <EmptyState icon={<HistoryOutlined />} title="Nenhum currículo feito ainda" text="Os currículos que você imprimir ou baixar ficam guardados aqui para reimprimir depois." />
+              </div>
+            ) : !filteredHistory.length ? (
+              <div className="sp-card" style={{ textAlign: "center", color: "#78716c", padding: 28 }}>
+                Nenhum currículo encontrado com essa busca.
+              </div>
+            ) : (
+              <div className="sp-list">
+                {filteredHistory.slice(0, 60).map((c) => (
+                  <div className="sp-item" key={c.id}>
+                    <Icon size={40}>
+                      <FileTextOutlined />
+                    </Icon>
+                    <div className="sp-item-main">
+                      <div className="sp-item-top">
+                        <span className="sp-item-title is-wrap">{c.nome}</span>
+                      </div>
+                      <div className="sp-item-meta">
+                        {c.profissao && <span>{c.profissao}</span>}
+                        {c.telefone && <span>{c.telefone}</span>}
+                        <span>feito em {dayjs(c.updatedAt || c.createdAt).format("DD/MM/YYYY")}</span>
+                      </div>
+                      <div className="sp-item-actions">
+                        <Button type="primary" icon={<PrinterOutlined />} loading={opening === c.id} onClick={() => openSaved(c, "view")}>
+                          Abrir para imprimir
+                        </Button>
+                        <Button icon={<EditOutlined />} disabled={opening === c.id} onClick={() => openSaved(c, "edit")}>
+                          Atualizar dados
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredHistory.length > 60 && (
+                  <div style={{ textAlign: "center", color: "#a8a29e", fontSize: 13 }}>Mostrando os 60 mais recentes. Use a busca para achar os outros.</div>
+                )}
+              </div>
+            )}
+          </>
+        ) : preview ? (
+          <>
+            <div className="sp-card" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                <b style={{ fontSize: 15 }}>Currículo de {preview.nome} pronto! 🎉</b>
+                <div style={{ color: "#78716c", fontSize: 13 }}>Confira abaixo. Se algo estiver errado, toque em Corrigir.</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
+                <Button type="primary" size="large" icon={<PrinterOutlined />} onClick={print} loading={exporting} style={isMobile ? { flex: 1 } : undefined}>
+                  Imprimir
+                </Button>
+                <Button size="large" icon={<DownloadOutlined />} onClick={download} disabled={exporting} style={isMobile ? { flex: 1 } : undefined}>
+                  Baixar PDF
+                </Button>
+                <Button
+                  size="large"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setPreview(null);
+                    setStep(0);
+                  }}
+                  style={isMobile ? { flex: 1 } : undefined}
+                >
+                  Corrigir
+                </Button>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, color: "#78716c", marginBottom: 8 }}>Modelo</div>
+              <ModelPicker
+                value={preview.modelo}
+                onChange={(modelo) => {
+                  form.setFieldsValue({ modelo });
+                  setPreview({ ...preview, modelo });
+                }}
+              />
+            </div>
+            <A4Preview cv={preview} docRef={docRef} fullSize={exporting} />
+          </>
+        ) : (
+          <>
+            {progress}
+            <div className="sp-card">{renderStep()}</div>
+            {navButtons}
+          </>
+        )}
+      </div>
+      </Form>
 
-      {carregando && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(255, 255, 255, 0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-          }}
-        >
-          <Spin size="large" tip="Gerando PDF..." />
+      {exporting && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.75)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Spin size="large" tip="Preparando o PDF...">
+            <div style={{ width: 200, height: 80 }} />
+          </Spin>
         </div>
       )}
-      <Modal
-        open={modalVisible}
-        title="Reiniciar Criação"
-        footer={null}
-        onCancel={handleCancelReset}
-        centered
-      >
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <WarningOutlined
-            style={{ color: "#faad14", fontSize: "24px", marginBottom: "12px" }}
-          />
-          <p>
-            Tem certeza que deseja reiniciar a criação do currículo? Todos os
-            dados serão perdidos.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-          <Button onClick={handleCancelReset}>Não</Button>
-          <Button type="primary" danger onClick={handleConfirmReset}>
-            Sim
-          </Button>
-        </div>
-      </Modal>
-    </Layout>
+    </SimplePage>
   );
-};
+}
 
-export default CriadorCurriculo;
+function ModelPicker({ value, onChange }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(104px, 1fr))", gap: 10 }}>
+      {MODELOS.map((m) => {
+        const active = value === m.key;
+        return (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => onChange?.(m.key)}
+            style={{
+              textAlign: "left",
+              background: "#fff",
+              border: `1px solid ${active ? "var(--sp-primary)" : "#e7e5e4"}`,
+              boxShadow: active ? "0 0 0 1px var(--sp-primary)" : "none",
+              borderRadius: 12,
+              padding: 12,
+              cursor: "pointer",
+              font: "inherit",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+              <span style={{ width: 14, height: 14, borderRadius: 99, background: m.cor, flexShrink: 0 }} />
+              {m.nome}
+              {active && <CheckOutlined style={{ marginLeft: "auto", color: "var(--sp-primary)" }} />}
+            </div>
+            <div style={{ fontSize: 12, color: "#78716c", marginTop: 4 }}>{m.desc}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}

@@ -8,6 +8,23 @@ import {
 import jsPDF from "jspdf";
 import dayjs from "dayjs";
 
+export const formatCnpj = (value) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 14) return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  if (digits.length === 11) return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  return String(value || "").trim();
+};
+
+export const companyReceiptHeader = (companySetup) => {
+  const document = formatCnpj(companySetup?.companyCNPJ);
+  return {
+    nome: (companySetup?.companyName || "").toUpperCase(),
+    endereco: (companySetup?.companyAddress || "").toUpperCase(),
+    cnpj: document ? `${document.length > 14 ? "CNPJ" : "CPF"}: ${document}` : "",
+    receiptFooter: companySetup?.receiptFooter || "",
+  };
+};
+
 const CupomGenerator = ({
   saleData,
   onSuccess,
@@ -19,24 +36,7 @@ const CupomGenerator = ({
   const money = (valor) =>
     valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
-  // Configurações da empresa - usa companySetup se disponível, senão fallback
-  const empresaConfig = {
-    nome: companySetup?.companyName || "FOFA PAPELARIA",
-    endereco:
-      companySetup?.companyAddress || "RUA ORLINDO BORGES - BARRA DO SAHY",
-    cidade: companySetup?.companyCity || "ARACRUZ - ES",
-    cnpj: companySetup?.companyCNPJ
-      ? `CNPJ: ${companySetup.companyCNPJ}`
-      : "CNPJ: 54.007.957/0001-99",
-    ie: companySetup?.companyIE
-      ? `IE: ${companySetup.companyIE}`
-      : "IE: 084231440",
-    im: companySetup?.companyIM
-      ? `IM: ${companySetup.companyIM}`
-      : "IM: ISENTO",
-    uf: companySetup?.companyUF ? `UF: ${companySetup.companyUF}` : "UF: ES",
-    receiptFooter: companySetup?.receiptFooter || "",
-  };
+  const empresaConfig = companyReceiptHeader(companySetup);
 
   const gerarCupom = async () => {
     if (!saleData) {
@@ -68,8 +68,6 @@ const CupomGenerator = ({
       );
       const cupomInfo = {
         dataHora: dataHoraVenda,
-        ccf: `CCF: ${String(saleData.id).padStart(6, "0")}`,
-        coo: `COO: ${String(saleData.id).padStart(7, "0")}`,
       };
 
       // Funções auxiliares para formatação do PDF
@@ -126,21 +124,15 @@ const CupomGenerator = ({
       let y = 10;
 
       // Cabeçalho da empresa
-      y = centerText(empresaConfig.nome, y, 10);
-      y = centerText(empresaConfig.endereco, y);
-      y = centerText(empresaConfig.cidade, y);
-      y = centerText(empresaConfig.cnpj, y);
-      y = centerText(`${empresaConfig.ie} ${empresaConfig.uf}`, y);
-      y = centerText(empresaConfig.im, y);
+      if (empresaConfig.nome) y = centerText(empresaConfig.nome, y, 10);
+      if (empresaConfig.endereco) y = centerText(empresaConfig.endereco, y);
+      if (empresaConfig.cnpj) y = centerText(empresaConfig.cnpj, y);
       //y = addSeparator(y);
 
       // Informações do cupom
       y = addText(`DATA: ${cupomInfo.dataHora}`, y);
 
       // CNPJ do cliente (se fornecido)
-      console.log("Dados da venda para cupom:", saleData);
-      console.log("CNPJ do cliente:", saleData.cnpjCliente);
-
       if (saleData.cnpjCliente && saleData.cnpjCliente.trim()) {
         y = addText(`CPF/CNPJ CLIENTE: ${saleData.cnpjCliente}`, y);
       }

@@ -66,6 +66,11 @@ const PaymentModal = ({
   setCupomCnpj,
   cupomObs,
   setCupomObs,
+  fiscalReady,
+  emitirNota,
+  setEmitirNota,
+  notaDocumento,
+  setNotaDocumento,
   loading,
 }) => {
   // Injetar CSS para modal fullscreen no mobile
@@ -436,6 +441,53 @@ const PaymentModal = ({
                 Concluir Venda
               </Button>
             </div>
+          </Col>
+        )}
+
+        {fiscalReady && (
+          <Col span={24}>
+            <Divider
+              orientation="left"
+              style={{
+                margin: isMobile ? "8px 0" : "16px 0",
+                fontSize: isMobile ? 12 : 14,
+              }}
+            >
+              Nota fiscal
+            </Divider>
+            <Form layout="vertical" size={isMobile ? "middle" : "large"}>
+              <Form.Item style={{ marginBottom: isMobile ? 8 : 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Switch
+                    checked={emitirNota}
+                    onChange={setEmitirNota}
+                    checkedChildren="Sim"
+                    unCheckedChildren="Não"
+                  />
+                  <span style={{ fontSize: isMobile ? 12 : 14 }}>
+                    Emitir nota fiscal?
+                  </span>
+                </div>
+              </Form.Item>
+              {emitirNota && (
+                <Form.Item
+                  label="CPF ou CNPJ do cliente (opcional)"
+                  extra={
+                    String(notaDocumento || "").replace(/\D/g, "").length === 14
+                      ? "Venda para empresa: os produtos saem em NF-e."
+                      : undefined
+                  }
+                  style={{ marginBottom: isMobile ? 8 : 16 }}
+                >
+                  <Input
+                    value={notaDocumento}
+                    onChange={(e) => setNotaDocumento(e.target.value)}
+                    placeholder="Vazio = consumidor não identificado"
+                    size={isMobile ? "middle" : "large"}
+                  />
+                </Form.Item>
+              )}
+            </Form>
           </Col>
         )}
 

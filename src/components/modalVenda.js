@@ -32,11 +32,14 @@ import {
 import dayjs from "dayjs";
 import jsPDF from "jspdf";
 import { useThemeColor } from "helpers/theme";
+import { useCompany } from "context/CompanyContext";
+import { companyReceiptHeader } from "components/cupomGenerator";
 
 const { Title, Text } = Typography;
 
 // Componente do gerador de cupom integrado
 const useCupomGenerator = () => {
+  const { companySetup } = useCompany();
   const [previewVisible, setPreviewVisible] = useState(false);
 
   const gerarCupom = async (saleData, showPreview = true) => {
@@ -49,16 +52,7 @@ const useCupomGenerator = () => {
     }
 
     try {
-      // Configurações da empresa
-      const empresaConfig = {
-        nome: "FOFA PAPELARIA",
-        endereco: "RUA ORLINDO BORGES - BARRA DO SAHY",
-        cidade: "ARACRUZ - ES",
-        cnpj: "CNPJ: 54.007.957/0001-99",
-        ie: "IE: 084231440",
-        im: "IM: ISENTO",
-        uf: "UF: ES",
-      };
+      const empresaConfig = companyReceiptHeader(companySetup);
 
       // Função auxiliar para formatação de dinheiro
       const money = (valor) =>
@@ -83,8 +77,6 @@ const useCupomGenerator = () => {
       );
       const cupomInfo = {
         dataHora: dataHoraVenda,
-        ccf: `CCF: ${String(saleData.id).padStart(6, "0")}`,
-        coo: `COO: ${String(saleData.id).padStart(7, "0")}`,
       };
 
       // Funções auxiliares para formatação do PDF
@@ -128,18 +120,13 @@ const useCupomGenerator = () => {
       let y = 10;
 
       // Cabeçalho da empresa
-      y = centerText(empresaConfig.nome, y, 10);
-      y = centerText(empresaConfig.endereco, y);
-      y = centerText(empresaConfig.cidade, y);
-      y = centerText(empresaConfig.cnpj, y);
-      y = centerText(`${empresaConfig.ie} ${empresaConfig.uf}`, y);
-      y = centerText(empresaConfig.im, y);
+      if (empresaConfig.nome) y = centerText(empresaConfig.nome, y, 10);
+      if (empresaConfig.endereco) y = centerText(empresaConfig.endereco, y);
+      if (empresaConfig.cnpj) y = centerText(empresaConfig.cnpj, y);
       y = addSeparator(y + 2);
 
       // Informações do cupom
       y = addText(`DATA: ${cupomInfo.dataHora}`, y);
-      y = addText(`${cupomInfo.ccf}`, y);
-      y = addText(`${cupomInfo.coo}`, y);
       y = addSeparator(y + 2);
 
       // Tipo de documento
@@ -215,12 +202,19 @@ const useCupomGenerator = () => {
       y = addSeparator(y + 2);
 
       // Rodapé
-      y = centerText("Volte Sempre!!", y + 1, 9);
-      y = centerText("Agradecemos sua preferência", y, 8);
+      const footerLines = empresaConfig.receiptFooter.trim()
+        ? empresaConfig.receiptFooter.split("\n")
+        : ["Volte Sempre!!"];
+      y += 1;
+      footerLines.forEach((line) => {
+        if (line.trim()) y = centerText(line.trim(), y, 9);
+      });
       y = centerText(dayjs().format("DD/MM/YYYY - HH:mm:ss"), y + 2, 7);
-      y = centerText("==================", y + 5, 8);
-      y = centerText("FOFA PAPELARIA", y, 8);
-      y = centerText("==================", y, 8);
+      if (empresaConfig.nome) {
+        y = centerText("==================", y + 5, 8);
+        y = centerText(empresaConfig.nome, y, 8);
+        y = centerText("==================", y, 8);
+      }
 
       // Configurar para impressão automática
       doc.autoPrint();
